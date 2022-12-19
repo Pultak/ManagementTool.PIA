@@ -1,6 +1,6 @@
 ﻿namespace ManagementTool.Shared.Models; 
 
-internal class Assignment {
+public class Assignment {
     public long Id { get; set; }
 
     public long ProjectId { get; set; }
