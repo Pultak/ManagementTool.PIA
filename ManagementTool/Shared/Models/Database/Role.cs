@@ -1,6 +1,9 @@
-﻿namespace ManagementTool.Shared.Models; 
+﻿using ManagementTool.Shared.Models.Utils;
 
-public class Role {
+namespace ManagementTool.Shared.Models.Database;
+
+public class Role
+{
 
     public long Id { get; set; }
 

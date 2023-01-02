@@ -1,6 +1,7 @@
-﻿namespace ManagementTool.Server.Models
+﻿namespace ManagementTool.Shared.Models.Database
 {
-    public class UserRoleXRefs {
+    public class UserRoleXRefs
+    {
 
         public long IdUser { get; set; }
         public long IdRole { get; set; }

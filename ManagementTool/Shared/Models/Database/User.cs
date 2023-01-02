@@ -1,17 +1,17 @@
-﻿namespace ManagementTool.Shared.Models; 
+﻿namespace ManagementTool.Shared.Models.Database;
 
-public class User {
+public class User
+{
 
     public long Id { get; set; }
 
     public string Username { get; set; }
 
-
     public string Pwd { get; set; }
 
     public string FullName { get; set; }
 
-    public string PrimaryWorkplace { get; set;  }
+    public string PrimaryWorkplace { get; set; }
 
     public string EmailAddress { get; set; }
 
