@@ -1,5 +1,7 @@
-﻿using System.Security.Principal;
+﻿using System.Net;
+using System.Security.Principal;
 using ManagementTool.Server.Services.Users;
+using ManagementTool.Shared.Models;
 using ManagementTool.Shared.Models.Login;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,25 +21,26 @@ public class LoginController : ControllerBase {
 
     
     [HttpPost]
-    public IActionResult Login([FromBody] AuthData authData) {
-        if (authData == null) {
-            return BadRequest();
+    public EAuthResponse Login([FromBody] AuthPayload authPayload) {
+        if (authPayload == null || string.IsNullOrEmpty(authPayload.Password) 
+                                || string.IsNullOrEmpty(authPayload.Username)) {
+            throw new BadHttpRequestException("Payload and its data cant be null!");
         }
         //todo check if Principal works as designed
         if (Thread.CurrentPrincipal != null){
             //already logged in
-            return StatusCode(205);
+            return EAuthResponse.AlreadyLoggedIn;
         }
 
-        var user = UserDataService.GetUserByName(authData.Username);
+        var user = UserDataService.GetUserByName(authPayload.Username);
         if (user == null) {
-            return Unauthorized(EAuthResponse.UnknownUser);
+            return EAuthResponse.UnknownUser;
         }
 
         //todo cypher pwd
 
-        if (!user.Pwd.Equals(authData.Password)) {
-            return Unauthorized(EAuthResponse.WrongPassword);
+        if (!user.Pwd.Equals(authPayload.Password)) {
+            return EAuthResponse.WrongPassword;
         }
 
         var roles = UserRoleDataService.GetUserRolesById(user.Id);
@@ -47,32 +50,28 @@ public class LoginController : ControllerBase {
         var principal = new GenericPrincipal(new GenericIdentity(user.Username), resultRoles);
         Thread.CurrentPrincipal = principal;
         HttpContext.User = principal;
-        return Ok(EAuthResponse.Success);
+        return EAuthResponse.Success;
     }
 
     [HttpGet]
-    public IActionResult Logout() {
-        //todo if user not logged in -> check func as designed
+    public EAuthResponse Logout() {
         if (Thread.CurrentPrincipal == null) {
-            return StatusCode(205);
+            return EAuthResponse.UnknownUser;
         }
         HttpContext.Session.Clear();
         Thread.CurrentPrincipal = null;
 
-        return Ok();
+        return EAuthResponse.Success;
     }
 
-    [HttpGet]
-    public IActionResult GetLoggedInUser() {
+    [HttpGet("info")]
+    public AuthPayload GetLoggedInUser() {
 
         if (Thread.CurrentPrincipal == null) {
-            return Unauthorized();
+            return new AuthPayload(null, null);
         }
 
         var userIdentity = HttpContext.User.Identity;
-        if (userIdentity == null) {
-            return Unauthorized();
-        }
-        return Ok(userIdentity.Name);
+        return new AuthPayload(userIdentity?.Name, null);
     }
 }

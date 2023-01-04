@@ -1,0 +1,195 @@
+﻿@using ManagementTool.Shared
+@using ManagementTool.Shared.Models
+@using ManagementTool.Shared.Models.Database
+@using ManagementTool.Shared.Models.Login
+@using ManagementTool.Shared.Models.Utils
+@using Microsoft.AspNetCore.Mvc;
+
+@inject HttpClient Http
+@inject ILogger<LoginPrompt> Logger
+@inject NavigationManager UriHelper;
+
+@if (string.IsNullOrEmpty(LoggedUserName)) {
+    <div class="alert alert-secondary mt-4">
+        <span class="oi oi-pencil me-2" aria-hidden="true"></span>
+        <!--<strong>Title</strong>-->
+            <span class="text-nowrap">
+                Vypadá to, že nejste přihlášený/á! Napravte to vyplněním přihlašovacího formuláře!
+            </span>
+            
+            <table>
+                <tr>
+                    <td>Uživatelské jméno (orion)</td>
+                    <td><input type="text" asp-for="@Username" @onchange="(val) => Username = val?.Value as string"/></td>
+                </tr>
+                <tr>
+                    <td>Heslo</td>
+                    <td><input type="password" asp-for="@Password" @onchange="(val) => Password = val?.Value as string" /></td>
+                </tr>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td><button @onclick="LoginPressed"
+                        data-bs-toggle="modal" data-bs-target="#productModal" class="btn btn-primary">
+                        Přihlásit se
+                    </button>
+                </td>
+                </tr>
+            </table>
+        <div class="modal fade @ModalClass" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productTitle" aria-hidden="true" style="display:@ModalDisplay">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="productTitle">@DialogSignature</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="card">
+                            <!--<div class="card-img" style="background-image: url('todo image possibility');">
+                            </div>-->
+                            <div class="card-body">
+
+                                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Ok" @onclick="OkPressed">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+        <div class="modal @ModalClass" tabindex="-1" role="dialog" style="display:@ModalDisplay">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Přihlášení</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick=" OkPressed">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p>@DialogSignature</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick=" OkPressed">Ok</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div> 
+}   
+
+@code {
+    //todo @Html.DropDownList("CategoryID", null, new { @onchange="location = this.value;" })
+
+
+    // Demonstrates how a parent component can supply parameters
+    /*[Parameter]
+    public string? Title { get; set; }*/
+    public string? Username { get; set; } = null;
+    public string? Password { get; set; } = null;
+
+
+    [CascadingParameter]
+    public string? LoggedUserName { get; set; }
+
+    public string? DialogSignature { get; set; } = null;
+
+    public string ModalDisplay = "none;";
+    public string ModalClass = "";
+    public bool LoggedIn { get; set; } = false;
+
+
+    public void OkPressed() {
+        ChangeDialogSignature(null);
+        DialogSignature = null;
+
+        ModalDisplay = "none";
+        ModalClass = "";
+        StateHasChanged();
+        if (LoggedIn) {
+            UriHelper.NavigateTo(UriHelper.Uri, forceLoad: true);
+        }
+    }
+
+
+    public void LoginPressed() {
+        if (string.IsNullOrEmpty(Username)) {
+            ChangeDialogSignature(EAuthResponse.EmptyUsername);
+
+            return;
+        }else if (string.IsNullOrEmpty(Password)) {
+            ChangeDialogSignature(EAuthResponse.EmptyPassword);
+            return;
+        }
+
+        var authData = new AuthPayload(Username!, Password!);
+        var task = Http.PostAsJsonAsync("auth", authData);
+        CallLoginApiAsync(task);
+
+    }
+
+    private async void CallLoginApiAsync(Task<HttpResponseMessage> authResponseTask) {
+        try {
+            var response = await authResponseTask;
+            response.EnsureSuccessStatusCode();
+            var responseBodyString = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrEmpty(responseBodyString)) {
+                ChangeDialogSignature(EAuthResponse.UnknownResponse);
+            }
+            else {
+                var responseEnumVal = Enum.Parse<EAuthResponse>(responseBodyString);
+                ChangeDialogSignature(responseEnumVal);
+            }
+            return;
+        }
+        catch (HttpRequestException e) {
+            Logger.LogError("Failure occurred during receiving data from the API! " + e.StatusCode);
+        }
+        catch (ArgumentException e) {
+            Logger.LogError("LoginPressed -> Received invalid data from the API!");
+        }
+        catch (Exception e) {
+            Logger.LogError("LoginPressed -> Unknown error occurred during authentication!");
+        }
+        ChangeDialogSignature(EAuthResponse.UnknownResponse);
+        
+    }
+
+    private void ChangeDialogSignature(EAuthResponse? response) {
+        @switch (response) {
+            case EAuthResponse.EmptyUsername:
+            case EAuthResponse.EmptyPassword:
+                DialogSignature = "Před stisknutím tlačítka pro přihlášení, prosím vyplňte potřebné údaje!";
+                break;
+            case EAuthResponse.UnknownUser:
+                DialogSignature = "Zadaný uživatel neexistuje!";
+                break;
+            case EAuthResponse.WrongPassword:
+                DialogSignature = "Bylo zadáno špatné heslo!";
+                break;
+            case EAuthResponse.Success:
+                DialogSignature = "Přihlášení proběhlo v pořádku!";
+                LoggedIn = true;
+                break;
+            case EAuthResponse.AlreadyLoggedIn:
+                DialogSignature = "Už jste v systému přihlášený!";
+                LoggedIn = true;
+                break;
+            case EAuthResponse.UnknownResponse:
+                DialogSignature = "Něco se nepodařilo! Zkuste přihlášení znovu!";
+                break;
+            case null:
+                DialogSignature = null;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+        ModalDisplay = "block;";
+        ModalClass = "Show";
+        StateHasChanged();
+    }
+}
