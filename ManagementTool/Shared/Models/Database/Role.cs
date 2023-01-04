@@ -1,4 +1,5 @@
-﻿using ManagementTool.Shared.Models.Utils;
+﻿using ManagementTool.Shared.Models.Login;
+using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Shared.Models.Database;
 
@@ -14,12 +15,17 @@ public class Role
     public long? ProjectId { get; set; }
 
 
-    public Role(long id, string name, ERoleType type, long? projectId)
-    {
+    public Role(long id, string name, ERoleType type, long? projectId = null) {
         Id = id;
         Name = name;
         Type = type;
         ProjectId = projectId;
     }
 
+    public Role(long id, string name, string type, long? projectId = null) {
+        Id = id;
+        Name = name;
+        Type = Enum.Parse<ERoleType>(type);
+        ProjectId = projectId;
+    }
 }
