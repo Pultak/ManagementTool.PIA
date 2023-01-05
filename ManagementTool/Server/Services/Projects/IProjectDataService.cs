@@ -8,7 +8,8 @@ public interface IProjectDataService {
     public Project? GetProjectByName(string name);
     public Project? GetProjectById(long projectId);
 
-    public int AddProject(Project project);
-    public void DeleteProject(long id);
-    public void UpdateProject(Project project);
+    public long AddProject(Project project);
+    public bool DeleteProject(long id);
+    public bool DeleteProject(Project project);
+    public bool UpdateProject(Project project);
 }

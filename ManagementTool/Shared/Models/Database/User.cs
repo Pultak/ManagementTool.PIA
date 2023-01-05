@@ -15,20 +15,15 @@ public class User
 
     public string EmailAddress { get; set; }
 
+    public User(){}
 
-
-
-    public User(long id, string username, string pwd, string fullName, string primaryWorkplace, string emailAddress) {
+    public User(long id, string username, string password, string fullName, string primaryWorkplace,
+        string emailAddress) {
         Id = id;
         Username = username;
-        Pwd = pwd;
+        Pwd = password;
         FullName = fullName;
         PrimaryWorkplace = primaryWorkplace;
         EmailAddress = emailAddress;
     }
-
-    public User(long id) {
-        Id = id;
-    }
-
 }

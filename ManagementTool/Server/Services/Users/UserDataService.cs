@@ -1,14 +1,11 @@
 ﻿using ManagementTool.Shared.Models.Database;
+using Microsoft.AspNetCore.Razor.Language.Intermediate;
 using Microsoft.EntityFrameworkCore;
 
 namespace ManagementTool.Server.Services.Users;
 
 public class UserDataService : IUserDataService{
-    private readonly ManToolDbContext _db; //To Get all employees details
-
-
-    //TODO implement these bois
-
+    private readonly ManToolDbContext _db; 
     public UserDataService(ManToolDbContext db){
         _db = db;
     }
@@ -22,15 +19,24 @@ public class UserDataService : IUserDataService{
         if (_db.SaveChanges() <= 0) {
             return -1;
         }
-
-        //todo check if true id
         return user.Id;
     }
 
-    public void DeleteUser(long id) {
-        var dummyUser = new User(id);
-        _db.User.Remove(dummyUser);
-        _db.SaveChanges();
+    public bool DeleteUser(long id) {
+        var dbUser = GetUserById(id);
+        if (dbUser == null) {
+            return false;
+        }
+        //_db.User.Attach(dummyUser);
+        _db.User.Remove(dbUser);
+        var rowsChanged = _db.SaveChanges();
+        return rowsChanged > 0;
+    }
+    public bool DeleteUser(User user) {
+        //_db.User.Attach(dummyUser);
+        _db.User.Remove(user);
+        var rowsChanged = _db.SaveChanges();
+        return rowsChanged > 0;
     }
 
     public User? GetUserById(long id) {
@@ -41,11 +47,10 @@ public class UserDataService : IUserDataService{
         return _db.User.SingleOrDefault(user => string.Equals(user.Username, username));
     }
     
-
-    //To Update the records of a particluar employee
-    public void UpdateUser(User user) {
+    public bool UpdateUser(User user) {
         _db.Entry(user).State = EntityState.Modified;
-        _db.SaveChanges();
+        var rowsChanged = _db.SaveChanges();
+        return rowsChanged > 0;
     }
 
     public IEnumerable<User> GetAllUsersByRole(Role role) {
@@ -66,32 +71,41 @@ public class UserDataService : IUserDataService{
     }
 
     public bool AssignUserToProject(User user, Project project) {
-
-
-        throw new NotImplementedException();
-
-
-
+        var newRefs = new UserProjectXRefs {
+            IdUser = user.Id,
+            IdProject = project.Id,
+            AssignedDate = DateTime.Now
+        };
+        
+        _db.UserProjectXRefs.Add(newRefs);
+        var changedRows = _db.SaveChanges();
+        return changedRows > 0;
     }
 
     public bool IsUserAssignedToProject(User user, Project project) {
-        throw new NotImplementedException();
-    }
 
-    //Get the details of a particular employee
+        var reference = _db.UserProjectXRefs.SingleOrDefault(
+            refs => refs.IdProject == project.Id && refs.IdUser == user.Id
+            );
+
+        return reference != null;
+    }
+    
     public User? GetUserById(int id) {
         var user = _db.User.Find(id);
         return user;
     }
-
-    //To Delete the record of a particular employee
+    
     public void DeleteUser(int id) {
-        var emp = _db.User.Find(id);
+        /*todo remove
+         var emp = _db.User.Find(id);
         if (emp == null) {
             return;
-        }
-
-        _db.User.Remove(emp);
+        }*/
+        var dummyUser = new User {
+            Id = id
+        };
+        _db.User.Remove(dummyUser);
         _db.SaveChanges();
     }
 }

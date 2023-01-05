@@ -4,10 +4,6 @@ namespace ManagementTool.Server.Services.Projects;
 
 public class ProjectDataService : IProjectDataService {
     private readonly ManToolDbContext _db; //To Get all employees details
-
-
-    //TODO implement these bois
-
     public ProjectDataService(ManToolDbContext db) {
         _db = db;
     }
@@ -17,22 +13,44 @@ public class ProjectDataService : IProjectDataService {
     }
 
     public Project? GetProjectByName(string name) {
-        throw new NotImplementedException();
+        return _db.Project.SingleOrDefault(project => string.Equals(project.ProjectName, name));
     }
 
     public Project? GetProjectById(long projectId) {
-        throw new NotImplementedException();
+        return _db.Project.Find(projectId);
     }
 
-    public int AddProject(Project project) {
-        throw new NotImplementedException();
+    public long AddProject(Project project) {
+        _db.Project.Add(project);
+        var rowsChanged = _db.SaveChanges();
+        if (rowsChanged <= 0) {
+            return -1;
+        }
+
+        return project.Id;
     }
 
-    public void DeleteProject(long id) {
-        throw new NotImplementedException();
+    public bool DeleteProject(long id) {
+        var dbProject = GetProjectById(id);
+        if (dbProject == null) {
+            return false;
+        }
+        _db.Project.Remove(dbProject);
+        var rowsChanged = _db.SaveChanges();
+
+        return rowsChanged > 0;
+    }
+    public bool DeleteProject(Project project) {
+        _db.Project.Remove(project);
+        var rowsChanged = _db.SaveChanges();
+
+        return rowsChanged > 0;
     }
 
-    public void UpdateProject(Project project) {
-        throw new NotImplementedException();
+    public bool UpdateProject(Project project) {
+        _db.Project.Update(project);
+        var rowsChanged = _db.SaveChanges();
+
+        return rowsChanged > 0;
     }
 }

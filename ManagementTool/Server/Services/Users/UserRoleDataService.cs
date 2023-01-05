@@ -4,10 +4,6 @@ namespace ManagementTool.Server.Services.Users;
 
 public class UserRoleDataService : IUserRoleDataService {
     private readonly ManToolDbContext _db; //To Get all employees details
-
-
-    //TODO implement these bois
-
     public UserRoleDataService(ManToolDbContext db){
         _db = db;
     }
@@ -32,7 +28,12 @@ public class UserRoleDataService : IUserRoleDataService {
         return queryResult;
     }
 
-    public int AddRole(Role role) {
-        throw new NotImplementedException();
+    public long AddRole(Role role) {
+        _db.Role.Add(role);
+        var newRows = _db.SaveChanges();
+        if (newRows <= 0) {
+            return -1;
+        }
+        return role.Id;
     }
 }

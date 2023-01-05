@@ -1,6 +1,7 @@
 ﻿using ManagementTool.Shared.Models.Database;
 using ManagementTool.Shared.Models.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace ManagementTool.Server.Services;
 
@@ -35,23 +36,9 @@ public class ManToolDbContext : DbContext {
         SetupProjectEntity(modelBuilder);
         SetupRoleEntity(modelBuilder);
         SetupUserRoleXRefsEntity(modelBuilder);
+        SetupUserProjectXRefsEntity(modelBuilder);
 
         base.OnModelCreating(modelBuilder);
-
-        /* todo do something like this
-         
-        var entryPoint = (from ep in dbContext.tbl_EntryPoint
-            join e in dbContext.tbl_Entry on ep.EID equals e.EID
-            join t in dbContext.tbl_Title on e.TID equals t.TID
-            where e.OwnerID == user.UID
-            select new
-            {
-                UID = e.OwnerID,
-                TID = e.TID,
-                Title = t.Title,
-                EID = e.EID
-            }).Take(10);
-        */
     }
 
 
@@ -88,14 +75,18 @@ public class ManToolDbContext : DbContext {
             entity.Property(e => e.Id)
                 .IsRequired()
                 .HasColumnName("id_role")
-                .HasDefaultValueSql("nextval('account.item_id_seq'::regclass)");
+                .HasDefaultValueSql("nextval('id_seq'::regclass)");
             entity.Property(e => e.Name)
                 .IsRequired()
                 .HasColumnName("name");
+
+            var converter = new ValueConverter<ERoleType, string>(
+                v => v.ToString(),
+                v => (ERoleType)Enum.Parse(typeof(ERoleType), v));
             entity.Property(e => e.Type)
                 .IsRequired()
                 .HasColumnName("type")
-                .HasConversion<ERoleType>();
+                .HasConversion(converter);
             entity.Property(e => e.ProjectId)
                 .HasColumnName("id_project");
         });
@@ -103,10 +94,8 @@ public class ManToolDbContext : DbContext {
 
 
     private void SetupAssignmentEntity(ModelBuilder modelBuilder) {
-        //todo remove
-        return;
         modelBuilder.Entity<Assignment>(entity => {
-            entity.ToTable("Role");
+            entity.ToTable("Assignment");
             entity.Property(e => e.Id)
                 .IsRequired()
                 .HasColumnName("id_assignment")
@@ -125,16 +114,18 @@ public class ManToolDbContext : DbContext {
                 .HasColumnName("from_date");
             entity.Property(e => e.ToDate)
                 .HasColumnName("to_date");
+
+            var converter = new ValueConverter<EAssignmentState, string>(
+                v => v.ToString(),
+                v => (EAssignmentState)Enum.Parse(typeof(EAssignmentState), v));
             entity.Property(e => e.State)
                 .HasColumnName("state")
-                .HasConversion<EAssignmentState>();
+                .HasConversion(converter);
         });
     }
 
 
     private void SetupProjectEntity(ModelBuilder modelBuilder) {
-        //todo remove
-        return;
         modelBuilder.Entity<Project>(entity => {
             entity.ToTable("Project");
             entity.Property(e => e.Id)
@@ -142,6 +133,7 @@ public class ManToolDbContext : DbContext {
                 .HasColumnName("id_project")
                 .HasDefaultValueSql("nextval('account.item_id_seq'::regclass)");
             entity.Property(e => e.ProjectName)
+                .IsRequired()
                 .HasColumnName("project_name");
             entity.Property(e => e.FromDate)
                 .HasColumnName("from_date")
@@ -179,7 +171,7 @@ public class ManToolDbContext : DbContext {
 
     private void SetupUserProjectXRefsEntity(ModelBuilder modelBuilder) {
         modelBuilder.Entity<UserProjectXRefs>(entity => {
-            entity.ToTable("UserRoleXRefs");
+            entity.ToTable("UserProjectXRefs");
             entity.Property(e => e.Id)
                 .IsRequired()
                 .HasColumnName("id");

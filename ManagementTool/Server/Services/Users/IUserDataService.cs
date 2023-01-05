@@ -6,11 +6,12 @@ public interface IUserDataService {
 
     public IEnumerable<User> GetAllUsers();
     public long AddUser(User user);
-    public void DeleteUser(long id);
+    public bool DeleteUser(long id);
+    public bool DeleteUser(User user);
 
     public User? GetUserById(long id);
     public User? GetUserByName(string username);
-    public void UpdateUser(User user);
+    public bool UpdateUser(User user);
 
     public IEnumerable<User> GetAllUsersByRole(Role role);
 
