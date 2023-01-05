@@ -109,8 +109,10 @@
 
         ModalDisplay = "none";
         ModalClass = "";
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);    
+        //StateHasChanged();
         if (LoggedIn) {
+            //todo could be possibly done without the page reload
             UriHelper.NavigateTo(UriHelper.Uri, forceLoad: true);
         }
     }

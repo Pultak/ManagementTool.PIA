@@ -1,17 +1,50 @@
-﻿@inherits LayoutComponentBase
+﻿@using ManagementTool.Shared.Models.Login
+@using ManagementTool.Shared.Models.Database
+@inherits LayoutComponentBase
+
+@inject HttpClient Http
+@inject NavigationManager UriHelper;
+@inject ILogger<MainLayout> Logger
 
 <div class="page">
     <div class="sidebar">
         <NavMenu />
     </div>
-
     <main>
         <div class="top-row px-4">
-            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
-        </div>
+            @if (LoggedUserName != null) {
+                <span class="text-nowrap">
+                    Vítej @LoggedUserName!
+                </span>
+                <button @onclick="LogoutPressed">Odhlásit se</button>
 
+            }
+        </div>
         <article class="content px-4">
-            @Body
+            
+            <CascadingValue Value="@LoggedUserName">
+                @Body
+            </CascadingValue>
         </article>
     </main>
 </div>
+
+
+@code {
+    public string? LoggedUserName { get; set; } = null;
+
+    public void LogoutPressed() {
+        var response = Http.GetFromJsonAsync<IActionResult>("auth");
+        LoggedUserName = null;
+        // UriHelper.NavigateTo(UriHelper.Uri, forceLoad: true);
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync() {
+        Logger.LogDebug("OnInitializeAsync - HTTP GET logged in user");
+        //is there already someone logged in?
+        var response = await Http.GetFromJsonAsync<AuthPayload>("auth/info");
+        LoggedUserName = response?.Username;
+        StateHasChanged();
+    }
+}

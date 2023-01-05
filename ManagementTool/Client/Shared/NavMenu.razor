@@ -7,33 +7,121 @@
     </div>
 </div>
 
-<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+<div class="@NavMenuCssClass">
     <nav class="flex-column">
-        <div class="nav-item px-3">
+        <div class="nav-item px-3" @onclick="ToggleNavMenu">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                 <span class="oi oi-home" aria-hidden="true"></span> Home
             </NavLink>
         </div>
-        <div class="nav-item px-3">
+        <div class="nav-item px-3" @onclick="ToggleNavMenu">
             <NavLink class="nav-link" href="counter">
                 <span class="oi oi-plus" aria-hidden="true"></span> Counter
             </NavLink>
         </div>
-        <div class="nav-item px-3">
+        <div class="nav-item px-3" @onclick="ToggleNavMenu">
             <NavLink class="nav-link" href="fetchdata">
                 <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
             </NavLink>
         </div>
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" @onclick="()=>_expandUserNav = !_expandUserNav">
+            <span class="oi oi-list-rich" aria-hidden="true"></span> Uživatel
+        </NavLink>
+    </div>
+    @if (_expandUserNav) {
+            <div class="nav-item px-3" @onclick="ToggleNavMenu">
+        <NavLink class="expand-menu" href="">
+            <span>Přiřazené úkoly</span>
+        </NavLink>
+        </div>
+        
+            <div class="nav-item px-3" @onclick="ToggleNavMenu">
+        <NavLink class="" href="">
+            <span>Přiřazené projekty</span>
+        </NavLink>
+        </div>
+            <div class="nav-item px-3" @onclick="ToggleNavMenu">
+            <NavLink class="" href="">
+                <span>Odhlásit se</span>
+            </NavLink>
+        </div>
+    }
+
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" @onclick="()=>_expandSuperiorNav = !_expandSuperiorNav">
+            <span class="oi oi-list-rich" aria-hidden="true"></span> Nadřízený
+        </NavLink>
+    </div>
+    @if (_expandSuperiorNav) {
+            <div class="nav-item px-3" @onclick="ToggleNavMenu">
+            <NavLink class="expand-menu" href="">
+                <span>Zobrazení podřízených</span>
+            </NavLink>
+        </div>
+        
+            <div class="nav-item px-3" @onclick="ToggleNavMenu">
+            <NavLink class="" href="">
+                <span>Úkoly podřízených</span>
+            </NavLink>
+        </div>
+    }
+
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" @onclick="()=>_expandManagementNav = !_expandManagementNav">
+            <span class="oi oi-list-rich" aria-hidden="true"></span> Management
+        </NavLink>
+    </div>
+    @if (_expandManagementNav) {
+            <div class="nav-item px-3" @onclick="ToggleNavMenu">
+            <NavLink class="expand-menu" href="">
+                <span>Revize úkolů</span>
+            </NavLink>
+        </div>
+
+            <div class="nav-item px-3" @onclick="ToggleNavMenu">
+            <NavLink class="" href="">
+                <span>Editace projektů</span>
+            </NavLink>
+        </div>
+    }
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" @onclick="()=>_expandHrNav = !_expandHrNav">
+            <span class="oi oi-list-rich" aria-hidden="true"></span> Lidské zdroje
+        </NavLink>
+    </div>
+    @if (_expandHrNav) {
+            <div class="nav-item px-3" @onclick="ToggleNavMenu">
+            <NavLink class="expand-menu" href="">
+                <span>Uživatelé</span>
+            </NavLink>
+        </div>
+
+            <div class="nav-item px-3" @onclick="ToggleNavMenu">
+            <NavLink class="" href="">
+                <span>Projekty</span>
+            </NavLink>
+        </div>
+    }
+
     </nav>
+
 </div>
-
 @code {
-    private bool collapseNavMenu = true;
+    private bool _expandUserNav = false;
+    private bool _expandSuperiorNav = false;
+    private bool _expandManagementNav = false;
+    private bool _expandHrNav = false;
 
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private bool _collapseNavMenu = true;
 
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
+    private string? NavMenuCssClass => _collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu() {
+        _collapseNavMenu = !_collapseNavMenu;
     }
 }
