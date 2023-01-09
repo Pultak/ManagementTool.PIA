@@ -7,12 +7,16 @@ public static class ProjectUtils {
     public static readonly DateTime RefDateTime = new(2010, 1, 1);
 
 
+    public const int MinProjectNameLength = 2;
+    public const int MaxProjectNameLength = 80;
+
+
     public static EProjectCreationResponse ValidateNewProject(Project? project) {
         if(project == null) {
             return EProjectCreationResponse.EmptyProject;
         }
 
-        if (project.ProjectName.Length is < 2 or > 80) {
+        if (project.ProjectName.Length is < MinProjectNameLength or > MaxProjectNameLength) {
             return EProjectCreationResponse.InvalidName;
         }
 

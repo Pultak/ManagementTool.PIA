@@ -3,8 +3,7 @@ using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Shared.Models.Database;
 
-public class Role
-{
+public class Role {
 
     public long Id { get; set; }
 
