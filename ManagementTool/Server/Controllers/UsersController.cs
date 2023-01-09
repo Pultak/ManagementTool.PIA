@@ -4,6 +4,7 @@ using ManagementTool.Server.Services.Projects;
 using ManagementTool.Server.Services.Users;
 using ManagementTool.Shared.Models.Database;
 using ManagementTool.Shared.Models.Utils;
+using ManagementTool.Shared.Utils;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -14,9 +15,6 @@ namespace ManagementTool.Server.Controllers;
 [ApiController]
 public class UsersController : ControllerBase {
 
-    public static Regex PasswordRegex = new("^.*(?=.{8,})(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!*@#$%^&+=]).*$");
-    public static Regex FullNameRegex = new("\\w+, [\\w]+[ \\w+]*");
-
 
     public IUserDataService UserDataService { get; }
     public IProjectDataService ProjectDataService { get; }
@@ -25,17 +23,15 @@ public class UsersController : ControllerBase {
         UserDataService = userService;
         ProjectDataService = projectService;
     }
-
-    // GET: api/<UsersController>
+    
     [HttpGet]
     public IEnumerable<User> GetAllUsers() {
         //todo authorized?
         return UserDataService.GetAllUsers();
     }
-
-    // GET api/<UsersController>/5
+    
     [HttpGet("{id:long}")]
-    public IActionResult GetUserById(long id) {
+    public ActionResult GetUserById(long id) {
 
         if (id < 0) {
             return BadRequest();
@@ -51,17 +47,16 @@ public class UsersController : ControllerBase {
 
         return Ok(user);
     }
-
-    // POST api/<UsersController>
+    
     [HttpPut]
-    public IActionResult CreateUser([FromBody] User user) {
+    public ActionResult CreateUser([FromBody] User user) {
 
         if (user == null) {
             return BadRequest(EUserCreationResponse.EmptyUser);
         }
 
-        var valResult = ValidateNewUser(user);
-        if (valResult != EUserCreationResponse.Ok) {
+        var valResult = UserUtils.ValidateUser(user);
+        if (valResult != EUserCreationResponse.Ok || UserUtils.ValidatePassword(user.Pwd)) {
             return UnprocessableEntity(valResult);
         }
 
@@ -81,18 +76,32 @@ public class UsersController : ControllerBase {
         return Ok(userId);
     }
 
-    /* todo delete not specified in assignment
-    // DELETE api/<UsersController>/5
+
+    [HttpPatch("update")]
+    public void UpdateUser([FromBody] User user) {
+        if (user == null) {
+            throw new BadHttpRequestException("The body cant be empty!");
+        }
+
+        var valResult = UserUtils.ValidateUser(user);
+        if (valResult == EUserCreationResponse.Ok) {
+            UserDataService.UpdateUser(user);
+        }
+        else {
+            throw new BadHttpRequestException("Validation of updated user failed! Reason: " + valResult);
+        }
+    }
+
     [HttpDelete("{id}")]
     public void Delete(int id) {
-
-    }*/
+        //todo
+    }
 
 
 
     // PUT api/<UsersController>/assignProject/
     [HttpPut("assignUser/{idUser:long}/{idProject:long}")]
-    public IActionResult AssignUserToProject(long idUser, long idProject) {
+    public ActionResult AssignUserToProject(long idUser, long idProject) {
 
         if (idUser < 0 && idProject < 0) {
             return BadRequest();
@@ -117,41 +126,6 @@ public class UsersController : ControllerBase {
     }
 
 
-
-
-    private EUserCreationResponse ValidateNewUser(User user){
-
-        if (user.Username.Length is < 4 or > 32) {
-            return EUserCreationResponse.InvalidUsername;
-        }
-
-        if (user.Username.Any(char.IsWhiteSpace)) {
-            return EUserCreationResponse.InvalidUsername;
-        }
-
-        if (user.Pwd.Length is < 4 or < 32) {
-            //todo validation on regex PasswordRegex
-
-            return EUserCreationResponse.InvalidPassword;
-        }
-
-        if (!FullNameRegex.IsMatch(user.FullName)) {
-            //todo czech characters might be a problem for regex
-            return EUserCreationResponse.InvalidFullName;
-
-        }
-        //todo workplace check? if(user.PrimaryWorkplace)
-
-        try {
-            //validation of email address
-            MailAddress parsedAddress = new(user.EmailAddress);
-        }
-        catch (FormatException e) {
-            return EUserCreationResponse.InvalidEmail;
-        }
-
-        return EUserCreationResponse.Ok;
-    }
 
     private EUserCreationResponse CheckUserDataConflicts(User user) {
         var allUsers = UserDataService.GetAllUsers();

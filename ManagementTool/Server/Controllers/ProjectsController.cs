@@ -1,20 +1,19 @@
-﻿using ManagementTool.Server.Services.Projects;
+﻿using System.Net;
+using ManagementTool.Server.Services.Projects;
 using ManagementTool.Server.Services.Users;
 using ManagementTool.Shared.Models;
 using ManagementTool.Shared.Models.Database;
 using ManagementTool.Shared.Models.Utils;
+using ManagementTool.Shared.Utils;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace ManagementTool.Server.Controllers;
 
-[Route("api/[controller]")]
+[Microsoft.AspNetCore.Mvc.Route("api/[controller]")]
 [ApiController]
 public class ProjectsController : ControllerBase {
-
-    public static readonly DateTime RefDateTime = new(2010, 1, 1);
-
     public IProjectDataService ProjectDataService { get; }
     public IUserRoleDataService UserRoleDataService { get; }
 
@@ -23,103 +22,112 @@ public class ProjectsController : ControllerBase {
         UserRoleDataService = roleService;
     }
 
-
-    // GET: api/<ProjectsController>
+    
     [HttpGet]
     public IEnumerable<Project> GetAllProjects() {
 
         //todo auth
         return ProjectDataService.GetAllProjects();
     }
-
-    // GET api/<ProjectsController>/5
+    
     [HttpGet("{name}")]
-    public IActionResult GetProjectByName(string name) {
+    public Project? GetProjectByName(string name) {
 
         if (name == null) {
-            return BadRequest();
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return null;
         }
         //todo other checks
 
         var project = ProjectDataService.GetProjectByName(name);
         if (project == null) {
-            return NotFound();
+            Response.StatusCode = (int)HttpStatusCode.NotFound;
+            return null;
         }
 
-        return Ok(project);
+        return project;
     }
+    
+    [HttpPut]
+    public long CreateProject([FromBody] Project project) {
 
-    // POST api/<ProjectsController>
-    [HttpPost]
-    public IActionResult CreateProject([FromBody] Project project) {
-
-        if (project == null || string.IsNullOrEmpty(project.ProjectName)){
-            return BadRequest(EProjectCreationResponse.EmptyProject);
+        if (project == null || string.IsNullOrEmpty(project.ProjectName)) {
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return Response.StatusCode;
         }
 
-        var valResult = ValidateNewProject(project);
+        var valResult = ProjectUtils.ValidateNewProject(project);
         if (valResult != EProjectCreationResponse.Ok) {
-            return UnprocessableEntity(valResult);
+            Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
+            return Response.StatusCode;
         }
 
         valResult = CheckProjectDataConflicts(project);
         if (valResult != EProjectCreationResponse.Ok) {
-            return Conflict(valResult);
+            //todo better exception for client to capture
+            Response.StatusCode = (int)HttpStatusCode.Conflict;
+            return Response.StatusCode;
         }
 
 
         var projectId = ProjectDataService.AddProject(project);
 
         if (projectId < 0) {
-            //todo saving failed!
-            return StatusCode(500);
+            Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            return Response.StatusCode;
         }
 
-        var newRole = new Role(-1, $"{project.ProjectName}Manager", ERoleType.ProjectManager, projectId);
+        var newRole = new Role {
+            Name = $"{project.ProjectName} Manager",
+            Type = ERoleType.ProjectManager,
+            ProjectId = projectId
+        };
         var roleId = UserRoleDataService.AddRole(newRole);
 
         if (roleId < 0) {
-            //todo saving failed!
-            return StatusCode(500);
+            Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            return Response.StatusCode;
         }
-        return Ok(projectId);
+        return projectId;
     }
 
-    // DELETE api/<ProjectsController>/5
+
+    [HttpPatch("update")]
+    public void UpdateProject([Microsoft.AspNetCore.Mvc.FromBody] Project project) {
+
+        if (project == null || string.IsNullOrEmpty(project.ProjectName)){
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return;
+        }
+
+        var valResult = ProjectUtils.ValidateNewProject(project);
+        if (valResult != EProjectCreationResponse.Ok) {
+            Response.StatusCode = (int)HttpStatusCode.NotAcceptable;
+            return;
+        }
+        
+        var updateOk = ProjectDataService.UpdateProject(project);
+        
+        if (!updateOk) {
+            Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        }
+    }
+    
     [HttpDelete]
-    public void Delete([FromBody] Project project) {
-        //todo delete project, role + all role assignments
+    public void Delete([Microsoft.AspNetCore.Mvc.FromBody] Project project) {
+        if (project == null) {
+            throw new BadHttpRequestException("Request body cant be empty!");
+        }
+
+        if (ProjectDataService.DeleteProject(project) &&
+            UserRoleDataService.DeleteProjectRole(project.Id) &&
+            ProjectDataService.DeleteProjectUserAssignments(project) &&
+            ProjectDataService.DeleteAllProjectAssignments(project)) {
+            return;
+        }
+        throw new BadHttpRequestException("The passed project is not valid for removal!");
     }
 
-
-
-
-    private EProjectCreationResponse ValidateNewProject(Project project) {
-
-        if (project.ProjectName.Length is < 2 or > 256) {
-            return EProjectCreationResponse.InvalidName;
-        }
-
-        var timeDiff = DateTime.Compare(RefDateTime, project.FromDate);
-        if (timeDiff < 0) {
-            //earlier from date than allowed!
-            return EProjectCreationResponse.InvalidFromDate;
-        }
-
-        if (project.ToDate != null) {
-            timeDiff = DateTime.Compare(project.FromDate, project.ToDate.Value);
-            if (timeDiff <= 0) {
-                //to date is earlier or from the same time
-                return EProjectCreationResponse.InvalidToDate;
-            }
-        }
-
-        if (project.Description.Length > 256) {
-            return EProjectCreationResponse.InvalidDescription;
-        }
-
-        return EProjectCreationResponse.Ok;
-    }
 
 
     private EProjectCreationResponse CheckProjectDataConflicts(Project project) {

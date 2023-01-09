@@ -3,6 +3,8 @@ using ManagementTool.Server.Services.Users;
 using ManagementTool.Shared.Models.Database;
 using ManagementTool.Shared.Models.Utils;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
+using ManagementTool.Shared.Utils;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -25,8 +27,7 @@ public class AssignmentsController : ControllerBase {
         UserDataService = userService;
     }
 
-
-    // GET: api/<AssignmentsController>
+    
     [HttpGet]
     public IEnumerable<Assignment> GetAllAssignments() {
         //todo auth etc.
@@ -34,43 +35,48 @@ public class AssignmentsController : ControllerBase {
 
         return AssignmentsDataService.GetAllAssignments();
     }
-
-    // GET api/<AssignmentsController>/5
+    
     [HttpGet("{id}")]
-    public IActionResult GetAssignmentByUserId(long userId) {
+    public IEnumerable<Assignment>? GetAssignmentByUserId(long userId) {
 
         if (userId < 0) {
-            return BadRequest();
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return null;
         }
         
-        return Ok(AssignmentsDataService.GetAssignmentsByUserId(userId));
+        return AssignmentsDataService.GetAssignmentsByUserId(userId);
     }
-
-    // POST api/<AssignmentsController>
-    [HttpPost]
-    public IActionResult CreateAssignment([FromBody] Assignment assignment) {
+    
+    [HttpPut]
+    public long CreateAssignment([FromBody] Assignment assignment) {
         if (assignment == null) {
-            return BadRequest(EAssignmentCreationResponse.Empty);
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return -1;
         }
 
         //todo can create assignments for this project?
         var project = ProjectDataService.GetProjectById(assignment.ProjectId);
         if (project == null) {
-            return BadRequest(EAssignmentCreationResponse.InvalidProject);
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return (int)EAssignmentCreationResponse.InvalidProject;
         }
 
         var user = UserDataService.GetUserById(assignment.UserId);
         if (user == null) {
-            return BadRequest(EAssignmentCreationResponse.InvalidUser);
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return (int) EAssignmentCreationResponse.InvalidUser;
         }
 
         if (!UserDataService.IsUserAssignedToProject(user, project)) {
-            return BadRequest(EAssignmentCreationResponse.UserNotAssignedToProject);
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return (int)EAssignmentCreationResponse.UserNotAssignedToProject;
         }
 
-        var valResult = ValidateNewAssignment(assignment, project);
+        var valResult = AssignmentUtils.ValidateNewAssignment(assignment, project);
         if (valResult != EAssignmentCreationResponse.Ok){
-            return UnprocessableEntity(valResult);
+
+            Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
+            return (int)valResult;
         }
 
         //todo possibly chosen in the UI?
@@ -79,64 +85,30 @@ public class AssignmentsController : ControllerBase {
         var assignmentId = AssignmentsDataService.AddAssignment(assignment);
         if (assignmentId < 0) {
             //Assignment creation failure
-            return StatusCode(500);
+
+            Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            return -1;
         }
 
-        return Ok(assignmentId);
+        return assignmentId;
     }
 
-    // PUT api/<AssignmentsController>/5
-    [HttpPut("{id}")]
-    public void Put(int id, [FromBody] string value) {
-    }
-
-    // DELETE api/<AssignmentsController>/5
     [HttpDelete("{id}")]
-    public IActionResult Delete(long id) {
+    public void Delete(long id) {
 
         if (id < 0) {
-            return BadRequest();
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return;
         }
 
         var done = AssignmentsDataService.DeleteAssignment(id);
 
         if (!done) {
             //Something failed during deletion
-            return NotFound();
+            Response.StatusCode = (int)HttpStatusCode.NotFound;
         }
-
-        return Ok();
     }
 
-
-    private EAssignmentCreationResponse ValidateNewAssignment(Assignment assignment, Project project) {
-
-        if (assignment.Name.Length is < 2 or > 256){
-            return EAssignmentCreationResponse.InvalidName;
-        }
-        
-        if (assignment.Note.Length < 1) {
-            return EAssignmentCreationResponse.InvalidNote;
-        }
-
-        var timeDiff = DateTime.Compare(project.FromDate, assignment.FromDate);
-        if (timeDiff < 0) {
-            //assignment earlier than the project start date! this is not allowed!
-            return EAssignmentCreationResponse.InvalidFromDate;
-        }
-        
-        timeDiff = DateTime.Compare(assignment.FromDate, assignment.ToDate);
-        if (timeDiff <= 0){
-            //toDate is earlier or from the same time as fromDate
-            return EAssignmentCreationResponse.InvalidToDate;
-        }
-        //todo max allocation?
-        if (assignment.AllocationScope < 1) {
-            return EAssignmentCreationResponse.InvalidAllocationScope;
-        }
-
-        return EAssignmentCreationResponse.Ok;
-    }
 
 
     /* todo possibly check data conflicts for assignments?

@@ -1,8 +1,12 @@
-﻿using System.Net;
+﻿using System.Collections;
+using System.Net;
 using System.Security.Principal;
+using ManagementTool.Server.Services;
 using ManagementTool.Server.Services.Users;
 using ManagementTool.Shared.Models;
+using ManagementTool.Shared.Models.Database;
 using ManagementTool.Shared.Models.Login;
+using ManagementTool.Shared.Models.Utils;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -19,7 +23,17 @@ public class LoginController : ControllerBase {
         UserRoleDataService = roleService;
     }
 
-    
+    //todo move to tests file
+    public static Role[] DummyRoles = {
+        new Role(1, "Secretariat", ERoleType.Secretariat, null),
+        new Role(2, "Superior", ERoleType.Superior, null),
+        new Role(2, "DepartmentManager", ERoleType.DepartmentManager, null),
+        new Role(2, "TEST1ProjectManager", ERoleType.ProjectManager, 1),
+        new Role(2, "TEST2ProjectManager", ERoleType.ProjectManager, 2),
+    };
+
+
+
     [HttpPost]
     public EAuthResponse Login([FromBody] AuthPayload authPayload) {
         if (authPayload == null || string.IsNullOrEmpty(authPayload.Password) 
@@ -45,17 +59,24 @@ public class LoginController : ControllerBase {
 
         var roles = UserRoleDataService.GetUserRolesById(user.Id);
 
-        var resultRoles = roles.Select(role => role.Name).ToArray();
+        var rolesArray = roles as Role[] ?? roles.ToArray();
+        var resultRoles = rolesArray.Select(role => role.Name).ToArray();
 
-        var principal = new GenericPrincipal(new GenericIdentity(user.Username), resultRoles);
+        /* todo remove old version
+         var principal = new GenericPrincipal(new GenericIdentity(user.Username), resultRoles);
         Thread.CurrentPrincipal = principal;
         HttpContext.User = principal;
+        */
+        HttpContext.Session.SetString("_Username", user.Username);
+        HttpContext.Session.SetString("_FullName", user.FullName);
+        HttpContext.Session.SetObject("_Roles", rolesArray);
         return EAuthResponse.Success;
     }
 
     [HttpGet]
     public EAuthResponse Logout() {
-        if (Thread.CurrentPrincipal == null) {
+        var name = HttpContext.Session.GetString("_Username");
+        if (name == null) {
             return EAuthResponse.UnknownUser;
         }
         HttpContext.Session.Clear();
@@ -65,13 +86,18 @@ public class LoginController : ControllerBase {
     }
 
     [HttpGet("info")]
-    public AuthPayload GetLoggedInUser() {
+    public LoggedUserPayload GetLoggedInUser() {
+        //todo remove latter
 
-        if (Thread.CurrentPrincipal == null) {
-            return new AuthPayload(null, null);
+        return new LoggedUserPayload("DummyOrion", "Dummy Full Name", DummyRoles);
+
+
+        var name = HttpContext.Session.GetString("_Username");
+        if (name == null) {
+            return new LoggedUserPayload(null, null, null);
         }
-
-        var userIdentity = HttpContext.User.Identity;
-        return new AuthPayload(userIdentity?.Name, null);
+        
+        return new LoggedUserPayload(HttpContext.Session.GetString("_Username"), HttpContext.Session.GetString("_FullName"),
+            HttpContext.Session.GetObject<Role[]>("_Roles"));
     }
 }
