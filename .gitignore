@@ -9,3 +9,6 @@
 /ManagementTool/Server/obj
 /ManagementTool/Shared/bin/Debug/net6.0
 /ManagementTool/Shared/obj
+/ManagementTool.ServerTests/bin/Debug/net6.0
+/ManagementTool.ServerTests/obj
+/UpgradeLog.htm
