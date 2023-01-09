@@ -12,4 +12,7 @@ public interface IProjectDataService {
     public bool DeleteProject(long id);
     public bool DeleteProject(Project project);
     public bool UpdateProject(Project project);
+
+    public bool DeleteProjectUserAssignments(Project project);
+    public bool DeleteAllProjectAssignments(Project project);
 }

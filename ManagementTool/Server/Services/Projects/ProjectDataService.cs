@@ -53,4 +53,31 @@ public class ProjectDataService : IProjectDataService {
 
         return rowsChanged > 0;
     }
+
+    
+    public bool DeleteProjectUserAssignments(Project project) {
+
+        var userAssignments = _db.UserProjectXRefs.Where(o => o.IdProject == project.Id);
+        if (!userAssignments.Any()) {
+            //project can be without assignments
+            return true;
+        }
+        //todo is ok?
+        _db.Remove(userAssignments);
+        var changedRows = _db.SaveChanges();
+        return changedRows > 0;
+    }
+
+    public bool DeleteAllProjectAssignments(Project project) {
+
+        var assignments = _db.Assignment.Where(o => o.ProjectId == project.Id);
+        if (!assignments.Any()) {
+            //project can be without assignments
+            return true;
+        }
+        //todo is ok?
+        _db.Remove(assignments);
+        var changedRows = _db.SaveChanges();
+        return changedRows > 0;
+    }
 }

@@ -65,6 +65,9 @@ public class ManToolDbContext : DbContext {
             entity.Property(e => e.Username)
                 .IsRequired()
                 .HasColumnName("username");
+            entity.Property(e => e.PwdInit)
+                .IsRequired()
+                .HasColumnName("pwd_changed");
         });
     }
 

@@ -49,6 +49,9 @@ public class UserDataService : IUserDataService{
     
     public bool UpdateUser(User user) {
         _db.Entry(user).State = EntityState.Modified;
+        //don't update pwd and username
+        _db.Entry(user).Property(o => o.Pwd).IsModified = false;
+        _db.Entry(user).Property(o => o.Username).IsModified = false;
         var rowsChanged = _db.SaveChanges();
         return rowsChanged > 0;
     }
@@ -81,6 +84,20 @@ public class UserDataService : IUserDataService{
         var changedRows = _db.SaveChanges();
         return changedRows > 0;
     }
+
+
+    public bool UnassignUserFromProject(User user, Project project) {
+        var result = _db.UserProjectXRefs.Where(
+            o => o.IdUser == user.Id && o.IdProject == project.Id);
+        if (!result.Any()) {
+            return false;
+        }
+        //todo is ok syntax?
+        _db.Remove(result);
+        var changedRows = _db.SaveChanges();
+        return changedRows > 0;
+    }
+
 
     public bool IsUserAssignedToProject(User user, Project project) {
 

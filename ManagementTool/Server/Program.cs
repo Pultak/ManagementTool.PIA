@@ -12,6 +12,7 @@ internal class Program {
         ConfigureServices(builder.Services);
 
         var app = builder.Build();
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment()) {
@@ -27,9 +28,10 @@ internal class Program {
 
         app.UseBlazorFrameworkFiles();
         app.UseStaticFiles();
-        app.UseSession();
 
         app.UseRouting();
+        //after use routing and before useEndpoints
+        app.UseSession();
         app.UseAuthorization();
 
 
@@ -53,8 +55,14 @@ internal class Program {
 
         services.AddControllersWithViews();
         services.AddRazorPages();
+
+
         services.AddDistributedMemoryCache();
-        services.AddSession();
+        services.AddSession(options => {
+            options.IdleTimeout = TimeSpan.FromMinutes(30);
+            options.Cookie.HttpOnly = true;
+            options.Cookie.IsEssential = true;
+        });
 
         /* todo add session timeout
         builder.Services.AddSession(options => {

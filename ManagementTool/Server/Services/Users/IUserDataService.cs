@@ -16,5 +16,6 @@ public interface IUserDataService {
     public IEnumerable<User> GetAllUsersByRole(Role role);
 
     public bool AssignUserToProject(User user, Project project);
+    public bool UnassignUserFromProject(User user, Project project);
     public bool IsUserAssignedToProject(User user, Project project);
 }

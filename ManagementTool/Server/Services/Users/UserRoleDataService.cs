@@ -1,4 +1,5 @@
 ﻿using ManagementTool.Shared.Models.Database;
+using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Server.Services.Users;
 
@@ -35,5 +36,18 @@ public class UserRoleDataService : IUserRoleDataService {
             return -1;
         }
         return role.Id;
+    }
+
+    public bool DeleteProjectRole(long projectId) {
+        var selectedRole = _db.Role.SingleOrDefault(role => 
+            role.Type == ERoleType.ProjectManager && role.ProjectId == projectId);
+        if (selectedRole == null) {
+            return false;
+        }
+
+        _db.Role.Remove(selectedRole);
+        var changedLines = _db.SaveChanges();
+        return changedLines > 0;
+
     }
 }
