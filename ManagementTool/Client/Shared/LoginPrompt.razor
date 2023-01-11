@@ -149,7 +149,7 @@
             return;
         }
         catch (HttpRequestException e) {
-            Logger.LogError("Failure occurred during receiving data from the API! " + e.StatusCode);
+            Logger.LogError("LoginPressed -> Failure occurred during receiving data from the API! " + e.StatusCode);
         }
         catch (ArgumentException e) {
             Logger.LogError("LoginPressed -> Received invalid data from the API!");

@@ -1,10 +1,13 @@
-﻿@using ManagementTool.Shared.Models.Login
-@using ManagementTool.Shared.Models.Database
-@inherits LayoutComponentBase
+﻿@inherits LayoutComponentBase
+
+@using ManagementTool.Shared.Models.AppState
+@using ManagementTool.Shared.Models.Login
+@implements IDisposable
 
 @inject HttpClient Http
 @inject NavigationManager UriHelper;
 @inject ILogger<MainLayout> Logger
+@inject UserStateContainer UserContainer 
 
 <div class="page">
     <div class="sidebar">
@@ -16,6 +19,7 @@
                 <span class="text-nowrap">
                     Vítej @LoggedUserName!
                 </span>
+                <button @onclick="ChangePwdPressed">Změna hesla</button>
                 <button @onclick="LogoutPressed">Odhlásit se</button>
 
             }
@@ -36,15 +40,33 @@
     public void LogoutPressed() {
         var response = Http.GetFromJsonAsync<IActionResult>("auth");
         LoggedUserName = null;
+        UriHelper.NavigateTo("/");
+        UserContainer.SetValue(null);
         // UriHelper.NavigateTo(UriHelper.Uri, forceLoad: true);
         StateHasChanged();
+    }
+
+    public void ChangePwdPressed() {
+        UriHelper.NavigateTo("/pwdChange");
     }
 
     protected override async Task OnInitializedAsync() {
         Logger.LogDebug("OnInitializeAsync - HTTP GET logged in user");
         //is there already someone logged in?
-        var response = await Http.GetFromJsonAsync<AuthPayload>("auth/info");
-        LoggedUserName = response?.Username;
+        var response = await Http.GetFromJsonAsync<LoggedUserPayload>("auth/info");
+        LoggedUserName = response?.UserName;
+        
+        UserContainer.SetValue(response);
+        if (response?.HasInitPwd ?? false) {
+            UriHelper.NavigateTo("/pwdChange/1");
+        }
         StateHasChanged();
+    }
+
+    protected override void OnInitialized() {
+        UserContainer.OnStateChange += StateHasChanged;
+    }
+    public void Dispose() {
+        UserContainer.OnStateChange -= StateHasChanged;
     }
 }
