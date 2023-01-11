@@ -1,0 +1,307 @@
+﻿@page "/users/edit"
+
+@using ManagementTool.Shared.Models.AppState
+@using ManagementTool.Shared.Models.Database
+@using ManagementTool.Shared.Models.Utils
+@using ManagementTool.Shared.Utils
+@using Microsoft.AspNetCore.Components
+@using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.UserComm
+@implements IDisposable
+
+@inject NavigationManager UriHelper
+@inject HttpClient Http
+@inject ILogger<UserEdit> Logger
+@inject EditUserStateContainer UserContainer
+@inject IJSRuntime JsRuntime
+
+
+<button class="bi bi-x" @onclick="ReturnToUsers">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x" viewBox="0 0 16 16">
+        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+    </svg>
+</button>
+
+<h3>Editace uživatele</h3>
+@if (WaitingForApiResponse) {
+    <div class="spinner"></div>
+}
+else {
+    <div class="wrapper">
+        <section class="createevent">
+            <EditForm id="@SubmitBtnId" EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+                <DataAnnotationsValidator/>
+                <table>
+                    <tr>
+                        <td>Uživatelské jméno (orion)</td>
+                        <td>
+                        @if (NewUserCreation) {
+                            <InputText id="txtName" type="text" required
+                                       @bind-Value="SelectedUser.Username"/>
+                            <ValidationMessage For="@(() => SelectedUser.Username)"/>
+                        }
+                        else {
+                            @SelectedUser.Username
+                        }
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Celé jméno uživatele</td>
+                        <td>
+                            <InputText id="txtFullName" type="text" required
+                                       @bind-Value="SelectedUser.FullName"/>
+                            <ValidationMessage For="@(() => SelectedUser.FullName)"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Pracoviště</td>
+                        <td>
+                            <InputText id="txtWorkplace" type="text" required
+                                       @bind-Value="SelectedUser.PrimaryWorkplace"/>
+                            <ValidationMessage For="@(() => SelectedUser.PrimaryWorkplace)"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>E-mailová adresa</td>
+                        <td>
+                            <InputText id="txtWorkplace" type="text" required
+                                       @bind-Value="SelectedUser.EmailAddress"/>
+                            <ValidationMessage For="@(() => SelectedUser.EmailAddress)"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Přiřazený vedoucí</td>
+                        <td>
+                            <select for="Publisher" class="form-control"
+                                    @bind="@SelectedUser.SuperiorId">
+                                <option value=0 disabled selected hidden>
+                                    [bez vedoucího]</option>
+                                @foreach (var superior in Superiors) {
+                                    <option value="@superior.Id">
+                                        @superior.FullName</option>
+                                }
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Přiřazené role</td>
+                        <td>
+                            @foreach (var role in RolesAssignments) {
+                                <input class="form-check-input" type="checkbox" name="@role.Role.Name" @bind-value="role.IsAssigned">
+                                <label class="form-check-label" for="flexCheckDefault">
+                                    @role.Role.Name
+                                </label>
+                                <br>
+                            }
+                            
+                        </td>
+                    </tr>
+                </table>
+            </EditForm>
+
+
+        </section>
+    </div>
+
+
+    @if (ValidationMessage != null) {
+        <div>
+            <p>@ValidationMessage</p>
+        </div>
+    }
+    else if (ApiException != null) {
+        <div>
+            <p>@ApiException</p>
+        </div>
+    }
+    <p>
+        @if (NewUserCreation) {
+            <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Vytvořit uživatele</button>
+        }
+        else {
+            <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Uložit změny</button>
+            <button @onclick="DeleteUser" class="btn btn-primary">
+                Odstranit uživatele
+            </button>
+        }
+        <button type="button" class="btn btn-light"
+                @onclick="@ReturnToUsers">
+            Zrušit
+        </button>
+    </p>
+}
+@if (NewUserCreation) {
+    <div class="modal @ModalClass" tabindex="-1" role="dialog" style="display: @ModalDisplay">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                @if (WaitingForApiResponse) {
+                    <div class="spinner"></div>
+                }
+                else {
+                    <div class="modal-header">
+                        <h5 class="modal-title">Nový uživatele</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="OkPressed">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Pro nového uživatele @SelectedUser.Username bylo vygenerováno heslo: @NewPwd </p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="OkPressed">Ok</button>
+                    </div>
+                }
+
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    private const string SubmitBtnId = "submitButton";
+    private string ModalClass { get; set; } = "";
+    private string ModalDisplay { get; set; } = "none;";
+
+    private EditContext _editContext;
+    public UserBase SelectedUser { get; set; } = new();
+    public UserBase[] Superiors { get; set; } = Array.Empty<UserBase>();
+    public List<RoleAssignment> RolesAssignments { get; set; } = new();
+
+    public string? NewPwd { get; set; }
+    
+    private bool NewUserCreation { get; set; }
+    private bool WaitingForApiResponse { get; set; } = true;
+
+    private string? ValidationMessage { get; set; }
+    private string? ApiException { get; set; }
+    
+    protected override async Task OnInitializedAsync() {
+        ValidationMessage = null;
+        ApiException = null;
+        NewUserCreation = UserContainer.Value == null;
+        if (NewUserCreation) {
+            SelectedUser = new UserBase(default, "", "", "", "", null);
+        }
+        else {
+            SelectedUser = UserContainer.Value;
+        }
+        _editContext = new EditContext(SelectedUser);
+
+        await GetData();
+        NewPwd = null;
+        WaitingForApiResponse = false;
+        StateHasChanged();
+    }
+
+    private async Task GetData() {
+
+        var userTask = Http.GetFromJsonAsync<UserBase[]>("api/UserRoles/superiors");
+        var roleTask = Http.GetFromJsonAsync<List<RoleAssignment>>($@"api/UserRoles/allUserAssigned/{SelectedUser.Id}");
+        
+        var userResponse = await userTask;
+        if (userResponse != null) {
+            Superiors = userResponse;
+        }
+        var roleResponse = await roleTask;
+        if (roleResponse != null) {
+            RolesAssignments = roleResponse;
+        }
+
+    }
+
+
+    private void HandleValidSubmit() {
+        ValidationMessage = null;
+        ApiException = null;
+
+
+        var valResult = UserUtils.ValidateUser(SelectedUser);
+        if (valResult != EUserCreationResponse.Ok) {
+            ValidationMessage = StringResolver.ResolveUserValidation(valResult);
+        }
+        else{
+            WaitingForApiResponse = true;
+            if (NewUserCreation) {
+                NewPwd = UserUtils.CreateRandomPassword(10);
+                User newUser = new(SelectedUser) {
+                    Pwd = NewPwd!,
+                    PwdInit = true,
+                    Salt = "TBD"
+                };
+                UserUpdatePayload<User> payload = new(){
+                    UpdatedUser = newUser,
+                    assignedRoles = RolesAssignments
+                };
+                Http.SendApiPutRequestAsync(Logger, "api/Users", payload, ResolveResponse);
+            }
+            else {
+                UserUpdatePayload<UserBase> payload = new(){
+                    UpdatedUser = SelectedUser,
+                    assignedRoles = RolesAssignments
+                };
+                Http.SendApiPatchRequestAsync(Logger, "api/Users/update", payload, ResolveResponse);
+            }
+        }
+        StateHasChanged();
+    }
+
+    protected void HandleInvalidSubmit() {
+        ValidationMessage = "Můžete vkládat pouze validní data!";
+        StateHasChanged();
+    }
+
+
+    private void ReturnToUsers() {
+        UriHelper.NavigateTo("users");
+    }
+
+    private async void DeleteUser() {
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (confirmed) {
+            ValidationMessage = null;
+            ApiException = null;
+            WaitingForApiResponse = true;
+            Http.SendApiDeleteRequestAsync(Logger, "api/Users/" + SelectedUser.Id, ResolveResponse);
+            StateHasChanged();
+        }
+    }
+
+
+
+    private void ResolveResponse(EApiHttpResponse apiResponse, bool changePage) {
+        WaitingForApiResponse = false;
+        if (apiResponse == EApiHttpResponse.Ok) {
+            if (changePage) {
+                UriHelper.NavigateTo("/users");
+            }
+            else {
+                ModalDisplay = "block;";
+                ModalClass = "Show";
+            }
+        }
+        else {
+            ApiException = StringResolver.ResolveApiResponse(apiResponse);
+        }
+        StateHasChanged();
+    }
+
+
+    public void OkPressed() {
+        ModalDisplay = "none";
+        ModalClass = "";
+        WaitingForApiResponse = false;
+        ValidationMessage = null;
+        ApiException = null;
+        UriHelper.NavigateTo("/users");
+    }
+
+    protected override void OnInitialized() {
+        UserContainer.OnStateChange += StateHasChanged;
+    }
+
+    public void Dispose() {
+        UserContainer.OnStateChange -= StateHasChanged;
+    }
+
+}
