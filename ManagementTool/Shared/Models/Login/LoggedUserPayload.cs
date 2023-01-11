@@ -9,10 +9,12 @@ public class LoggedUserPayload {
     public string? FullName { get; set; }
     public Role[]? Roles { get; set; }
 
+    public bool HasInitPwd { get; set; }
 
-    public LoggedUserPayload(string? userName, string? fullName, Role[]? roles) {
+    public LoggedUserPayload(string? userName, string? fullName, Role[]? roles, bool hasInitPwd) {
         UserName = userName;
         FullName = fullName;
         Roles = roles;
+        HasInitPwd = hasInitPwd;
     }
 }

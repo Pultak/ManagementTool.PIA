@@ -4,6 +4,7 @@ using ManagementTool.Shared.Models.Utils;
 using System.Net.Http.Formatting;
 using System.Web.Http;
 using Microsoft.Extensions.Logging;
+using System.Web.Http.Results;
 
 namespace ManagementTool.Shared.Utils; 
 
@@ -36,7 +37,31 @@ public static class WebUtils {
     }
 
 
-    public static async Task<EApiHttpResponse> SendApiPutRequest<T>(HttpClient client, ILogger logger, string endpoint, T? json) {
+    
+    public static async void SendApiPutRequestAsync<T>(this HttpClient client, ILogger logger, string endpoint, 
+        T payload, Action<EApiHttpResponse, bool> resolveResponse) {
+        
+        var apiResponse = await SendApiPutRequest(client, logger, endpoint, payload);
+        resolveResponse(apiResponse, false);
+    }
+
+
+
+    public static async void SendApiDeleteRequestAsync(this HttpClient client, ILogger logger, string endpoint, 
+        Action<EApiHttpResponse, bool> resolveResponse) {
+        var apiResponse = await SendApiDeleteRequest(client, logger, endpoint);
+        resolveResponse(apiResponse, true);
+    }
+
+    public static async void SendApiPatchRequestAsync<T>(this HttpClient client, ILogger logger, string endpoint, 
+        T payload, Action<EApiHttpResponse, bool> resolveResponse) {
+       
+        var apiResponse = await WebUtils.SendApiPatchRequest(client, logger, endpoint, payload);
+        resolveResponse(apiResponse, true);
+    }
+
+
+    public static async Task<EApiHttpResponse> SendApiPutRequest<T>(this HttpClient client, ILogger logger, string endpoint, T? json) {
         if (json == null) return EApiHttpResponse.InvalidData;
         try {
             var response = await client.PutAsJsonAsync(endpoint, json);
@@ -46,12 +71,7 @@ public static class WebUtils {
             return EApiHttpResponse.Ok;
         }
         catch (HttpRequestException e) {
-            if (e.StatusCode == HttpStatusCode.Conflict) {
-                logger.LogError("SendApiPutRequest -> Api responded that there is data conflict for following object!");
-                return EApiHttpResponse.ConflictFound;
-            }
-            logger.LogError("SendApiPutRequest -> Failure occurred during receiving data from the API! " + e.StatusCode);
-            return EApiHttpResponse.HttpRequestException;
+            return HandleApiHttpRequestException(e, "SendApiPutRequest", logger);
         }
         catch (ArgumentException e) {
             logger.LogError("SendApiPutRequest -> Received invalid data from the API!");
@@ -64,7 +84,7 @@ public static class WebUtils {
     }
 
 
-    public static async Task<EApiHttpResponse> SendApiPatchRequest<T>(HttpClient client, ILogger logger, string endpoint, T? json) {
+    public static async Task<EApiHttpResponse> SendApiPatchRequest<T>(this HttpClient client, ILogger logger, string endpoint, T? json) {
         if (json == null) return EApiHttpResponse.InvalidData;
         try {
             var response = await client.PatchJsonAsync(endpoint, typeof(T), json);
@@ -74,14 +94,7 @@ public static class WebUtils {
             return EApiHttpResponse.Ok;
         }
         catch (HttpRequestException e) {
-            if (e.StatusCode == HttpStatusCode.Conflict) {
-                logger.LogError("SendApiPatchRequest -> Api responded that there is data conflict for following object!");
-                return EApiHttpResponse.ConflictFound;
-            }
-
-            logger.LogError("SendApiPatchRequest -> Failure occurred during receiving data from the API! " +
-                            e.StatusCode);
-            return EApiHttpResponse.HttpRequestException;
+            return HandleApiHttpRequestException(e, "SendApiPatchRequest", logger);
         }
         catch (ArgumentException e) {
             logger.LogError("SendApiPatchRequest -> Received invalid data from the API!");
@@ -95,7 +108,7 @@ public static class WebUtils {
 
 
 
-    public static async Task<EApiHttpResponse> SendApiDeleteRequest(HttpClient client, ILogger logger, string endpoint) {
+    public static async Task<EApiHttpResponse> SendApiDeleteRequest(this HttpClient client, ILogger logger, string endpoint) {
         try {
             var response = await client.DeleteAsync(endpoint);
             response.EnsureSuccessStatusCode();
@@ -103,8 +116,7 @@ public static class WebUtils {
             return EApiHttpResponse.Ok;
         }
         catch (HttpRequestException e) {
-            logger.LogError("SendApiDeleteRequest -> Failure occurred during receiving data from the API! " + e.StatusCode);
-            return EApiHttpResponse.HttpRequestException;
+            return HandleApiHttpRequestException(e, "SendApiDeleteRequest", logger);
         }
         catch (ArgumentException e) {
             logger.LogError("SendApiDeleteRequest -> Received invalid data from the API!");
@@ -113,6 +125,26 @@ public static class WebUtils {
         catch (Exception e) {
             logger.LogError("SendApiDeleteRequest -> Unknown error occurred during authentication! " + e.Message);
             return EApiHttpResponse.UnknownException;
+        }
+    }
+
+
+    private static EApiHttpResponse HandleApiHttpRequestException(HttpRequestException ex, string functionName, ILogger logger) {
+
+        switch (ex.StatusCode) {
+            case HttpStatusCode.Conflict:
+                logger.LogError(functionName + " -> Api responded that there is data conflict for following object!");
+                return EApiHttpResponse.ConflictFound;
+
+            case HttpStatusCode.UnprocessableEntity:
+                logger.LogError(functionName + " -> this client sent bad data that cant be processed by the API!");
+                return EApiHttpResponse.InvalidData;
+            default:
+
+                logger.LogError(functionName + " -> Failure occurred during receiving data from the API! " +
+                                ex.StatusCode);
+                return EApiHttpResponse.HttpRequestException;
+
         }
     }
 

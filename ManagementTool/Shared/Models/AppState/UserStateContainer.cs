@@ -1,12 +1,14 @@
 ﻿using ManagementTool.Shared.Models.Login;
 
-namespace ManagementTool.Shared.Models.Utils.AppState;
+namespace ManagementTool.Shared.Models.AppState;
 
-public class UserStateContainer {
+public class UserStateContainer
+{
     public LoggedUserPayload? Value { get; set; }
     public event Action OnStateChange;
 
-    public void SetValue(LoggedUserPayload? value) {
+    public void SetValue(LoggedUserPayload? value)
+    {
         Value = value;
         NotifyStateChanged();
     }

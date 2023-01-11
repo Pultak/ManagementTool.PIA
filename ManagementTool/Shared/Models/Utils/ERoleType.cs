@@ -1,7 +1,6 @@
 ﻿namespace ManagementTool.Shared.Models.Utils;
 
-public enum ERoleType
-{
+public enum ERoleType {
 
     Superior, DepartmentManager, Secretariat, ProjectManager
 

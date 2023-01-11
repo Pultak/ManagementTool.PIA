@@ -1,6 +1,6 @@
 ﻿using ManagementTool.Shared.Models.Database;
 
-namespace ManagementTool.Shared.Models.Utils.AppState; 
+namespace ManagementTool.Shared.Models.AppState;
 
 public class EditProjectStateContainer {
     public Project? Value { get; set; }
