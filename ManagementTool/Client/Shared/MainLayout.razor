@@ -7,7 +7,7 @@
 @inject HttpClient Http
 @inject NavigationManager UriHelper;
 @inject ILogger<MainLayout> Logger
-@inject UserStateContainer UserContainer 
+@inject StateContainer<LoggedUserPayload> UserContainer 
 
 <div class="page">
     <div class="sidebar">
@@ -57,8 +57,15 @@
         LoggedUserName = response?.UserName;
         
         UserContainer.SetValue(response);
-        if (response?.HasInitPwd ?? false) {
-            UriHelper.NavigateTo("/pwdChange/1");
+        if (response == null) {
+            //no one is logged in, lets get back to root
+            UriHelper.NavigateTo("/");
+        }
+        else {
+            if (response.HasInitPwd) {
+                UriHelper.NavigateTo("/pwdChange/1");
+            }
+
         }
         StateHasChanged();
     }

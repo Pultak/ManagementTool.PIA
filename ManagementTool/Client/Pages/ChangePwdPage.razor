@@ -1,0 +1,156 @@
+﻿@page "/pwdChange"
+@page "/pwdChange/{IsInitPwdChange}"
+
+@using System.ComponentModel.DataAnnotations
+@using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.Utils
+@using ManagementTool.Shared.Utils
+
+@inject NavigationManager UriHelper
+@inject HttpClient Http
+@inject ILogger<ChangePwdPage> Logger
+
+<h3>Změna hesla</h3>
+
+@if (IsInitPwdChange != null) {
+    <p>Při prvním přihlášení je vyžadována změna hesla!</p>
+}
+else {
+    <p>Na následující stránce máte možnost provést změnu stávajícího hesla!</p>
+}
+
+@if (WaitingForApiResponse) {
+    <div class="spinner"></div>
+}
+else {
+    <EditForm id="@SubmitBtnId" EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+        <DataAnnotationsValidator/>
+
+        <div class="form-group">
+            <p>
+                <label>
+                    Nové heslo
+                </label>
+                <InputText id="txtName" type="password" required @bind-Value="NewPwd" />
+                <ValidationMessage For="@(() => NewPwd)" />
+            </p>
+        </div>
+        <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Změnit heslo</button>
+        
+        @if (IsInitPwdChange == null) {
+            <button type="button" class="btn btn-light" @onclick="ReturnToHome">
+                Zrušit
+            </button>
+        }
+    </EditForm>
+}
+
+
+<div class="modal @ModalClass" tabindex="-1" role="dialog" style="display: @ModalDisplay">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            @if (WaitingForApiResponse) {
+                <div class="spinner"></div>
+            }
+            else {
+                <div class="modal-header">
+                    <h5 class="modal-title">Změna hesla</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="OkPressed">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>@ModalMessage</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="OkPressed">Ok</button>
+                </div>
+            }
+
+        </div>
+    </div>
+</div>
+
+
+@code {
+
+    [Parameter]
+    public string? IsInitPwdChange { get; set; }
+    
+    private const string SubmitBtnId = "submitButton";
+    private string ModalClass { get; set; } = "";
+    private string ModalDisplay { get; set; } = "none;";
+
+    [Required]
+    [RegularExpression(UserUtils.PasswordRegexPattern, 
+        ErrorMessage = "Nové heslo musí obsahovat alespoň 8 znaků. " +
+                       "Mělo by také obsahovat velké i malá písmena a číslice.")]
+    public string NewPwd { get; set; } = "";
+
+    private EditContext _editContext;
+
+
+    private string? ModalMessage { get; set;}
+    private bool WaitingForApiResponse { get; set; } = true;
+    private bool PwdSuccessfullyChanged { get; set; } = false;
+
+    
+    public void OkPressed() {
+        ModalDisplay = "none";
+        ModalClass = "";
+        WaitingForApiResponse = false;
+        ModalMessage = null;
+        //StateHasChanged();
+        if (PwdSuccessfullyChanged) {
+            UriHelper.NavigateTo("/");
+        }
+        StateHasChanged();
+    }
+
+
+    protected override void OnInitialized() {
+        WaitingForApiResponse = false;
+        ModalMessage = null;
+        ModalDisplay = "none";
+        ModalClass = "";
+        _editContext = new EditContext(NewPwd);
+        StateHasChanged();
+    }
+
+    private void ReturnToHome() {
+        UriHelper.NavigateTo("/");
+    }
+
+    private void HandleValidSubmit() {
+        var pwdValid = UserUtils.IsValidPassword(NewPwd);
+        ModalDisplay = "block;";
+        ModalClass = "Show";
+        if (!pwdValid) {
+            ModalMessage = "Nejdříve vložte validní heslo!";
+        }else{
+            WaitingForApiResponse = true;
+            SendApiPatchRequest("api/Projects/update");
+        }
+        StateHasChanged();
+    }
+
+    protected void HandleInvalidSubmit() {
+        ModalMessage = "Můžete vkládat pouze validní data!";
+        ModalDisplay = "block;";
+        ModalClass = "Show";
+        StateHasChanged();
+    }
+    
+    private async void SendApiPatchRequest(string endpoint) {
+        var apiResponse = await WebUtils.SendApiPatchRequest(Http, Logger, endpoint, NewPwd);
+        WaitingForApiResponse = false;
+        if (apiResponse == EApiHttpResponse.Ok) {
+            PwdSuccessfullyChanged = true;
+        }
+        else {
+            ModalMessage = StringResolver.ResolveApiResponse(apiResponse);
+        }
+        StateHasChanged();
+    }
+
+}

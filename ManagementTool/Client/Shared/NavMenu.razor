@@ -1,6 +1,7 @@
-﻿@inject UserStateContainer UserContainer
+﻿@inject StateContainer<LoggedUserPayload> UserContainer
 
 @using ManagementTool.Shared.Models.AppState
+@using ManagementTool.Shared.Models.Login
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
 @implements IDisposable
@@ -41,7 +42,7 @@
             </div>
             @if (_expandUserNav) {
                 <div class="nav-item px-5" @onclick="ToggleNavMenu">
-                    <NavLink class="expand-menu" href="myAssignments">
+                    <NavLink class="expand-menu" href="assignments?my=1">
                         <span>Přiřazené úkoly</span>
                     </NavLink>
                 </div>
