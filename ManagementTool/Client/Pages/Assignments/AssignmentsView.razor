@@ -1,0 +1,123 @@
+﻿@page "/assignments"
+@using ManagementTool.Shared.Models.Database
+@using System.Net
+@using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.ApiModels
+@using ManagementTool.Shared.Models.AppState
+@using ManagementTool.Shared.Models.Utils
+@using ManagementTool.Shared.Utils
+@using Microsoft.AspNetCore.WebUtilities
+
+
+@inject HttpClient Http
+@inject NavigationManager UriHelper
+@inject StateContainer<AssignmentWrapper> AssignmentContainer
+@inject Logger<AssignmentsView> Logger
+
+<h3>Úkoly</h3>
+
+@if (Assignments == null) {
+    <div class="spinner"></div>
+}
+else if (DataFetchFailed) {
+
+    <p>Bohužel se nepovedlo připojit k API serveru. Zkuste to prosím znovu.</p>
+    <p>@ExceptionMessage</p>
+}else {
+
+
+    <button class="bi bi-pen" @onclick="CreateNewAssignment">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus" viewBox="0 0 16 16">
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+        </svg>
+    </button>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Název projektu</th>
+                <th>Jméno pracovníka</th>
+                <th>Název úkolu</th>
+                <th>Časové kvantum</th>
+                <th>Datum od</th>
+                <th>Datum do</th>
+                <th>Stav</th>
+                
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var wrapper in Assignments) {
+                <tr>
+                    <td>@wrapper.ProjectName</td>
+                    <td>@wrapper.UserName</td>
+                    <td>@wrapper.Assignment.Name</td>
+                    <!--<td>@StringResolver.ResolveTimeScope(wrapper.Assignment.AllocationScope)</td> -->
+                    <td>@wrapper.Assignment.FromDate</td>
+                    <td>@wrapper.Assignment.ToDate</td>
+                    <td>@StringResolver.ResolveAssignmentState(wrapper.Assignment.State) @AssignmentOverTime(wrapper.Assignment)</td>
+                    <td>
+                        <button class="bi bi-pen" @onclick="o => NavigateToEditMode(wrapper)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16">
+                                <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                                <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                            </svg>
+                        </button>
+                    </td>
+                    <td>
+                        <button class="bi bi-pen" @onclick="o => NavigateToEditMode(wrapper)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pen" viewBox="0 0 16 16">
+                                <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z" />
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+@code {
+
+    private AssignmentWrapper[]? Assignments { get; set; } = {};
+    private readonly DateTime _actualTime = DateTime.Now;
+    
+    private bool DataFetchFailed { get; set; } = false;
+    private string? ExceptionMessage { get; set; } = null;
+
+    protected override async Task OnInitializedAsync() {
+        var uri = UriHelper.ToAbsoluteUri(UriHelper.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        var requestUri = "api/Assignments";
+        if (query.ContainsKey("my")) {
+            //we should display only my assignments
+            requestUri = "api/Assignments/myAssignments";
+        }
+
+        var response = await Http.SendApiGetRequestAsync<AssignmentWrapper[]>(Logger, requestUri);
+        if (response.status != EApiHttpResponse.Ok) {
+            DataFetchFailed = true;
+            ExceptionMessage = StringResolver.ResolveApiResponse(response.status);
+        }
+        StateHasChanged();
+    }
+
+
+    private string AssignmentOverTime(Assignment assignment) {
+        if (DateTime.Compare(assignment.ToDate, _actualTime) >= 0) {
+            return "!vypršelý!";
+        }
+        return "";
+    }
+
+    
+    private void NavigateToEditMode(AssignmentWrapper selectedAssignment) {
+        AssignmentContainer.SetValue(selectedAssignment);
+        UriHelper.NavigateTo("/assignments/edit");
+    }
+    
+    private void CreateNewAssignment() {
+        AssignmentContainer.SetValue(null);
+        NavigateToEditMode(null);
+    }
+}

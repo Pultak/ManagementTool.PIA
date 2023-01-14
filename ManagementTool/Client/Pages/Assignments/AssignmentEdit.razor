@@ -1,0 +1,248 @@
+﻿@page "/assignments/edit"
+@using ManagementTool.Shared.Models.AppState
+@using ManagementTool.Shared.Models.ApiModels
+@using ManagementTool.Shared.Models.Database
+@using ManagementTool.Shared.Models.Utils
+@using ManagementTool.Shared.Utils
+@using Microsoft.AspNetCore.Components
+@using ManagementTool.Client.Utils
+@using Syncfusion.Blazor.Diagrams
+
+
+@inject HttpClient Http
+@inject NavigationManager UriHelper
+@inject StateContainer<AssignmentWrapper> AssignmentContainer
+@inject ILogger<AssignmentEdit> Logger
+@inject IJSRuntime JsRuntime
+
+<h3>Editace úkolu</h3>
+
+<button class="bi bi-x" @onclick="ReturnToAssignments">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x" viewBox="0 0 16 16">
+        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" />
+    </svg>
+</button>
+
+@if (WaitingForApiResponse) {
+    <div class="spinner"></div>
+}
+else {
+    <div class="wrapper">
+        <section class="createevent">
+            <EditForm id="@SubmitBtnId" EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+                <DataAnnotationsValidator/>
+
+                <div class="form-group">
+                    <p>
+                        <label>
+                            Název úkolu
+                        </label>
+                        <InputText id="txtName" type="text" required @bind-Value="@SelectedAssignment.Assignment.Name" />
+                        <ValidationMessage For="@(() => SelectedAssignment.Assignment.Name)" />
+                    </p>
+                </div>
+                <div class="form-group">
+                    <p>
+                        <label>
+                            Projekt: @SelectedAssignment.ProjectName
+                        </label>
+                    </p>
+                </div>
+                <div class="form-group">
+                    <p>
+                        <label>
+                            Datum od
+                        </label>
+                        <input id="txtDate" type="date" @bind-value="@SelectedAssignment.Assignment.FromDate" min="1970-01-01" />
+                        <ValidationMessage For="@(() => SelectedAssignment.Assignment.FromDate)" />
+                    </p>
+                </div>
+                <div class="form-group">
+                    <p>
+                        <label>
+                            Datum do
+                        </label>
+                        <input id="txtDate" type="date" @bind-value="@SelectedAssignment.Assignment.ToDate" min="1970-01-01" />
+                        <ValidationMessage For="@(() => SelectedAssignment.Assignment.FromDate)" />
+                    </p>
+                </div>
+
+
+                <div class="form-group">
+                    <p>
+                        <label>
+                            Přiřazená osoba
+                        </label>
+                        <InputSelect id="txtName" type="text" required @bind-Value="@AssignedUser.FullName">
+                        
+                        
+                        </InputSelect>
+                        <ValidationMessage For="@(() => SelectedAssignment.Assignment.Note)" />
+                    </p>
+                </div>
+
+
+                <div class="form-group">
+                    <p>
+                        <label>
+                            Popisek
+                        </label>
+                        <InputText id="txtName" type="text" required @bind-Value="@SelectedAssignment.Assignment.Note" />
+                        <ValidationMessage For="@(() => SelectedAssignment.Assignment.Note)" />
+                    </p>
+                </div>
+
+            </EditForm>
+
+            else if (ExceptionMessage != null) {
+                <div>
+                    <p>@ExceptionMessage</p>
+                </div>
+            }
+            <p>
+                @if (NewAssignmentCreation)
+                {
+                    <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Vytvořit projekt</button>
+                }
+                else {
+                    <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Uložit změny</button>
+                    <button @onclick="DeleteAssignment" class="btn btn-primary">
+                        Smazat úkol
+                    </button>
+                }
+                <button type="button" class="btn btn-light"
+                    @onclick="@ReturnToAssignments">
+                    Zrušit
+                </button>
+            </p>
+
+        </section>
+    </div>
+}
+
+
+@code {
+    private const string SubmitBtnId = "submitButton";
+
+    private EditContext _editContext;
+    public AssignmentWrapper SelectedAssignment{ get; set; } = new();
+
+    public Project[] AllProjects { get; set; } = {};
+    public UserBase[] PossibleAssignees { get; set; } = { };
+
+    public Project? AssignmentProject { get; set; } = null;
+    public User AssignedUser { get; set; } = new();
+
+    private bool NewAssignmentCreation { get; set; }
+    private bool WaitingForApiResponse { get; set; } = true;
+    
+    private string? ExceptionMessage { get; set; }
+
+
+    protected override async Task OnInitializedAsync() {
+        if (AssignmentContainer.Value == null) {
+            NewAssignmentCreation = true;
+            SelectedAssignment = new AssignmentWrapper("", "", new Assignment());
+        }
+        else {
+            SelectedAssignment = AssignmentContainer.Value;
+        }
+
+        await GetData();
+        
+        _editContext = new EditContext(SelectedAssignment);
+        WaitingForApiResponse = false;
+        StateHasChanged();
+    }
+
+    private async Task GetData() {
+        if (NewAssignmentCreation) {
+            var req = await Http.SendApiGetRequestAsync<Project[]>(Logger, "api/Projects");
+
+
+            if (req.status != EApiHttpResponse.Ok) {
+                ExceptionMessage = StringResolver.ResolveApiResponse(req.status);
+                StateHasChanged();
+            }
+            if (req.response != null) {
+                AllProjects = req.response;
+            }
+            await GetPossibleAssigneesData(SelectedAssignment.Assignment.ProjectId);
+        }
+    }
+
+    private void ReturnToAssignments() {
+        UriHelper.NavigateTo("/assignments");
+    }
+
+
+    private async Task GetPossibleAssigneesData(long projectId) {
+        if (projectId < 1) {
+            var req = await Http.SendApiGetRequestAsync<UserBase[]>(Logger, "api/Projects/{projectId}/users");
+
+
+            if (req.status != EApiHttpResponse.Ok) {
+                ExceptionMessage = StringResolver.ResolveApiResponse(req.status);
+                StateHasChanged();
+            }
+            if (req.response != null) {
+                PossibleAssignees = req.response;
+            }
+        }
+    }
+
+
+    
+    private void HandleValidSubmit() {
+        ExceptionMessage = null;
+
+
+        var valResult = AssignmentUtils.ValidateNewAssignment(SelectedAssignment.Assignment, AssignmentProject, AssignedUser);
+        if (valResult != EAssignmentCreationResponse.Ok) {
+            ExceptionMessage = StringResolver.ResolveAssignmentValidation(valResult);
+        }
+        else{
+            WaitingForApiResponse = true;
+            if (NewAssignmentCreation) {
+                Http.SendApiPutRequestAsync(Logger, "api/Assignments", SelectedAssignment.Assignment, ResolveResponse);
+            }
+            else if (_editContext.IsModified()){
+                Http.SendApiPatchRequestAsync(Logger, "api/Assignments", SelectedAssignment.Assignment, ResolveResponse);
+            }
+            else {
+                WaitingForApiResponse = false;
+                ExceptionMessage = "Nejdříve změnte nějaké hodnoty předtím než budete ukládat změny!";
+            }
+        }
+        StateHasChanged();
+    }
+    
+    protected void HandleInvalidSubmit() {
+        ExceptionMessage = "Můžete vkládat pouze validní data!";
+        StateHasChanged();
+    }
+
+    
+    private async void DeleteAssignment() {
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Doopravdy chcete odstranit tento úkol?");
+        if (confirmed) {
+            ExceptionMessage = null;
+            WaitingForApiResponse = true;
+            Http.SendApiDeleteRequestAsync(Logger, "api/Assignments/" + SelectedAssignment.Assignment.Id, ResolveResponse);
+            StateHasChanged();
+        }
+    }
+
+
+    private void ResolveResponse(EApiHttpResponse apiResponse, bool changePage) {
+        WaitingForApiResponse = false;
+        if (apiResponse == EApiHttpResponse.Ok) {
+            UriHelper.NavigateTo("/assignments");
+        }
+        else {
+            ExceptionMessage = StringResolver.ResolveApiResponse(apiResponse);
+            StateHasChanged();
+        }
+    }
+
+}
