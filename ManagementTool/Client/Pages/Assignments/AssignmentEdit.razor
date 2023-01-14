@@ -6,7 +6,6 @@
 @using ManagementTool.Shared.Utils
 @using Microsoft.AspNetCore.Components
 @using ManagementTool.Client.Utils
-@using Syncfusion.Blazor.Diagrams
 
 
 @inject HttpClient Http
@@ -17,8 +16,8 @@
 
 <h3>Editace úkolu</h3>
 
-<button class="bi bi-x" @onclick="ReturnToAssignments">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x" viewBox="0 0 16 16">
+<button @onclick="ReturnToAssignments">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" />
     </svg>
 </button>
@@ -27,12 +26,12 @@
     <div class="spinner"></div>
 }
 else {
-    <div class="wrapper">
-        <section class="createevent">
+    <div>
+        <section>
             <EditForm id="@SubmitBtnId" EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
                 <DataAnnotationsValidator/>
 
-                <div class="form-group">
+                <div>
                     <p>
                         <label>
                             Název úkolu
@@ -41,14 +40,14 @@ else {
                         <ValidationMessage For="@(() => SelectedAssignment.Assignment.Name)" />
                     </p>
                 </div>
-                <div class="form-group">
+                <div>
                     <p>
                         <label>
                             Projekt: @SelectedAssignment.ProjectName
                         </label>
                     </p>
                 </div>
-                <div class="form-group">
+                <div>
                     <p>
                         <label>
                             Datum od
@@ -57,7 +56,7 @@ else {
                         <ValidationMessage For="@(() => SelectedAssignment.Assignment.FromDate)" />
                     </p>
                 </div>
-                <div class="form-group">
+                <div>
                     <p>
                         <label>
                             Datum do
@@ -68,7 +67,7 @@ else {
                 </div>
 
 
-                <div class="form-group">
+                <div>
                     <p>
                         <label>
                             Přiřazená osoba
@@ -82,7 +81,7 @@ else {
                 </div>
 
 
-                <div class="form-group">
+                <div>
                     <p>
                         <label>
                             Popisek
@@ -124,8 +123,8 @@ else {
 @code {
     private const string SubmitBtnId = "submitButton";
 
-    private EditContext _editContext;
     public AssignmentWrapper SelectedAssignment{ get; set; } = new();
+    private EditContext _editContext { get; set; }
 
     public Project[] AllProjects { get; set; } = {};
     public UserBase[] PossibleAssignees { get; set; } = { };

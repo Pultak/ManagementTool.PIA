@@ -3,15 +3,19 @@
 @using ManagementTool.Shared.Models.Database
 @using ManagementTool.Shared.Models.UserComm
 @using ManagementTool.Shared.Models.AppState
+@using ManagementTool.Shared.Models.Utils
+@using ManagementTool.Shared.Utils
+@using ManagementTool.Client.Utils
 
 
 @inject HttpClient Http
+@inject ILogger<ProjectAssign> Logger
 @inject StateContainer<Project> ProjectContainer
 
 <h3>Přiřazování uživatelů ke zvolenému projektu</h3>
 
 
-@if (Users == null) {
+@if (DataFetchFailed) {
     <p>Nebyli nalezeni žádní uživatelé, které by bylo možné přiřadit k projektu!</p>
 }
 
@@ -37,8 +41,7 @@ else {
         <option value=0 disabled selected hidden>
             [uživatel nezvolený]
         </option>
-        @foreach (var user in Users.Where(user => user.IsAssigned))
-        {
+        @foreach (var user in Users.Where(user => user.IsAssigned)) {
             <option value="@user.DataModel.Id">
                 @user.DataModel.FullName
             </option>
@@ -67,6 +70,7 @@ else {
 
     private string? ValidationMessage { get; set; } = null;
 
+    private bool DataFetchFailed { get; set; } = false;
     private bool WaitingForApiResponse { get; set; } = true;
 
     
@@ -78,9 +82,19 @@ else {
             SelectedProject = ProjectContainer.Value;
         }
         if (SelectedProject.Id != 0) {
-            var response = await Http.GetFromJsonAsync<List<DataModelAssignment<UserBase>>?>($"api/Users/projectUsers/{SelectedProject.Id}");
-            if (response != null) {
-                Users = response;
+            var result = await Http.SendApiGetRequestAsync<List<DataModelAssignment<UserBase>>?>(Logger, $"api/Users/projectUsers/{SelectedProject.Id}");
+
+            if (result.status == EApiHttpResponse.Ok && result.response != null) {
+                Users = result.response;
+            }
+            else {
+                DataFetchFailed = true;
+                if (result.status == EApiHttpResponse.Ok) {
+                    ValidationMessage = "API server poslal prázdné data!";
+                }
+                else {
+                    ValidationMessage = StringResolver.ResolveApiResponse(result.status);
+                }
             }
         }
         WaitingForApiResponse = false;
@@ -105,6 +119,7 @@ else {
     */
 
     private void UnassignUsersFromProject() {
+        //todo
         return;
     }
 

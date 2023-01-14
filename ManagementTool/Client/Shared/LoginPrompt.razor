@@ -152,10 +152,10 @@
             Logger.LogError("LoginPressed -> Failure occurred during receiving data from the API! " + e.StatusCode);
         }
         catch (ArgumentException e) {
-            Logger.LogError("LoginPressed -> Received invalid data from the API!");
+            Logger.LogError("LoginPressed -> Received invalid data from the API!" + e.Message);
         }
         catch (Exception e) {
-            Logger.LogError("LoginPressed -> Unknown error occurred during authentication!");
+            Logger.LogError("LoginPressed -> Unknown error occurred during authentication!" + e.Message);
         }
         ChangeDialogSignature(EAuthResponse.UnknownResponse);
         

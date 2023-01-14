@@ -14,8 +14,8 @@
 @inject ILogger<ProjectEdit> Logger
 
 
-<button class="bi bi-x" @onclick="ReturnToProjects">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x" viewBox="0 0 16 16">
+<button @onclick="ReturnToProjects">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
     </svg>
 </button>
@@ -25,12 +25,12 @@
     <div class="spinner"></div>
 }
 else {
-    <div class="wrapper">
-        <section class="createevent">
+    <div>
+        <section>
             <EditForm id="@SubmitBtnId" EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
                 <DataAnnotationsValidator/>
 
-                <div class="form-group">
+                <div>
                     <p>
                         <label>
                             Název projektu
@@ -40,7 +40,7 @@ else {
                     </p>
                 </div>
 
-                <div class="form-group">
+                <div>
                     <p>
                         <label>
                             Datum od
@@ -49,7 +49,7 @@ else {
                         <ValidationMessage For="@(() => SelectedProject.FromDate)"/>
                     </p>
                 </div>
-                <div class="form-group">
+                <div>
                     <p>
                         <label>
                             Datum do
@@ -59,7 +59,7 @@ else {
                     </p>
                 </div>
 
-                <div class="form-group">
+                <div>
                     <p>
                         <label>
                             Popisek projektu
@@ -116,10 +116,12 @@ else {
 
     protected override Task OnInitializedAsync() {
         WaitingForApiResponse = false;
-        SelectedProject = ProjectContainer.Value;
-        if (SelectedProject == null) {
+        if (ProjectContainer.Value == null) {
             NewProjectCreation = true;
             SelectedProject = new Project(default, "", DateTime.Now.Date, null, "");
+        }
+        else {
+            SelectedProject = ProjectContainer.Value;
         }
         _editContext = new EditContext(SelectedProject);
         StateHasChanged();
@@ -158,16 +160,12 @@ else {
 
 
     private async void SendApiPutRequest(string endpoint) {
-        if (SelectedProject == null) return;
-
-        var apiResponse = await WebUtils.SendApiPutRequest(Http, Logger, endpoint, SelectedProject);
+        var apiResponse = await Http.SendApiPutRequest(Logger, endpoint, SelectedProject);
         ResolveResponse(apiResponse);
     }
 
     private async void SendApiPatchRequest(string endpoint) {
-        if (SelectedProject == null) return;
-
-        var apiResponse = await WebUtils.SendApiPatchRequest(Http, Logger, endpoint, SelectedProject);
+        var apiResponse = await Http.SendApiPatchRequest(Logger, endpoint, SelectedProject);
         ResolveResponse(apiResponse);
     }
 

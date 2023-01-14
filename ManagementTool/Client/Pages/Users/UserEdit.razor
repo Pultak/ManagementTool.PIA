@@ -6,13 +6,14 @@
 @using ManagementTool.Shared.Utils
 @using Microsoft.AspNetCore.Components
 @using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.ApiModels
 @using ManagementTool.Shared.Models.UserComm
 @implements IDisposable
 
 @inject NavigationManager UriHelper
 @inject HttpClient Http
 @inject ILogger<UserEdit> Logger
-@inject EditUserStateContainer UserContainer
+@inject StateContainer<UserBase> UserContainer
 @inject IJSRuntime JsRuntime
 
 
@@ -65,31 +66,40 @@ else {
                         <td>E-mailová adresa</td>
                         <td>
                             <InputText id="txtWorkplace" type="text" required
-                                       @bind-Value="SelectedUser.EmailAddress"/>
-                            <ValidationMessage For="@(() => SelectedUser.EmailAddress)"/>
+                                       @bind-Value="@SelectedUser.EmailAddress"/>
+                            <ValidationMessage For="@(() => @SelectedUser.EmailAddress)"/>
                         </td>
                     </tr>
                     <tr>
                         <td>Přiřazený vedoucí</td>
                         <td>
-                            <select for="Publisher" class="form-control"
-                                    @bind="@SelectedUser.SuperiorId">
+                            
+                            <InputSelect TValue="UserBase" @bind-value="_selectedSuperiors">
+                                @foreach (var superior in AllSuperiors) {
+                                    <option value="@superior">
+                                    @superior.FullName</option>
+                                }
+                            </InputSelect>
+
+                            <!--todo<select for="Publisher" class="form-control"
+                                    bind="SelectedUser.SuperiorId">
                                 <option value=0 disabled selected hidden>
                                     [bez vedoucího]</option>
-                                @foreach (var superior in Superiors) {
-                                    <option value="@superior.Id">
-                                        @superior.FullName</option>
+                                foreach (var superior in Superiors) {
+                                    <option value="superior.Id">
+                                        superior.FullName</option>
                                 }
-                            </select>
+                          </select>
+                            -->
                         </td>
                     </tr>
                     <tr>
                         <td>Přiřazené role</td>
                         <td>
                             @foreach (var role in RolesAssignments) {
-                                <input class="form-check-input" type="checkbox" name="@role.Role.Name" @bind-value="role.IsAssigned">
+                                <input class="form-check-input" type="checkbox" name="@role.DataModel.Name" @bind-value="role.IsAssigned">
                                 <label class="form-check-label" for="flexCheckDefault">
-                                    @role.Role.Name
+                                    @role.DataModel.Name
                                 </label>
                                 <br>
                             }
@@ -164,9 +174,12 @@ else {
     private string ModalDisplay { get; set; } = "none;";
 
     private EditContext _editContext;
+    private UserBase[] _selectedSuperiors = {};
+
+
     public UserBase SelectedUser { get; set; } = new();
-    public UserBase[] Superiors { get; set; } = Array.Empty<UserBase>();
-    public List<RoleAssignment> RolesAssignments { get; set; } = new();
+    public UserBase[] AllSuperiors { get; set; } = Array.Empty<UserBase>();
+    public List<DataModelAssignment<Role>> RolesAssignments { get; set; } = new();
 
     public string? NewPwd { get; set; }
     
@@ -181,10 +194,10 @@ else {
         ApiException = null;
         NewUserCreation = UserContainer.Value == null;
         if (NewUserCreation) {
-            SelectedUser = new UserBase(default, "", "", "", "", null);
+            SelectedUser = new UserBase(default, "", "", "", "");
         }
         else {
-            SelectedUser = UserContainer.Value;
+            SelectedUser = UserContainer.Value!;
         }
         _editContext = new EditContext(SelectedUser);
 
@@ -197,17 +210,28 @@ else {
     private async Task GetData() {
 
         var userTask = Http.GetFromJsonAsync<UserBase[]>("api/UserRoles/superiors");
-        var roleTask = Http.GetFromJsonAsync<List<RoleAssignment>>($@"api/UserRoles/allUserAssigned/{SelectedUser.Id}");
+        
+        var roleTask = Http.GetFromJsonAsync<List<DataModelAssignment<Role>>>($@"api/UserRoles/allUserAssigned/{SelectedUser.Id}");
+        
         
         var userResponse = await userTask;
         if (userResponse != null) {
-            Superiors = userResponse;
+            AllSuperiors = userResponse;
         }
         var roleResponse = await roleTask;
         if (roleResponse != null) {
             RolesAssignments = roleResponse;
         }
 
+        if (!NewUserCreation) {
+            //get also all new user assigned superiors
+            var userSupsTask = Http.GetFromJsonAsync<long[]>($"api/UserRoles/superiors/{SelectedUser.Id}");
+            var userSupsIds = await userSupsTask;
+            if (userSupsIds != null) {
+                var assignedSups = AllSuperiors.Where(x => userSupsIds.Contains(x.Id));
+                _selectedSuperiors = assignedSups.ToArray();
+            }
+        }
     }
 
 
@@ -231,14 +255,16 @@ else {
                 };
                 UserUpdatePayload<User> payload = new(){
                     UpdatedUser = newUser,
-                    assignedRoles = RolesAssignments
+                    AssignedRoles = RolesAssignments,
+                    Superiors = _selectedSuperiors.ToList()
                 };
                 Http.SendApiPutRequestAsync(Logger, "api/Users", payload, ResolveResponse);
             }
             else {
                 UserUpdatePayload<UserBase> payload = new(){
                     UpdatedUser = SelectedUser,
-                    assignedRoles = RolesAssignments
+                    AssignedRoles = RolesAssignments,
+                    Superiors = _selectedSuperiors.ToList()
                 };
                 Http.SendApiPatchRequestAsync(Logger, "api/Users/update", payload, ResolveResponse);
             }
@@ -257,7 +283,7 @@ else {
     }
 
     private async void DeleteUser() {
-        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Doopravdy chcete odstranit tento úkol?");
         if (confirmed) {
             ValidationMessage = null;
             ApiException = null;

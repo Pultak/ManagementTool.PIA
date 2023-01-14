@@ -1,18 +1,131 @@
 ﻿@page "/counter"
+@using ManagementTool.Shared.Models.Database
+
+@inject NavigationManager UriHelper
 
 <PageTitle>Counter</PageTitle>
 
 <h1>Counter</h1>
 
-<p role="status">Current count: @currentCount</p>
+<p role="status">Current count: @_currentCount</p>
 
 <button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+<div class="wrapper">
+    <section class="createevent">
+        <EditForm id="@SubmitBtnId" EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+            <DataAnnotationsValidator/>
+
+            <div class="form-group">
+                <p>
+                    <label>
+                        Název projektu
+                    </label>
+                    <InputText id="txtName" type="text" required @bind-Value="SelectedProject.ProjectName"/>
+                    <ValidationMessage For="@(() => SelectedProject.ProjectName)"/>
+                </p>
+            </div>
+
+            <div class="form-group">
+                <p>
+                    <label>
+                        Datum od
+                    </label>
+                    <input id="txtDate" type="date" @bind-value="SelectedProject.FromDate" min="01/01/1970" required/>
+                    <ValidationMessage For="@(() => SelectedProject.FromDate)"/>
+                </p>
+            </div>
+            <div class="form-group">
+                <p>
+                    <label>
+                        Datum do
+                    </label>
+                    <input id="txtDate" type="date" @bind-value="SelectedProject.ToDate" min="1970-01-01"/>
+                    <ValidationMessage For="@(() => SelectedProject.ToDate)"/>
+                </p>
+            </div>
+
+            <div class="form-group">
+                <p>
+                    <label>
+                        Popisek projektu
+                    </label>
+                    <InputText id="txtName" type="text" required @bind-Value="SelectedProject.Description"/>
+                    <ValidationMessage For="@(() => SelectedProject.Description)"/>
+                </p>
+            </div>
+
+        </EditForm>
+
+        @if (ValidationMessage != null) {
+            <div>
+                <p>@ValidationMessage</p>
+            </div>
+        }
+        else if (ApiException != null) {
+            <div>
+                <p>@ApiException</p>
+            </div>
+        }
+        <p>
+            @if (NewProjectCreation) {
+                <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Vytvořit projekt</button>
+            }
+            else {
+                <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Uložit změny</button>
+            }
+            <button type="button" class="btn btn-light"
+                    @onclick="@ReturnToProjects">
+                Zrušit
+            </button>
+        </p>
+
+    </section>
+</div>
+<!--Min="ProjectUtils.RefDateTime"-->
+<!--
+<LoginPrompt />
+-->
+
 
 @code {
-    private int currentCount = 0;
+    //TODO remove module
+        private const string SubmitBtnId = "submitButton";
 
-    private void IncrementCount()
-    {
-        currentCount++;
+    private EditContext _editContext;
+
+    public DateTime MyDateTime { get; set; } = new(2020, 03, 20);
+
+    private Project SelectedProject { get; } = new(1, "TESTPROJECT", DateTime.Now, null, "popisekkkk");
+
+    private int _currentCount;
+
+
+    private string? ValidationMessage { get; set; }
+    private string? ApiException { get; } = null;
+    private bool NewProjectCreation { get; } = false;
+
+    protected override void OnInitialized() {
+        _editContext = new EditContext(SelectedProject);
     }
+
+
+    private void ReturnToProjects() {
+        UriHelper.NavigateTo("/projects");
+    }
+
+    private void IncrementCount() {
+        _currentCount++;
+    }
+
+
+    private void HandleValidSubmit() {
+    }
+
+    protected void HandleInvalidSubmit() {
+    }
+
+    private void Cancel() {
+        Console.WriteLine("Cancelling...");
+    }
+
 }
