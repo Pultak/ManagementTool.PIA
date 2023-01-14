@@ -8,7 +8,7 @@
 @implements IDisposable
 
 
-@inject EditProjectStateContainer ProjectContainer
+@inject StateContainer<Project> ProjectContainer
 @inject NavigationManager UriHelper
 @inject HttpClient Http
 @inject ILogger<ProjectEdit> Logger

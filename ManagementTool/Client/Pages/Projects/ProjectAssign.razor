@@ -1,0 +1,111 @@
+﻿@page "/projects/userAssign"
+
+@using ManagementTool.Shared.Models.Database
+@using ManagementTool.Shared.Models.UserComm
+@using ManagementTool.Shared.Models.AppState
+
+
+@inject HttpClient Http
+@inject StateContainer<Project> ProjectContainer
+
+<h3>Přiřazování uživatelů ke zvolenému projektu</h3>
+
+
+@if (Users == null) {
+    <p>Nebyli nalezeni žádní uživatelé, které by bylo možné přiřadit k projektu!</p>
+}
+
+@if (WaitingForApiResponse) {
+    <div class="spinner"></div>
+}
+else {
+
+    <label>Přiřazení uživatelé k projektu</label>
+    <select @bind="AssignedUserSelection" for="Uživatel" class="form-control" multiple>
+        <option value=0 disabled selected hidden>
+            [uživatel nezvolený]</option>
+        @foreach (var user in Users.Where(user => user.IsAssigned)) {
+            <option value="@user.DataModel.Id">
+                @user.DataModel.FullName</option>
+        }
+    </select>
+    <button>Odebrat zvolené z projektu</button>
+
+
+    <label>Nepřiřazení uživatelé k projektu</label>
+    <select @bind="UnassignedUserSelection" for="Uživatel" class="form-control" multiple>
+        <option value=0 disabled selected hidden>
+            [uživatel nezvolený]
+        </option>
+        @foreach (var user in Users.Where(user => user.IsAssigned))
+        {
+            <option value="@user.DataModel.Id">
+                @user.DataModel.FullName
+            </option>
+        }
+    </select>
+    <button type="submit" @onclick="UnassignUsersFromProject" class="btn btn-primary">Přidat zvolené do projektu</button>
+}
+
+
+
+@if (ValidationMessage != null) {
+    <div>
+        <p>@ValidationMessage</p>
+    </div>
+}
+
+@code {
+
+    
+    public List<DataModelAssignment<UserBase>> Users = new();
+    public Project SelectedProject = new(){Id = 0, ProjectName = ""};
+
+    public string[] AssignedUserSelection { get; set; } = Array.Empty<string>();
+    public string[] UnassignedUserSelection { get; set; } = Array.Empty<string>();
+
+
+    private string? ValidationMessage { get; set; } = null;
+
+    private bool WaitingForApiResponse { get; set; } = true;
+
+    
+    protected override async Task OnInitializedAsync() {
+        if (ProjectContainer.Value == null) {
+            ValidationMessage = "Nedošlo ke správnému předání instance projektu! Zkuste restartovat stránku";
+        }
+        else {
+            SelectedProject = ProjectContainer.Value;
+        }
+        if (SelectedProject.Id != 0) {
+            var response = await Http.GetFromJsonAsync<List<DataModelAssignment<UserBase>>?>($"api/Users/projectUsers/{SelectedProject.Id}");
+            if (response != null) {
+                Users = response;
+            }
+        }
+        WaitingForApiResponse = false;
+        
+        StateHasChanged();
+    }
+
+
+    /*
+    private void AssignedUsersSelectionChanged(ChangeEventArgs e) {
+        var value = e.Value;
+        if (value != null) {
+            AssignedUserSelection = (string[])value;
+        }
+    }
+    private void UnassignedUsersSelectionChanged(ChangeEventArgs e) {
+        var value = e.Value;
+        if (value != null) {
+            UnassignedUserSelection = (string[])value;
+        }
+    }
+    */
+
+    private void UnassignUsersFromProject() {
+        return;
+    }
+
+}
