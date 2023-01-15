@@ -28,19 +28,21 @@ public class UserBase {
     public bool PwdInit { get; set; }
 
 
-    public long? SuperiorId { get; set; }
 
-
-    public UserBase(){}
+    public UserBase() {
+        Username = "Unknown";
+        FullName = "Unknown";
+        PrimaryWorkplace = "Unknown";
+        EmailAddress = "Unknown";
+    }
 
     public UserBase(long id, string username,  string fullName, string primaryWorkplace,
-        string emailAddress, long? superiorId) {
+        string emailAddress) {
         Id = id;
         Username = username;
         FullName = fullName;
         PrimaryWorkplace = primaryWorkplace;
         EmailAddress = emailAddress;
-        SuperiorId = superiorId;
     }
 
 }

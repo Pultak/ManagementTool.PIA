@@ -11,7 +11,15 @@ public static class AssignmentUtils {
     public const int MaxAssignmentNoteLength = 1024;
     public const int MinAssignmentNoteLength = 1;
 
-    public static EAssignmentCreationResponse ValidateNewAssignment(Assignment assignment, Project project) {
+    public static EAssignmentCreationResponse ValidateNewAssignment(Assignment assignment, Project? project, User? user) {
+
+        if (project == null || assignment.ProjectId != project.Id) {
+            return EAssignmentCreationResponse.InvalidProject;
+        }
+
+        if (user == null || assignment.UserId != user.Id) {
+            return EAssignmentCreationResponse.InvalidUser;
+        }
 
         if (assignment.Name.Length is < MinAssignmentNameLength or > MaxAssignmentNameLength){
             return EAssignmentCreationResponse.InvalidName;
@@ -32,11 +40,11 @@ public static class AssignmentUtils {
             //toDate is earlier or from the same time as fromDate
             return EAssignmentCreationResponse.InvalidToDate;
         }
-        //todo max allocation?
         if (assignment.AllocationScope < 1) {
             return EAssignmentCreationResponse.InvalidAllocationScope;
         }
 
         return EAssignmentCreationResponse.Ok;
     }
+    
 }

@@ -1,6 +1,6 @@
 ﻿namespace ManagementTool.Shared.Models.Login; 
 
 public enum EAuthResponse {
-    Success, UnknownUser, WrongPassword, AlreadyLoggedIn, UnknownResponse, EmptyUsername, EmptyPassword
+    Success, UnknownUser, WrongPassword, AlreadyLoggedIn, UnknownResponse, EmptyUsername, EmptyPassword, BadRequest
         
 }

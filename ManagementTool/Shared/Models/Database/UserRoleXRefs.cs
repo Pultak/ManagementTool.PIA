@@ -1,10 +1,8 @@
-﻿namespace ManagementTool.Shared.Models.Database
-{
-    public class UserRoleXRefs {
+﻿namespace ManagementTool.Shared.Models.Database; 
 
-        public long Id { get; set; }
-        public long IdUser { get; set; }
-        public long IdRole { get; set; }
-        public DateTime AssignedDate { get; set; }
-    }
+public class UserRoleXRefs {
+    public long Id { get; set; }
+    public long IdUser { get; set; }
+    public long IdRole { get; set; }
+    public DateTime AssignedDate { get; set; }
 }

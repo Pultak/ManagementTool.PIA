@@ -38,4 +38,30 @@ public class Assignment {
     public DateTime ToDate { get; set; }
     
     public EAssignmentState State { get; set; }
+
+
+    public Assignment() {
+        Id = default;
+        ProjectId = default;
+        Name = "";
+        Note = "";
+        UserId = default;
+        AllocationScope = default;
+        FromDate = DateTime.Now;
+        ToDate = DateTime.Now.AddDays(1);
+        State = EAssignmentState.Active;
+    }
+
+    public Assignment(long id, long projectId, string name, string note, long userId, 
+        long allocationScope, DateTime fromDate, DateTime toDate, EAssignmentState state) {
+        Id = id;
+        ProjectId = projectId;
+        Name = name;
+        Note = note;
+        UserId = userId;
+        AllocationScope = allocationScope;
+        FromDate = fromDate;
+        ToDate = toDate;
+        State = state;
+    }
 }

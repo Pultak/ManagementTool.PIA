@@ -15,12 +15,12 @@ public class User : UserBase {
     }
     
     public User(UserBase userBase): base(userBase.Id, userBase.Username, userBase.FullName, 
-        userBase.PrimaryWorkplace, userBase.EmailAddress, userBase.SuperiorId) {
+        userBase.PrimaryWorkplace, userBase.EmailAddress) {
 
     }
     
     public User(long id, string username,  string fullName, string primaryWorkplace, string emailAddress,
-        string pwd, string salt, long? superiorId) : base(id, username, fullName, primaryWorkplace, emailAddress, superiorId) {
+        string pwd, string salt) : base(id, username, fullName, primaryWorkplace, emailAddress) {
         Pwd = pwd;
         Salt = salt;
     }

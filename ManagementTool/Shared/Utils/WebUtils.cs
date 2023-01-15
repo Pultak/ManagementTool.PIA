@@ -5,6 +5,7 @@ using System.Net.Http.Formatting;
 using System.Web.Http;
 using Microsoft.Extensions.Logging;
 using System.Web.Http.Results;
+using System.Net.Http.Json;
 
 namespace ManagementTool.Shared.Utils; 
 
@@ -37,7 +38,31 @@ public static class WebUtils {
     }
 
 
-    
+    public static async Task<(EApiHttpResponse status, T? response)> SendApiGetRequestAsync<T>(this HttpClient client, ILogger logger, string requestUri) {
+        try {
+            var response = await client.GetFromJsonAsync<T>(requestUri);
+            if (response == null) {
+                return (EApiHttpResponse.UnknownException, default);
+            }
+
+            logger.LogInformation($"SendApiGetRequestAsync -> get sent to {requestUri} was successful!");
+            return (EApiHttpResponse.Ok, response);
+        }
+        catch (HttpRequestException e) {
+            return (HandleApiHttpRequestException(e, "SendApiGetRequestAsync", logger), default);
+        }
+        catch (ArgumentException e) {
+            logger.LogError("SendApiGetRequestAsync -> Received invalid data from the API!" + e.Message);
+            return (EApiHttpResponse.ArgumentException, default);
+        }
+        catch (Exception e) {
+            logger.LogError("SendApiGetRequestAsync -> Unknown error occurred during authentication! " + e.Message);
+            return (EApiHttpResponse.UnknownException, default);
+        }
+
+    }
+
+
     public static async void SendApiPutRequestAsync<T>(this HttpClient client, ILogger logger, string endpoint, 
         T payload, Action<EApiHttpResponse, bool> resolveResponse) {
         
@@ -56,7 +81,7 @@ public static class WebUtils {
     public static async void SendApiPatchRequestAsync<T>(this HttpClient client, ILogger logger, string endpoint, 
         T payload, Action<EApiHttpResponse, bool> resolveResponse) {
        
-        var apiResponse = await WebUtils.SendApiPatchRequest(client, logger, endpoint, payload);
+        var apiResponse = await client.SendApiPatchRequest(logger, endpoint, payload);
         resolveResponse(apiResponse, true);
     }
 
@@ -74,11 +99,11 @@ public static class WebUtils {
             return HandleApiHttpRequestException(e, "SendApiPutRequest", logger);
         }
         catch (ArgumentException e) {
-            logger.LogError("SendApiPutRequest -> Received invalid data from the API!");
+            logger.LogError("SendApiPutRequest -> Received invalid data from the API!" + e.Message);
             return EApiHttpResponse.ArgumentException;
         }
         catch (Exception e) {
-            logger.LogError("SendApiPutRequest -> Unknown error occurred during authentication!");
+            logger.LogError("SendApiPutRequest -> Unknown error occurred during authentication!" + e.Message);
             return EApiHttpResponse.UnknownException;
         }
     }
@@ -97,7 +122,7 @@ public static class WebUtils {
             return HandleApiHttpRequestException(e, "SendApiPatchRequest", logger);
         }
         catch (ArgumentException e) {
-            logger.LogError("SendApiPatchRequest -> Received invalid data from the API!");
+            logger.LogError("SendApiPatchRequest -> Received invalid data from the API!" + e.Message);
             return EApiHttpResponse.ArgumentException;
         }
         catch (Exception e) {
@@ -119,7 +144,7 @@ public static class WebUtils {
             return HandleApiHttpRequestException(e, "SendApiDeleteRequest", logger);
         }
         catch (ArgumentException e) {
-            logger.LogError("SendApiDeleteRequest -> Received invalid data from the API!");
+            logger.LogError("SendApiDeleteRequest -> Received invalid data from the API!" + e.Message);
             return EApiHttpResponse.ArgumentException;
         }
         catch (Exception e) {
