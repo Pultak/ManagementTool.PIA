@@ -20,6 +20,11 @@ public class ProjectDataService : IProjectDataService {
         return _db.Project.Find(projectId);
     }
 
+    public IEnumerable<Project> GetProjectsByIds(List<long> projectIds) {
+        return _db.Project.Where(x => projectIds.Contains(x.Id)).ToList();
+    }
+
+
     public long AddProject(Project project) {
         _db.Project.Add(project);
         var rowsChanged = _db.SaveChanges();
@@ -62,7 +67,6 @@ public class ProjectDataService : IProjectDataService {
             //project can be without assignments
             return true;
         }
-        //todo is ok?
         _db.Remove(userAssignments);
         var changedRows = _db.SaveChanges();
         return changedRows > 0;
@@ -75,7 +79,6 @@ public class ProjectDataService : IProjectDataService {
             //project can be without assignments
             return true;
         }
-        //todo is ok?
         _db.Remove(assignments);
         var changedRows = _db.SaveChanges();
         return changedRows > 0;

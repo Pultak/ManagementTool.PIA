@@ -1,7 +1,5 @@
 ﻿using System.Net;
-using System.Net.Mail;
 using System.Security.Cryptography;
-using System.Text.RegularExpressions;
 using ManagementTool.Server.Services.Projects;
 using ManagementTool.Server.Services.Users;
 using ManagementTool.Shared.Models.ApiModels;
@@ -17,8 +15,7 @@ namespace ManagementTool.Server.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 public class UsersController : ControllerBase {
-
-
+    
     public IUserDataService UserDataService { get; }
     public IProjectDataService ProjectDataService { get; }
     public IUserRoleDataService RoleDataService { get; }
@@ -35,13 +32,14 @@ public class UsersController : ControllerBase {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return UserDataService.GetAllUsers();
     }
 
 
     [HttpGet("projectUsers/{idProject:long}")]
     public IEnumerable<DataModelAssignment<UserBase>>? GetAllUsersForProject(long idProject) {
-        if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
+        if (!ProjectsController.IsAuthorizedToManageProjects(idProject, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
@@ -52,9 +50,10 @@ public class UsersController : ControllerBase {
         }
 
         var result = UserDataService.GetAllUsersAssignedToProject(idProject);
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return result;
     }
-
+    /*todo remove
     [HttpGet("{id:long}")]
     public UserBase? GetUserById(long id) {
         if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
@@ -75,7 +74,7 @@ public class UsersController : ControllerBase {
         }
         
         return user;
-    }
+    }*/
 
     [HttpPut]
     public long CreateUser([FromBody] UserUpdatePayload<User> userPayload) {
@@ -97,9 +96,7 @@ public class UsersController : ControllerBase {
             return -1;
         }
 
-        // Generate a 128-bit salt using a sequence of
-        // cryptographically strong random bytes.
-        var salt = RandomNumberGenerator.GetBytes(128 / 8); // divide by 8 to convert bits to bytes
+        var salt = GenerateSalt(); 
 
         userPayload.UpdatedUser.Pwd = LoginController.HashPwd(userPayload.UpdatedUser.Pwd, salt);
         userPayload.UpdatedUser.Salt = Convert.ToBase64String(salt);
@@ -114,6 +111,7 @@ public class UsersController : ControllerBase {
 
         UpdateUserRoleAssignments(userPayload.AssignedRoles, userId);
 
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return userId;
     }
 
@@ -131,14 +129,15 @@ public class UsersController : ControllerBase {
             var dbUser = new User(userPayload.UpdatedUser);
             UserDataService.UpdateUser(dbUser);
             UpdateUserRoleAssignments(userPayload.AssignedRoles, userPayload.UpdatedUser.Id);
+            Response.StatusCode = (int)HttpStatusCode.OK;
         }
         else {
             Response.StatusCode = (int)HttpStatusCode.BadRequest;
         }
     }
-
+    /* todo remove
     [HttpDelete]
-    public void Delete([FromBody] UserBase user) {
+    public void DeleteUser([FromBody] UserBase user) {
         if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
             //only secretariat can delete users
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
@@ -146,14 +145,16 @@ public class UsersController : ControllerBase {
         }
         var dbUser = new User(user);
         var ok = UserDataService.DeleteUser(dbUser);
+        Response.StatusCode = (int)HttpStatusCode.OK;
 
         if (!ok) {
             Response.StatusCode = (int)HttpStatusCode.NoContent;
         }
     }
+    */
 
     [HttpDelete("{id}")]
-    public void Delete(long id) {
+    public void DeleteUser(long id) {
         if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
             //only secretariat can delete users
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
@@ -171,6 +172,7 @@ public class UsersController : ControllerBase {
             return;
         }
         var ok = UserDataService.DeleteUser(user);
+        Response.StatusCode = (int)HttpStatusCode.OK;
 
         if (!ok) {
             Response.StatusCode = (int)HttpStatusCode.NoContent;
@@ -205,6 +207,7 @@ public class UsersController : ControllerBase {
         }
         
         var ok = UserDataService.AssignUserToProject(user, project);
+        Response.StatusCode = (int)HttpStatusCode.OK;
         if (!ok) {
             Response.StatusCode = (int)HttpStatusCode.InternalServerError;
         }
@@ -250,5 +253,12 @@ public class UsersController : ControllerBase {
         }
 
         return true;
+    }
+
+
+    public static byte[] GenerateSalt() {
+        // Generate a 128-bit salt using a sequence of
+        // cryptographically strong random bytes.
+        return RandomNumberGenerator.GetBytes(128 / 8); // divide by 8 to convert bits to bytes
     }
 }

@@ -27,6 +27,7 @@ public class UserRolesController : ControllerBase {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return UserRoleDataService.GetAllRoles();
     }
 
@@ -40,6 +41,7 @@ public class UserRolesController : ControllerBase {
         
         var userRoles = userId < 1 ? Array.Empty<Role>() : UserRoleDataService.GetUserRolesByUserId(userId).ToArray();
 
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return (from role in allRoles let assigned = userRoles.Contains(role) select new DataModelAssignment<Role>(assigned, role)).ToList();
     }
 
@@ -56,9 +58,8 @@ public class UserRolesController : ControllerBase {
             Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             return Array.Empty<UserBase>();
         }
-
         
-
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return UserDataService.GetAllUsersByRole(supRole);
     }
 
@@ -75,6 +76,7 @@ public class UserRolesController : ControllerBase {
         }
 
         var supIds = UserDataService.GetAllUserSuperiorsIds(userId);
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return supIds;
     }
 
@@ -91,6 +93,7 @@ public class UserRolesController : ControllerBase {
             Response.StatusCode = (int)HttpStatusCode.BadRequest;
             return null;
         }
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return UserRoleDataService.GetUserRolesByUserId(userId);
     }
 }

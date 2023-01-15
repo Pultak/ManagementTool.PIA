@@ -63,12 +63,6 @@ internal class Program {
             options.Cookie.HttpOnly = true;
             options.Cookie.IsEssential = true;
         });
-
-        /* todo add session timeout
-        builder.Services.AddSession(options => {
-            options.IdleTimeout = TimeSpan.FromMinutes(30);
-        });*/
-
         var dbConnectionString = configuration.GetValue<string>("DBPosgreSQL");
 
         services.AddDbContext<ManToolDbContext>(x =>

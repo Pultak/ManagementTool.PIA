@@ -15,6 +15,7 @@ public class ManToolDbContext : DbContext {
     public virtual DbSet<Project> Project { get; set; }
     public virtual DbSet<UserRoleXRefs> UserRoleXRefs { get; set; }
     public virtual DbSet<UserProjectXRefs> UserProjectXRefs { get; set; }
+    public virtual DbSet<UserSuperiorXRefs> UserSuperiorXRefs { get; set; }
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
@@ -37,6 +38,7 @@ public class ManToolDbContext : DbContext {
         SetupRoleEntity(modelBuilder);
         SetupUserRoleXRefsEntity(modelBuilder);
         SetupUserProjectXRefsEntity(modelBuilder);
+        SetupUserSuperiorXRefsEntity(modelBuilder);
 
         base.OnModelCreating(modelBuilder);
     }
@@ -68,6 +70,9 @@ public class ManToolDbContext : DbContext {
             entity.Property(e => e.PwdInit)
                 .IsRequired()
                 .HasColumnName("pwd_changed");
+            entity.Property(e => e.Salt)
+                .IsRequired()
+                .HasColumnName("salt");
         });
     }
 
@@ -166,7 +171,6 @@ public class ManToolDbContext : DbContext {
             entity.Property(e => e.AssignedDate)
                 .IsRequired()
                 .HasColumnName("assigned_date")
-                //todo possible different more complex conversion needed
                 .HasConversion<DateTime>();
         });
     }
@@ -187,7 +191,25 @@ public class ManToolDbContext : DbContext {
             entity.Property(e => e.AssignedDate)
                 .IsRequired()
                 .HasColumnName("assigned_date")
-                //todo
+                .HasConversion<DateTime>();
+        });
+    }
+
+    private void SetupUserSuperiorXRefsEntity(ModelBuilder modelBuilder) {
+        modelBuilder.Entity<UserSuperiorXRefs>(entity => {
+            entity.ToTable("UserSuperiorXRefs");
+            entity.Property(e => e.Id)
+                .IsRequired()
+                .HasColumnName("id");
+            entity.Property(e => e.IdUser)
+                .IsRequired()
+                .HasColumnName("id_user");
+            entity.Property(e => e.IdSuperior)
+                .IsRequired()
+                .HasColumnName("id_superior");
+            entity.Property(e => e.AssignedDate)
+                .IsRequired()
+                .HasColumnName("assigned_date")
                 .HasConversion<DateTime>();
         });
     }

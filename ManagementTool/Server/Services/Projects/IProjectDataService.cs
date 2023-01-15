@@ -7,6 +7,7 @@ public interface IProjectDataService {
     public IEnumerable<Project> GetAllProjects();
     public Project? GetProjectByName(string name);
     public Project? GetProjectById(long projectId);
+    public IEnumerable<Project> GetProjectsByIds(List<long> projectId);
 
     public long AddProject(Project project);
     public bool DeleteProject(long id);

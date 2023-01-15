@@ -33,6 +33,7 @@ public class ProjectsController : ControllerBase {
             return null;
         }
 
+        Response.StatusCode = (int)HttpStatusCode.OK;
         if (LoginController.IsUserAuthorized(ERoleType.Secretariat, roles) ||
             LoginController.IsUserAuthorized(ERoleType.DepartmentManager, roles)) {
 
@@ -68,6 +69,7 @@ public class ProjectsController : ControllerBase {
             return null;
         }
 
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return project;
     }
 
@@ -84,6 +86,7 @@ public class ProjectsController : ControllerBase {
         }
 
         var resultUsers = UserDataService.GetAllUsersUnderProject(projectId);
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return resultUsers;
     }
 
@@ -133,13 +136,14 @@ public class ProjectsController : ControllerBase {
             Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             return Response.StatusCode;
         }
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return projectId;
     }
 
 
     [HttpPatch("update")]
     public void UpdateProject([FromBody] Project project) {
-        if (IsAuthorizedToManageProjects(project.Id)) {
+        if (IsAuthorizedToManageProjects(project.Id, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return;
         }
@@ -162,11 +166,13 @@ public class ProjectsController : ControllerBase {
         }
 
         UserRoleDataService.UpdateProjectRoleName(project.Id, project.ProjectName + " Manažer");
+        Response.StatusCode = (int)HttpStatusCode.OK;
     }
     
     [HttpDelete]
     public void Delete([FromBody] Project project) {
-        if (IsAuthorizedToManageProjects(project.Id)) {
+        Response.StatusCode = (int)HttpStatusCode.OK;
+        if (IsAuthorizedToManageProjects(project.Id, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return;
         }
@@ -197,8 +203,8 @@ public class ProjectsController : ControllerBase {
 
     
 
-    private bool IsAuthorizedToManageProjects(long projectId) {
-        var userRoles = LoginController.GetLoggedUserRoles(HttpContext.Session);
+    public static bool IsAuthorizedToManageProjects(long projectId, ISession session) {
+        var userRoles = LoginController.GetLoggedUserRoles(session);
         if (userRoles == null) {
             return false;
         }
@@ -215,7 +221,7 @@ public class ProjectsController : ControllerBase {
         var managerRoles = LoginController.GetAllProjectManagerRoles(userRoles);
 
         //can this manager manage assignments for this project?
-        return managerRoles.Any(x => x.ProjectId == relevantProjectId);
+        return managerRoles.Any(x => x.ProjectId == projectId);
     }
 
 }

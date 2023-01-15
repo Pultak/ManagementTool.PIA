@@ -1,5 +1,5 @@
-﻿using ManagementTool.Shared.Models.Database;
-using Microsoft.AspNetCore.Razor.Language.Intermediate;
+﻿using ManagementTool.Shared.Models.ApiModels;
+using ManagementTool.Shared.Models.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace ManagementTool.Server.Services.Users;
@@ -13,6 +13,8 @@ public class UserDataService : IUserDataService{
     public IEnumerable<User> GetAllUsers() {
         return _db.User.ToList();
     }
+
+
 
     public long AddUser(User user) {
         _db.User.Add(user);
@@ -52,13 +54,27 @@ public class UserDataService : IUserDataService{
         //don't update pwd and username
         _db.Entry(user).Property(o => o.Pwd).IsModified = false;
         _db.Entry(user).Property(o => o.Username).IsModified = false;
+        _db.Entry(user).Property(o => o.Salt).IsModified = false;
+        var rowsChanged = _db.SaveChanges();
+        return rowsChanged > 0;
+    }
+
+    public bool UpdateUserPwd(User user) {
+        _db.Entry(user).State = EntityState.Modified;
+        //don't update pwd and username
+        _db.Entry(user).Property(o => o.Pwd).IsModified = true;
+        _db.Entry(user).Property(o => o.PwdInit).IsModified = true;
+        _db.Entry(user).Property(o => o.Username).IsModified = false;
+        _db.Entry(user).Property(o => o.PrimaryWorkplace).IsModified = false;
+        _db.Entry(user).Property(o => o.EmailAddress).IsModified = false;
+        _db.Entry(user).Property(o => o.FullName).IsModified = false;
         var rowsChanged = _db.SaveChanges();
         return rowsChanged > 0;
     }
 
     public IEnumerable<User> GetAllUsersByRole(Role role) {
         var queryResult = _db.UserRoleXRefs.Join(_db.User,
-                refs => refs.IdRole,
+                refs => refs.IdUser,
                 user => user.Id,
                 (refs, user) => new {
                     id = user.Id,
@@ -67,11 +83,66 @@ public class UserDataService : IUserDataService{
                     fullName = user.FullName,
                     primaryWorkplace = user.PrimaryWorkplace,
                     emailAddress = user.EmailAddress,
+                    salt = user.Salt,
+                    pwdInit = user.PwdInit,
                     roleId = refs.IdRole
                 }).Where(x => x.roleId == role.Id).
-            Select(x => new User(x.id, x.username, x.pwd, x.fullName, x.primaryWorkplace, x.emailAddress)).ToList();
+            Select(x => new User(x.id, x.username, x.fullName, x.primaryWorkplace,
+                x.emailAddress, x.pwd, x.salt, x.pwdInit)).ToList();
         return queryResult;
     }
+
+     public IEnumerable<long> GetAllUserSuperiorsIds(long userId) {
+         var queryResult = _db.UserSuperiorXRefs.Where(x => x.IdUser == userId).Select(x => x.IdSuperior);
+        return queryResult;
+    }
+
+
+
+    public IEnumerable<DataModelAssignment<UserBase>> GetAllUsersAssignedToProject(long projectId) {
+
+        var query = from user in _db.User
+            from refs in _db.UserProjectXRefs.Where(x => x.IdProject == projectId).DefaultIfEmpty()
+            select new DataModelAssignment<UserBase>(refs != null, new UserBase(user.Id, user.Username, user.FullName,
+                user.PrimaryWorkplace, user.EmailAddress, user.PwdInit));
+        /*join refs in _db.UserProjectXRefs 
+            on user.Id equals refs.IdUser into allCols
+        from subRefs in allCols.DefaultIfEmpty()
+        group subRefs by user into grouped
+        select new{grouped.Key.};*/
+
+        /*var result = _db.User.GroupJoin(_db.UserProjectXRefs,
+        user => user.Id,
+        refs => refs.IdUser,
+        (user, refs) => new {
+            id = user.Id,
+            username = user.Username,
+            fullName = user.FullName,
+            workplace = user.PrimaryWorkplace,
+            email = user.EmailAddress,
+            pwdInit = user.PwdInit,
+            superiorId = user.SuperiorId,
+            projectId = refs == null ? 0 : refs.IdProject
+        }).Where(x => x.projectId == projectId || x.projectId == 0)
+    .Select(x => new DataModelAssignment<UserBase>(
+        x.projectId != 0, 
+        new UserBase(x.id, x.username, x.fullName, x.workplace, x.email, x.superiorId))
+    ).ToList();
+
+*/
+        //todo empty return
+        return query;
+    }
+
+    public IEnumerable<UserBase> GetAllUsersUnderProject(long projectId) {
+        var query = _db.UserProjectXRefs.Where(x => x.IdProject == projectId).Join(_db.User,
+            refs => refs.IdUser,
+            user => user.Id,
+            (refs, user) => user);
+
+        return query;
+    }
+
 
     public bool AssignUserToProject(User user, Project project) {
         var newRefs = new UserProjectXRefs {
@@ -92,7 +163,6 @@ public class UserDataService : IUserDataService{
         if (!result.Any()) {
             return false;
         }
-        //todo is ok syntax?
         _db.Remove(result);
         var changedRows = _db.SaveChanges();
         return changedRows > 0;
@@ -114,11 +184,6 @@ public class UserDataService : IUserDataService{
     }
     
     public void DeleteUser(int id) {
-        /*todo remove
-         var emp = _db.User.Find(id);
-        if (emp == null) {
-            return;
-        }*/
         var dummyUser = new User {
             Id = id
         };

@@ -37,6 +37,7 @@ public class AssignmentsController : ControllerBase {
             return null;
         }
 
+        Response.StatusCode = (int)HttpStatusCode.OK;
         if (LoginController.IsUserAuthorized(ERoleType.DepartmentManager, userRoles)) {
             return AssignmentsDataService.GetAllAssignments();
         }
@@ -72,6 +73,7 @@ public class AssignmentsController : ControllerBase {
         }
 
         var result = AssignmentsDataService.GetAssignmentsByUserId((long)userId);
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return result.ToList();
     }
 
@@ -111,6 +113,7 @@ public class AssignmentsController : ControllerBase {
             return -1;
         }
 
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return assignmentId;
     }
 
@@ -128,6 +131,7 @@ public class AssignmentsController : ControllerBase {
         }
         
         var updated = AssignmentsDataService.UpdateAssignment(assignment);
+        Response.StatusCode = (int)HttpStatusCode.OK;
         if (!updated) {
             //Assignment update failure
             Response.StatusCode = (int)HttpStatusCode.InternalServerError;
@@ -151,6 +155,7 @@ public class AssignmentsController : ControllerBase {
         var managerRoles = LoginController.GetAllProjectManagerRoles(userRoles);
 
         //can this manager manage assignments for this project?
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return managerRoles.Any(x => x.ProjectId == relevantProjectId);
     }
 
@@ -179,6 +184,7 @@ public class AssignmentsController : ControllerBase {
             Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
             return valResult;
         }
+        Response.StatusCode = (int)HttpStatusCode.OK;
         return EAssignmentCreationResponse.Ok;
     }
 
@@ -195,6 +201,7 @@ public class AssignmentsController : ControllerBase {
         }
 
         var done = AssignmentsDataService.DeleteAssignment(assignmentId);
+        Response.StatusCode = (int)HttpStatusCode.OK;
 
         if (!done) {
             //Something failed during deletion
