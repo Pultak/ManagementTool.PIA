@@ -1,12 +1,12 @@
-﻿using ManagementTool.Shared.Models.Database;
+﻿using ManagementTool.Shared.Models.Login;
 
 namespace ManagementTool.Shared.Models.AppState;
 
-public class EditProjectStateContainer {
-    public Project? Value { get; set; }
+public class StateContainer<T> {
+    public T? Value { get; set; }
     public event Action OnStateChange;
 
-    public void SetValue(Project? value) {
+    public void SetValue(T? value) {
         Value = value;
         NotifyStateChanged();
     }
