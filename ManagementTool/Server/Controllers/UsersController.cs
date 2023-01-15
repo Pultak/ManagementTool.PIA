@@ -1,7 +1,10 @@
-﻿using System.Net.Mail;
+﻿using System.Net;
+using System.Net.Mail;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using ManagementTool.Server.Services.Projects;
 using ManagementTool.Server.Services.Users;
+using ManagementTool.Shared.Models.ApiModels;
 using ManagementTool.Shared.Models.Database;
 using ManagementTool.Shared.Models.Utils;
 using ManagementTool.Shared.Utils;
@@ -18,114 +21,195 @@ public class UsersController : ControllerBase {
 
     public IUserDataService UserDataService { get; }
     public IProjectDataService ProjectDataService { get; }
+    public IUserRoleDataService RoleDataService { get; }
 
-    public UsersController(IUserDataService userService, IProjectDataService projectService) {
+    public UsersController(IUserDataService userService, IProjectDataService projectService, IUserRoleDataService roleDataService) {
         UserDataService = userService;
         ProjectDataService = projectService;
+        RoleDataService = roleDataService;
     }
     
     [HttpGet]
-    public IEnumerable<User> GetAllUsers() {
-        //todo authorized?
+    public IEnumerable<UserBase>? GetAllUsers() {
+        if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
+            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            return null;
+        }
         return UserDataService.GetAllUsers();
     }
-    
-    [HttpGet("{id:long}")]
-    public ActionResult GetUserById(long id) {
 
+
+    [HttpGet("projectUsers/{idProject:long}")]
+    public IEnumerable<DataModelAssignment<UserBase>>? GetAllUsersForProject(long idProject) {
+        if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
+            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            return null;
+        }
+
+        if (idProject < 1) {
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return null;
+        }
+
+        var result = UserDataService.GetAllUsersAssignedToProject(idProject);
+        return result;
+    }
+
+    [HttpGet("{id:long}")]
+    public UserBase? GetUserById(long id) {
+        if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
+            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            return null;
+        }
+        
         if (id < 0) {
-            return BadRequest();
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return null;
         }
 
         var user = UserDataService.GetUserById(id);
 
         if (user == null) {
-            return NotFound();
+            Response.StatusCode = (int)HttpStatusCode.NotFound;
+            return null;
         }
-
-        user.Pwd = "NiceTry:-)";
-
-        return Ok(user);
+        
+        return user;
     }
-    
+
     [HttpPut]
-    public ActionResult CreateUser([FromBody] User user) {
-
-        if (user == null) {
-            return BadRequest(EUserCreationResponse.EmptyUser);
+    public long CreateUser([FromBody] UserUpdatePayload<User> userPayload) {
+        if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
+            //only secretariat can 
+            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            return -1;
         }
 
-        var valResult = UserUtils.ValidateUser(user);
-        if (valResult != EUserCreationResponse.Ok || UserUtils.ValidatePassword(user.Pwd)) {
-            return UnprocessableEntity(valResult);
+        var valResult = UserUtils.ValidateUser(userPayload.UpdatedUser);
+        if (valResult != EUserCreationResponse.Ok || !UserUtils.IsValidPassword(userPayload.UpdatedUser.Pwd)) {
+            Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
+            return -1;
         }
-
-        valResult = CheckUserDataConflicts(user);
+        
+        valResult = CheckUserDataConflicts(userPayload.UpdatedUser);
         if (valResult != EUserCreationResponse.Ok) {
-            return Conflict(valResult);
+            Response.StatusCode = (int)HttpStatusCode.Conflict;
+            return -1;
         }
 
+        // Generate a 128-bit salt using a sequence of
+        // cryptographically strong random bytes.
+        var salt = RandomNumberGenerator.GetBytes(128 / 8); // divide by 8 to convert bits to bytes
 
-        var userId = UserDataService.AddUser(user);
+        userPayload.UpdatedUser.Pwd = LoginController.HashPwd(userPayload.UpdatedUser.Pwd, salt);
+        userPayload.UpdatedUser.Salt = Convert.ToBase64String(salt);
+        
+
+        var userId = UserDataService.AddUser(userPayload.UpdatedUser);
 
         if (userId < 0) {
-            //todo saving failed!
-            return StatusCode(500);
+            Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            return -1;
         }
 
-        return Ok(userId);
+        UpdateUserRoleAssignments(userPayload.AssignedRoles, userId);
+
+        return userId;
     }
 
 
     [HttpPatch("update")]
-    public void UpdateUser([FromBody] User user) {
-        if (user == null) {
-            throw new BadHttpRequestException("The body cant be empty!");
+    public void UpdateUser([FromBody] UserUpdatePayload<UserBase> userPayload) {
+        if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
+            //only secretariat can update users
+            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            return;
         }
-
-        var valResult = UserUtils.ValidateUser(user);
+        var valResult = UserUtils.ValidateUser(userPayload.UpdatedUser);
         if (valResult == EUserCreationResponse.Ok) {
-            UserDataService.UpdateUser(user);
+            
+            var dbUser = new User(userPayload.UpdatedUser);
+            UserDataService.UpdateUser(dbUser);
+            UpdateUserRoleAssignments(userPayload.AssignedRoles, userPayload.UpdatedUser.Id);
         }
         else {
-            throw new BadHttpRequestException("Validation of updated user failed! Reason: " + valResult);
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+        }
+    }
+
+    [HttpDelete]
+    public void Delete([FromBody] UserBase user) {
+        if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
+            //only secretariat can delete users
+            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            return;
+        }
+        var dbUser = new User(user);
+        var ok = UserDataService.DeleteUser(dbUser);
+
+        if (!ok) {
+            Response.StatusCode = (int)HttpStatusCode.NoContent;
         }
     }
 
     [HttpDelete("{id}")]
-    public void Delete(int id) {
-        //todo
+    public void Delete(long id) {
+        if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
+            //only secretariat can delete users
+            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            return;
+        }
+        if (id < 1) {
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return;
+        }
+
+        var user = UserDataService.GetUserById(id);
+
+        if (user == null) {
+            Response.StatusCode = (int)HttpStatusCode.NotFound;
+            return;
+        }
+        var ok = UserDataService.DeleteUser(user);
+
+        if (!ok) {
+            Response.StatusCode = (int)HttpStatusCode.NoContent;
+        }
     }
 
 
-
-    // PUT api/<UsersController>/assignProject/
+    
     [HttpPut("assignUser/{idUser:long}/{idProject:long}")]
-    public ActionResult AssignUserToProject(long idUser, long idProject) {
-
+    public void AssignUserToProject(long idUser, long idProject) {
+        
+        if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
+            //only secretariat can assign users
+            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            return;
+        }
         if (idUser < 0 && idProject < 0) {
-            return BadRequest();
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            return;
         }
 
         var user = UserDataService.GetUserById(idUser);
         if (user == null) {
-            return NotFound();
+            Response.StatusCode = (int)HttpStatusCode.NotFound;
+            return;
         }
 
         var project = ProjectDataService.GetProjectById(idProject);
         if (project == null) {
-            return NotFound();
+            Response.StatusCode = (int)HttpStatusCode.NotFound;
+            return;
         }
         
         var ok = UserDataService.AssignUserToProject(user, project);
         if (!ok) {
-            return StatusCode(500);
+            Response.StatusCode = (int)HttpStatusCode.InternalServerError;
         }
-
-        return Ok();
     }
-
-
+    
 
     private EUserCreationResponse CheckUserDataConflicts(User user) {
         var allUsers = UserDataService.GetAllUsers();
@@ -133,5 +217,38 @@ public class UsersController : ControllerBase {
             return EUserCreationResponse.UsernameTaken;
         }
         return EUserCreationResponse.Ok;
+    }
+
+    
+    private bool UpdateUserRoleAssignments(List<DataModelAssignment<Role>> roleAssignments, long userId) {
+        var userRoles = RoleDataService.GetUserRolesByUserId(userId).ToArray();
+        
+        List<Role> unassignList = new();
+        List<Role> assignList = new();
+        foreach (var roleAssignment in roleAssignments) {
+            if (roleAssignment.IsAssigned) {
+                if (userRoles.All(role => role.Id != roleAssignment.DataModel.Id)) {
+                    //we need to add reference
+                    assignList.Add(roleAssignment.DataModel);
+                }
+                //nothing changed
+            }
+            else {
+                if (userRoles.Any(role => role.Id == roleAssignment.DataModel.Id)) {
+                    //we need to remove reference
+                    unassignList.Add(roleAssignment.DataModel);
+                }
+            }
+        }
+
+        if (assignList.Count > 0) {
+            RoleDataService.AssignRolesToUser(assignList, userId);
+        }
+
+        if (unassignList.Count > 0) {
+            RoleDataService.UnassignRolesFromUser(unassignList, userId);
+        }
+
+        return true;
     }
 }
