@@ -3,12 +3,18 @@
 
 @using System.ComponentModel.DataAnnotations
 @using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.AppState
+@using ManagementTool.Shared.Models.Login
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
+
+
+@implements IDisposable
 
 @inject NavigationManager UriHelper
 @inject HttpClient Http
 @inject ILogger<ChangePwdPage> Logger
+@inject StateContainer<LoggedUserPayload> LoggedUserContainer
 
 <h3>Změna hesla</h3>
 
@@ -23,10 +29,10 @@ else {
     <div class="spinner"></div>
 }
 else {
-    <EditForm id="@SubmitBtnId" EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+    <EditForm id="@SubmitBtnId" EditContext="@EditContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
         <DataAnnotationsValidator/>
 
-        <div class="form-group">
+        <div>
             <p>
                 <label>
                     Nové heslo
@@ -55,7 +61,7 @@ else {
             else {
                 <div class="modal-header">
                     <h5 class="modal-title">Změna hesla</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="OkPressed">
+                    <button type="button" data-dismiss="modal" aria-label="Close" @onclick="OkPressed">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
@@ -70,6 +76,7 @@ else {
         </div>
     </div>
 </div>
+
 
 
 @code {
@@ -87,7 +94,7 @@ else {
                        "Mělo by také obsahovat velké i malá písmena a číslice.")]
     public string NewPwd { get; set; } = "";
 
-    private EditContext _editContext;
+    private EditContext? EditContext { get; set; }
 
 
     private string? ModalMessage { get; set;}
@@ -109,11 +116,12 @@ else {
 
 
     protected override void OnInitialized() {
+        LoggedUserContainer.OnStateChange += StateHasChanged;
         WaitingForApiResponse = false;
         ModalMessage = null;
         ModalDisplay = "none";
         ModalClass = "";
-        _editContext = new EditContext(NewPwd);
+        EditContext = new EditContext(NewPwd);
         StateHasChanged();
     }
 
@@ -151,6 +159,10 @@ else {
             ModalMessage = StringResolver.ResolveApiResponse(apiResponse);
         }
         StateHasChanged();
+    }
+    
+    public void Dispose() {
+        LoggedUserContainer.OnStateChange -= StateHasChanged;
     }
 
 }

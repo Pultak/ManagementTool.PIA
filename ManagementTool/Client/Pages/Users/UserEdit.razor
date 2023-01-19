@@ -7,30 +7,41 @@
 @using Microsoft.AspNetCore.Components
 @using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.ApiModels
-@using ManagementTool.Shared.Models.UserComm
+@using ManagementTool.Shared.Models.Login
+@using System.Net
 @implements IDisposable
 
 @inject NavigationManager UriHelper
 @inject HttpClient Http
 @inject ILogger<UserEdit> Logger
 @inject StateContainer<UserBase> UserContainer
+@inject StateContainer<LoggedUserPayload> LoggedUserContainer
 @inject IJSRuntime JsRuntime
 
 
-<button class="bi bi-x" @onclick="ReturnToUsers">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x" viewBox="0 0 16 16">
+<button @onclick="ReturnToUsers">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
     </svg>
 </button>
 
-<h3>Editace uživatele</h3>
-@if (WaitingForApiResponse) {
+@if(!IsAuthorized) {
+    <div>Vypadá to, že nemáte dostatečné práva na zobrazení tohoto listu!</div>
+}
+else if (WaitingForApiResponse) {
     <div class="spinner"></div>
 }
 else {
-    <div class="wrapper">
-        <section class="createevent">
-            <EditForm id="@SubmitBtnId" EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+    @if (NewUserCreation) {
+        <h3>Vytváření nového uživatele</h3>
+    }
+    else {
+        <h3>Editace uživatele</h3>
+    }
+
+    <div>
+        <section>
+            <EditForm id="@SubmitBtnId" EditContext="@EditContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
                 <DataAnnotationsValidator/>
                 <table>
                     <tr>
@@ -42,7 +53,7 @@ else {
                             <ValidationMessage For="@(() => SelectedUser.Username)"/>
                         }
                         else {
-                            @SelectedUser.Username
+                                <b>@SelectedUser.Username</b>
                         }
                         </td>
                     </tr>
@@ -71,34 +82,28 @@ else {
                         </td>
                     </tr>
                     <tr>
-                        <td>Přiřazený vedoucí</td>
+                        <td>Aktuálně přiřazený vedoucí</td>
                         <td>
-                            
-                            <InputSelect TValue="UserBase" @bind-value="_selectedSuperiors">
-                                @foreach (var superior in AllSuperiors) {
-                                    <option value="@superior">
-                                    @superior.FullName</option>
-                                }
-                            </InputSelect>
-
-                            <!--todo<select for="Publisher" class="form-control"
-                                    bind="SelectedUser.SuperiorId">
-                                <option value=0 disabled selected hidden>
-                                    [bez vedoucího]</option>
-                                foreach (var superior in Superiors) {
-                                    <option value="superior.Id">
-                                        superior.FullName</option>
-                                }
-                          </select>
-                            -->
+                            @if (AllSuperiors.Length == 0) {
+                                <div>Neexistují žádní uživatelé s rolí nadřazeného</div>
+                            }
+                            else {
+                                <select multiple @onchange="@OnSelectedSuperiorsChange">
+                                    @foreach (var superior in AllSuperiors) {
+                                        <option value="@superior.Id" selected=@_selectedSuperiorsIds.Contains(superior.Id.ToString())>
+                                            @superior.FullName</option>
+                                    }
+                                </select>
+                            }
                         </td>
                     </tr>
                     <tr>
                         <td>Přiřazené role</td>
                         <td>
                             @foreach (var role in RolesAssignments) {
-                                <input class="form-check-input" type="checkbox" name="@role.DataModel.Name" @bind-value="role.IsAssigned">
-                                <label class="form-check-label" for="flexCheckDefault">
+                                <input class="form-check-input" type="checkbox" name="@role.DataModel.Name"
+                                       checked ="@role.IsAssigned" @oninput="(x) => RoleAssignmentChanged(x, role)">
+                                <label class="form-check-label">
                                     @role.DataModel.Name
                                 </label>
                                 <br>
@@ -149,13 +154,13 @@ else {
                 }
                 else {
                     <div class="modal-header">
-                        <h5 class="modal-title">Nový uživatele</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="OkPressed">
+                        <h5 class="modal-title">Nový uživatel</h5>
+                        <button type="button" data-dismiss="modal" aria-label="Close" @onclick="OkPressed">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
                     <div class="modal-body">
-                        <p>Pro nového uživatele @SelectedUser.Username bylo vygenerováno heslo: @NewPwd </p>
+                        <p>Pro nového uživatele @SelectedUser.Username bylo vygenerováno heslo: <b>@NewPwd</b></p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="OkPressed">Ok</button>
@@ -169,12 +174,15 @@ else {
 
 
 @code {
+    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.Secretariat);
+
+
     private const string SubmitBtnId = "submitButton";
     private string ModalClass { get; set; } = "";
     private string ModalDisplay { get; set; } = "none;";
 
-    private EditContext _editContext;
-    private UserBase[] _selectedSuperiors = {};
+    private EditContext? EditContext { get; set; }
+    private string[] _selectedSuperiorsIds = {};
 
 
     public UserBase SelectedUser { get; set; } = new();
@@ -182,58 +190,86 @@ else {
     public List<DataModelAssignment<Role>> RolesAssignments { get; set; } = new();
 
     public string? NewPwd { get; set; }
-    
+
     private bool NewUserCreation { get; set; }
     private bool WaitingForApiResponse { get; set; } = true;
 
     private string? ValidationMessage { get; set; }
     private string? ApiException { get; set; }
-    
+
     protected override async Task OnInitializedAsync() {
         ValidationMessage = null;
         ApiException = null;
         NewUserCreation = UserContainer.Value == null;
         if (NewUserCreation) {
-            SelectedUser = new UserBase(default, "", "", "", "");
+            SelectedUser = new UserBase(default, "", "", "", "", true);
         }
         else {
             SelectedUser = UserContainer.Value!;
         }
-        _editContext = new EditContext(SelectedUser);
-
-        await GetData();
+        EditContext = new EditContext(SelectedUser);
+        if (IsAuthorized) {
+            await GetData();
+        }
         NewPwd = null;
         WaitingForApiResponse = false;
         StateHasChanged();
     }
 
-    private async Task GetData() {
 
-        var userTask = Http.GetFromJsonAsync<UserBase[]>("api/UserRoles/superiors");
-        
-        var roleTask = Http.GetFromJsonAsync<List<DataModelAssignment<Role>>>($@"api/UserRoles/allUserAssigned/{SelectedUser.Id}");
-        
-        
-        var userResponse = await userTask;
-        if (userResponse != null) {
-            AllSuperiors = userResponse;
+    private async Task GetData() {
+        var userResult = await Http.SendApiGetRequestAsync<UserBase[]?>(Logger, "api/UserRoles/superiors");
+        if (userResult.status != EApiHttpResponse.Ok) {
+            ApiException = StringResolver.ResolveApiResponse(userResult.status);
         }
-        var roleResponse = await roleTask;
-        if (roleResponse != null) {
-            RolesAssignments = roleResponse;
+        else {
+            if (userResult.response != null) {
+                AllSuperiors = userResult.response;
+
+            }
+        }
+
+        var roleResult = await Http.SendApiGetRequestAsync<List<DataModelAssignment<Role>>?>(Logger, $@"api/UserRoles/allUserAssigned/{SelectedUser.Id}"); ;
+        if (roleResult.status != EApiHttpResponse.Ok) {
+            ApiException = StringResolver.ResolveApiResponse(userResult.status);
+        }else{
+            if (roleResult.response != null) {
+                RolesAssignments = roleResult.response;
+            }
         }
 
         if (!NewUserCreation) {
             //get also all new user assigned superiors
-            var userSupsTask = Http.GetFromJsonAsync<long[]>($"api/UserRoles/superiors/{SelectedUser.Id}");
-            var userSupsIds = await userSupsTask;
-            if (userSupsIds != null) {
-                var assignedSups = AllSuperiors.Where(x => userSupsIds.Contains(x.Id));
-                _selectedSuperiors = assignedSups.ToArray();
+            var userSupsResult = await Http.SendApiGetRequestAsync<long[]>(Logger, $"api/UserRoles/superiors/{SelectedUser.Id}");
+
+            if (userSupsResult.status != EApiHttpResponse.Ok) {
+                ApiException = StringResolver.ResolveApiResponse(userResult.status);
+            }
+            else {
+                if (userSupsResult.response != null) {
+                    var assignedSups = AllSuperiors.Where(x => userSupsResult.response.Contains(x.Id)).ToList();
+
+                    _selectedSuperiorsIds = assignedSups.Select(x => x.Id.ToString()).ToArray();
+                }
             }
         }
     }
+    
+    private void OnSelectedSuperiorsChange(ChangeEventArgs evt) {
+        if (evt.Value is not string[]strings) {
+            return;
+        }
+        _selectedSuperiorsIds = strings;
+        AllSuperiors.Where(x => _selectedSuperiorsIds.Contains(x.Id.ToString())).Select(sup => sup.FullName);
+    }
 
+    private void RoleAssignmentChanged(ChangeEventArgs e, DataModelAssignment<Role> roleAssign) {
+        // get the checkbox state
+        if (e.Value is not bool check) {
+            return;
+        }
+        roleAssign.IsAssigned = check;
+    }
 
     private void HandleValidSubmit() {
         ValidationMessage = null;
@@ -246,6 +282,7 @@ else {
         }
         else{
             WaitingForApiResponse = true;
+            var assigned = AllSuperiors.Where(x => _selectedSuperiorsIds.Contains(x.Id.ToString()));
             if (NewUserCreation) {
                 NewPwd = UserUtils.CreateRandomPassword(10);
                 User newUser = new(SelectedUser) {
@@ -253,19 +290,13 @@ else {
                     PwdInit = true,
                     Salt = "TBD"
                 };
-                UserUpdatePayload<User> payload = new(){
-                    UpdatedUser = newUser,
-                    AssignedRoles = RolesAssignments,
-                    Superiors = _selectedSuperiors.ToList()
-                };
+
+                //todo 
+                UserUpdatePayload<User> payload = new(newUser, RolesAssignments, assigned.ToList());
                 Http.SendApiPutRequestAsync(Logger, "api/Users", payload, ResolveResponse);
             }
             else {
-                UserUpdatePayload<UserBase> payload = new(){
-                    UpdatedUser = SelectedUser,
-                    AssignedRoles = RolesAssignments,
-                    Superiors = _selectedSuperiors.ToList()
-                };
+                UserUpdatePayload<UserBase> payload = new(SelectedUser, RolesAssignments, assigned.ToList());
                 Http.SendApiPatchRequestAsync(Logger, "api/Users/update", payload, ResolveResponse);
             }
         }

@@ -20,17 +20,7 @@
         <!--todo remove these-->
         <div class="nav-item px-3" @onclick="ToggleNavMenu">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="oi oi-home" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3" @onclick="ToggleNavMenu">
-            <NavLink class="nav-link" href="counter">
-                <span class="oi oi-plus" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3" @onclick="ToggleNavMenu">
-            <NavLink class="nav-link" href="fetchdata">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
+                <span class="oi oi-home" aria-hidden="true"></span> Úvodní stránka
             </NavLink>
         </div>
         
@@ -42,14 +32,8 @@
             </div>
             @if (_expandUserNav) {
                 <div class="nav-item px-5" @onclick="ToggleNavMenu">
-                    <NavLink class="expand-menu" href="assignments?my=1">
+                    <NavLink class="expand-menu" href="/assignments/my">
                         <span>Přiřazené úkoly</span>
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-5" @onclick="ToggleNavMenu">
-                    <NavLink class="" href="myProjects">
-                        <span>Přiřazené projekty</span>
                     </NavLink>
                 </div>
             }
@@ -62,13 +46,7 @@
             </div>
             @if (_expandSuperiorNav) {
                 <div class="nav-item px-5" @onclick="ToggleNavMenu">
-                    <NavLink class="expand-menu" href="subsView">
-                        <span>Zobrazení podřízených</span>
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-5" @onclick="ToggleNavMenu">
-                    <NavLink class="" href="subAssignments">
+                    <NavLink class="" href="/assignments/superior">
                         <span>Úkoly podřízených</span>
                     </NavLink>
                 </div>
@@ -76,23 +54,54 @@
         }
 
         
-        @if (UserUtils.IsUserAuthorized(UserContainer.Value, ERoleType.ProjectManager) 
-             || UserUtils.IsUserAuthorized(UserContainer.Value, ERoleType.DepartmentManager)) {
+        @if (UserUtils.IsUserAuthorized(UserContainer.Value, ERoleType.ProjectManager)) {
             <div class="nav-item px-3">
-                <NavLink class="nav-link" @onclick="() => _expandManagementNav = !_expandManagementNav">
-                    <span class="oi oi-list-rich" aria-hidden="true"></span>Management
+                <NavLink class="nav-link" @onclick="() => _expandProjectManagementNav = !_expandProjectManagementNav">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Projekt management
                 </NavLink>
             </div>
-            @if (_expandManagementNav) {
+            @if (_expandProjectManagementNav) {
                 <div class="nav-item px-5" @onclick="ToggleNavMenu">
-                    <NavLink class="expand-menu" href="manageAssignments">
+                    <NavLink class="expand-menu" href="/assignments/project">
                         <span>Revize úkolů</span>
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-5" @onclick="ToggleNavMenu">
-                    <NavLink class="" href="projects">
+                    <NavLink class="" href="projects/project">
                         <span>Editace projektů</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink class="" href="/assignments/allocations">
+                        <span>Časové alokace</span>
+                    </NavLink>
+                </div>
+            }
+        }
+        
+        
+        @if (UserUtils.IsUserAuthorized(UserContainer.Value, ERoleType.DepartmentManager)) {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" @onclick="() => _expandDepartmentManagementNav = !_expandDepartmentManagementNav">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Management oddělení
+                </NavLink>
+            </div>
+            @if (_expandDepartmentManagementNav) {
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink class="expand-menu" href="/assignments/department">
+                        <span>Revize úkolů</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink class="" href="projects/department">
+                        <span>Editace projektů</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink class="" href="/assignments/allocations">
+                        <span>Časové alokace</span>
                     </NavLink>
                 </div>
             }
@@ -101,7 +110,7 @@
         @if (UserUtils.IsUserAuthorized(UserContainer.Value, ERoleType.Superior)) {
             <div class="nav-item px-3">
                 <NavLink class="nav-link" @onclick="() => _expandHrNav = !_expandHrNav">
-                    <span class="oi oi-list-rich" aria-hidden="true"></span>Lidské zdroje`
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Sekretariát
                 </NavLink>
             </div>
             @if (_expandHrNav) {
@@ -112,7 +121,7 @@
                 </div>
 
                 <div class="nav-item px-5" @onclick="ToggleNavMenu">
-                    <NavLink class="" href="projects">
+                    <NavLink class="" href="projects/secretariat">
                         <span>Projekty</span>
                     </NavLink>
                 </div>
@@ -124,7 +133,8 @@
 @code {
     private bool _expandUserNav = false;
     private bool _expandSuperiorNav = false;
-    private bool _expandManagementNav = false;
+    private bool _expandProjectManagementNav = false;
+    private bool _expandDepartmentManagementNav = false;
     private bool _expandHrNav = false;
 
     private bool _collapseNavMenu = true;

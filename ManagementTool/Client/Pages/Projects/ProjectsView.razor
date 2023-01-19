@@ -1,92 +1,197 @@
-﻿@page "/projects"
+﻿@page "/projects/project"
+@page "/projects/department"
+@page "/projects/secretariat"
+
+
+@using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.AppState
 @using ManagementTool.Shared.Models.Database
+@using ManagementTool.Shared.Models.Login
+@using ManagementTool.Shared.Models.Utils
+@using ManagementTool.Shared.Utils
+@implements IDisposable
 
 @inject HttpClient Http
 @inject NavigationManager UriHelper
 @inject StateContainer<Project> ProjectContainer
+@inject StateContainer<LoggedUserPayload> LoggedUserContainer
+@inject ILogger<ProjectsView> Logger
 
-@if (LoggedUserName == null) {
-    <LoginPrompt />
+@if (!IsAuthorized) {
+    <div>Vypadá to, že nemáte dostatečné práva na zobrazení tohoto listu!</div>
 }
 else {
-    @if (_projects == null) {
+    @if (WaitingForApiResponse) {
         <div class="spinner"></div>
+    }
+    else if (_exceptionMessage != null) {
+        <div>Nepovedlo se načíst data z API serveru @_exceptionMessage</div>
     }
     else {
 
-
-        <button @onclick="CreateNewProject">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
-            </svg>
-        </button>
-
-        <table class="table">
-            <thead>
-            <tr>
-                <th>Název projektu</th>
-                <th>Od</th>
-                <th>Do</th>
-                <th>Popis projektu</th>
-                <th>Editace projektu</th>
-                <th>Přiřazení uživatelů</th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var project in _projects) {
+        @if (NeededRole == ERoleType.Secretariat) {
+            <button @onclick="CreateNewProject">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                </svg>
+            </button>
+        }
+        
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-primary">
                 <tr>
-                    <td>@project.ProjectName</td>
-                    <td>@project.FromDate</td>
-                    <td>@project.ToDate</td>
-                    <td>@project.Description</td>
-                    <td>
-                        <button @onclick="_ => NavigateToEditMode(project)">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z"/>
-                            </svg>
-                        </button>
-                    </td>
+                    <th>Název projektu</th>
+                    <th>Od</th>
+                    <th>Do</th>
+                    <th>Popis projektu</th>
+                    <th>Editace projektu</th>
+                    <th>Přiřazení uživatelů</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var project in Projects) {
+                    <tr>
+                        <td>@project.ProjectName</td>
+                        <td>@project.FromDate.ToString("dd/MM/yyyy")</td>
+                        <td>@project.ToDate?.ToString("dd/MM/yyyy")</td>
+                        <td>@project.Description</td>
                         <td>
-                            <button @onclick="_ => NavigateToUserAssignMode(project)">
+                            <button @onclick="_ => NavigateToEditMode(project)">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+                                    <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z"/>
                                 </svg>
                             </button>
                         </td>
-                </tr>
-            }
-            </tbody>
-        </table>
+                        <td>
+                            <button @onclick="_ => NavigateToUserAssignMode(project)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
     }
 }
 
 @code {
-    [CascadingParameter]
-    public string? LoggedUserName { get; set; }
+    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, NeededRole);
 
-    private Project[]? _projects;
+    private ERoleType? NeededRole { get; set; } = ERoleType.NoRole;
+    private EProjectPage CurrentEndpoint { get; set; } = EProjectPage.Secretariat;
 
+    /// <summary>
+    ///     Array of all selected projects from the API. The count of the elements can vary
+    ///     because project managers can see only their project and department manager can see all
+    /// </summary>
+    private Project[] Projects { get; set; } = Array.Empty<Project>();
+
+    /// <summary>
+    ///     Conditional message that will be showed in exceptional situations (API failure etc)
+    /// </summary>
+    private string? _exceptionMessage;
+
+    /// <summary>
+    ///     Flag indicating loading of data from the API
+    /// </summary>
+    private bool WaitingForApiResponse { get; set; } = true;
+
+
+    protected override void OnInitialized() {
+        UriHelper.LocationChanged += LocationChanged;
+        //register event handler for the change of the logged user
+        LoggedUserContainer.OnStateChange += StateHasChanged;
+        base.OnInitialized();
+    }
+
+    /// <summary>
+    ///     One of the blazor lifecycle methods for the first rendering of the component.
+    ///     It is called once on the init of the component
+    /// </summary>
+    /// <returns>Async task to await for</returns>
     protected override async Task OnInitializedAsync() {
-        _projects = await Http.GetFromJsonAsync<Project[]>("api/Projects");
+
+        await CheckForRoleChanger();
+        
+        WaitingForApiResponse = false;
         StateHasChanged();
     }
+    
 
     
+    async void LocationChanged(object? sender, LocationChangedEventArgs e) {
+        await CheckForRoleChanger();
+    }
+
+    private async Task CheckForRoleChanger() {
+        var uri = UriHelper.ToAbsoluteUri(UriHelper.Uri);
+        var pagePath = uri.LocalPath;
+        ERoleType? newRole;
+        switch (pagePath) {
+            case "/projects/project":
+                newRole = ERoleType.ProjectManager;
+                CurrentEndpoint = EProjectPage.Project;
+                break;
+            case "/projects/department":
+                newRole = ERoleType.DepartmentManager;
+                CurrentEndpoint = EProjectPage.Department;
+                break;
+            case "/projects/secretariat":
+                newRole = ERoleType.Secretariat;
+                CurrentEndpoint = EProjectPage.Secretariat;
+                break;
+            default:
+                return;
+        }
+        var roleChange = NeededRole != newRole;
+        NeededRole = newRole;
+
+        //user is authorized and role changed => different page probably
+        if (roleChange) {
+            if (IsAuthorized) {
+                var result = await Http.SendApiGetRequestAsync<Project[]>(Logger, "api/Projects");
+                if (result.status != EApiHttpResponse.Ok) {
+                    _exceptionMessage = StringResolver.ResolveApiResponse(result.status);
+                }
+                else {
+                    if (result.response != null) {
+                        Projects = result.response;
+                    }
+                }
+                WaitingForApiResponse = false;
+            }
+            StateHasChanged();
+        }
+    }
+
     private void CreateNewProject() {
-        ProjectContainer.SetValue(null);
+    //set the project object container for null => 
+    //this indicates on the edit page that new project should be created
         NavigateToEditMode(null);
     }
-    
+
     private void NavigateToEditMode(Project? selectedProject) {
         ProjectContainer.SetValue(selectedProject);
-        UriHelper.NavigateTo("/projects/edit");
+        UriHelper.NavigateTo($"/projects/edit/{(int)CurrentEndpoint}");
     }
 
-    
+
     private void NavigateToUserAssignMode(Project selectedProject) {
+    //select project for which you want to add new assignees
         ProjectContainer.SetValue(selectedProject);
-        UriHelper.NavigateTo("/projects/userAssign");
+        UriHelper.NavigateTo($"/projects/userAssign/{(int)CurrentEndpoint}");
+    }
+
+    /// <summary>
+    ///     Method from IDisposable that will be called once this component is disposed off
+    ///     Preventing possible memory leaks
+    /// </summary>
+    public void Dispose() {
+        LoggedUserContainer.OnStateChange -= StateHasChanged;
     }
 
 }

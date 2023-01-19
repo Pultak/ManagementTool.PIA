@@ -25,10 +25,15 @@
             }
         </div>
         <article class="content px-4">
-            
-            <CascadingValue Value="@LoggedUserName">
-                @Body
-            </CascadingValue>
+            @if (UserContainer.Value == null) {
+                <LoginPrompt/>
+            }
+            else {
+                <CascadingValue Value="@LoggedUserName">
+                    @Body
+                </CascadingValue>
+
+            }
         </article>
     </main>
 </div>
@@ -49,8 +54,10 @@
     public void ChangePwdPressed() {
         UriHelper.NavigateTo("/pwdChange");
     }
+    
 
     protected override async Task OnInitializedAsync() {
+        UserContainer.SetValue(null);
         Logger.LogDebug("OnInitializeAsync - HTTP GET logged in user");
         //is there already someone logged in?
         var response = await Http.GetFromJsonAsync<LoggedUserPayload>("auth/info");

@@ -1,14 +1,16 @@
-﻿@page "/projects/edit"
+﻿@page "/projects/edit/{ReturnEndpoint:int}"
 @using ManagementTool.Shared.Models.AppState
 @using ManagementTool.Shared.Models.Database
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
 @using Microsoft.AspNetCore.Components
 @using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.Login
 @implements IDisposable
 
 
 @inject StateContainer<Project> ProjectContainer
+@inject StateContainer<LoggedUserPayload> LoggedUserContainer
 @inject NavigationManager UriHelper
 @inject HttpClient Http
 @inject ILogger<ProjectEdit> Logger
@@ -19,92 +21,111 @@
         <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
     </svg>
 </button>
-<h3>Editace projektu</h3>
 
-@if (WaitingForApiResponse) {
-    <div class="spinner"></div>
+<!-- Only Secretariat, Project manager and Department manager can edit project info-->
+@if (!IsAuthorized) {
+    <div>Vypadá to, že nemáte dostatečné práva na zobrazení této stránky!</div>
 }
 else {
-    <div>
-        <section>
-            <EditForm id="@SubmitBtnId" EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
-                <DataAnnotationsValidator/>
+    @if (WaitingForApiResponse) {
+        <div class="spinner"></div>
+    }
+    else {
+        @if (NewProjectCreation) {
+            <h3>Vytváření nového projektu</h3>
+        }
+        else {
+            <h3>Editace projektu</h3>
+        }
+        <div>
+            <section>
+                <EditForm id="@SubmitBtnId" EditContext="@EditContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+                    <DataAnnotationsValidator/>
 
-                <div>
-                    <p>
-                        <label>
-                            Název projektu
-                        </label>
-                        <InputText id="txtName" type="text" required @bind-Value="SelectedProject.ProjectName"/>
-                        <ValidationMessage For="@(() => SelectedProject.ProjectName)"/>
-                    </p>
-                </div>
+                    <div>
+                        <p>
+                            <label>
+                                Název projektu
+                            </label>
+                            <InputText id="txtName" type="text" required @bind-Value="SelectedProject.ProjectName"/>
+                            <ValidationMessage For="@(() => SelectedProject.ProjectName)"/>
+                        </p>
+                    </div>
 
-                <div>
-                    <p>
-                        <label>
-                            Datum od
-                        </label>
-                        <input id="txtDate" type="date" @bind-value="SelectedProject.FromDate" min="01/01/1970" required/>
-                        <ValidationMessage For="@(() => SelectedProject.FromDate)"/>
-                    </p>
-                </div>
-                <div>
-                    <p>
-                        <label>
-                            Datum do
-                        </label>
-                        <input id="txtDate" type="date" @bind-value="SelectedProject.ToDate" min="1970-01-01"/>
-                        <ValidationMessage For="@(() => SelectedProject.ToDate)"/>
-                    </p>
-                </div>
+                    <div>
+                        <p>
+                            <label>
+                                Datum od
+                            </label>
+                            <input id="txtDate" type="date" @bind-value="SelectedProject.FromDate" min="01/01/1970" placeholder="dd/MM/yyyy" required />
+                            <ValidationMessage For="@(() => SelectedProject.FromDate)"/>
+                        </p>
+                    </div>
+                    <div>
+                        <p>
+                            <label>
+                                Datum do
+                            </label>
+                            <input id="txtDate" type="date" @bind-value="SelectedProject.ToDate" min="1970-01-01" placeholder="dd/MM/yyyy" />
+                            <ValidationMessage For="@(() => SelectedProject.ToDate)"/>
+                        </p>
+                    </div>
 
-                <div>
-                    <p>
-                        <label>
-                            Popisek projektu
-                        </label>
-                        <InputText id="txtName" type="text" required @bind-Value="SelectedProject.Description"/>
-                        <ValidationMessage For="@(() => SelectedProject.Description)"/>
-                    </p>
-                </div>
+                    <div>
+                        <p>
+                            <label>
+                                Popisek projektu
+                            </label>
+                            <InputText id="txtName" type="text" required @bind-Value="SelectedProject.Description"/>
+                            <ValidationMessage For="@(() => SelectedProject.Description)"/>
+                        </p>
+                    </div>
 
-            </EditForm>
+                </EditForm>
 
-            @if (ValidationMessage != null) {
-                <div>
-                    <p>@ValidationMessage</p>
-                </div>
-            }
-            else if (ApiException != null) {
-                <div>
-                    <p>@ApiException</p>
-                </div>
-            }
-            <p>
-                @if (NewProjectCreation) {
-                    <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Vytvořit projekt</button>
+                @if (ValidationMessage != null) {
+                    <div>
+                        <p>@ValidationMessage</p>
+                    </div>
                 }
-                else {
-                    <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Uložit změny</button>
+                else if (ApiException != null) {
+                    <div>
+                        <p>@ApiException</p>
+                    </div>
                 }
-                <button type="button" class="btn btn-light"
-                        @onclick="@ReturnToProjects">
-                    Zrušit
-                </button>
-            </p>
+                <p>
+                    @if (NewProjectCreation) {
+                        <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Vytvořit projekt</button>
+                    }
+                    else {
+                        <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Uložit změny</button>
+                    }
+                    <button type="button" class="btn btn-light"
+                            @onclick="@ReturnToProjects">
+                        Zrušit
+                    </button>
+                </p>
 
-        </section>
-    </div>
+            </section>
+        </div>
+    }
+
 }
-
 
 
 @code {
 
+    [Parameter]
+    public int ReturnEndpoint { get; set; }
+
+
+    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.Secretariat) ||
+                                 UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.ProjectManager) ||
+                                 UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.DepartmentManager);
+
     private const string SubmitBtnId = "submitButton";
 
-    private EditContext _editContext;
+    private EditContext? EditContext { get; set; }
     public Project SelectedProject { get; set; } = new();
     
     private bool NewProjectCreation { get; set; }
@@ -123,7 +144,7 @@ else {
         else {
             SelectedProject = ProjectContainer.Value;
         }
-        _editContext = new EditContext(SelectedProject);
+        EditContext = new EditContext(SelectedProject);
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -142,7 +163,7 @@ else {
             if (NewProjectCreation) {
                 SendApiPutRequest("api/Projects");
             }
-            else if (_editContext.IsModified()){
+            else if (EditContext?.IsModified() ?? false){
                 SendApiPatchRequest("api/Projects/update");
             }
             else {
@@ -172,7 +193,7 @@ else {
     private void ResolveResponse(EApiHttpResponse apiResponse) {
         WaitingForApiResponse = false;
         if (apiResponse == EApiHttpResponse.Ok) {
-            UriHelper.NavigateTo("/projects");
+            ReturnToProjects();
         }
         else {
             ApiException = StringResolver.ResolveApiResponse(apiResponse);
@@ -181,13 +202,19 @@ else {
     }
 
     private void ReturnToProjects() {
-        UriHelper.NavigateTo("/projects");
+        var uri = $"/projects/{(EProjectPage)ReturnEndpoint}".ToLower();
+        UriHelper.NavigateTo(uri);
     }
 
     protected override void OnInitialized() {
+        //register event handler for the change of the logged user
         ProjectContainer.OnStateChange += StateHasChanged;
     }
 
+    /// <summary>
+    /// Method from IDisposable that will be called once this component is disposed off
+    /// Preventing possible memory leaks
+    /// </summary>
     public void Dispose() {
         ProjectContainer.OnStateChange -= StateHasChanged;
     }

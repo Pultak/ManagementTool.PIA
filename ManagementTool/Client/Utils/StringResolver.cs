@@ -1,5 +1,4 @@
 ﻿using ManagementTool.Shared.Models.Utils;
-using Syncfusion.Blazor.Schedule;
 
 namespace ManagementTool.Client.Utils; 
 
@@ -14,6 +13,7 @@ public class StringResolver {
             EApiHttpResponse.InvalidData => "Chyba vstupu zasílaného na API!",
             EApiHttpResponse.ConflictFound => "Objekt pod stejným jménem již existuje",
             EApiHttpResponse.HttpResponseException => "Byla přijata chyba HttpResponseException od API, ale s neznámých HTTP kódem.",
+            EApiHttpResponse.Unauthorized => "Vypadá to, že nemáte dostatečná práva pro používání následující komponenty!",
             _ => throw new ArgumentOutOfRangeException(nameof(response), response, null)
         };
     }
@@ -70,20 +70,35 @@ public class StringResolver {
         };
     }
 
+    public static string ResolveTimeScope(long scope, bool fte) {
+        var finalScope = fte? scope * 40 : scope;
+        return ResolveTimeScope(finalScope);
+    }
 
     public static string ResolveTimeScope(long scope) {
-        //40 hours in week
+        //40 work hours in a week
         var fte = scope / 40;
-        var fteString = fte > 0 ? $"{fte}fte " : "";
+        var fteString = fte > 0 ? $"{fte} t " : "";
 
         var partScope = scope - fte * 40;
 
-        var days = partScope / 24;
+        var days = partScope / 8;
         var dayString = days > 0 ? $"{days} d " : "";
 
-        var hours = partScope - days * 24;
+        var hours = partScope - days * 8;
         var hoursString = hours > 0 ? $"{hours} h" : "";
 
         return $"{fteString}{dayString}{hoursString}";
+    }
+
+    public static string ResolveWorkloadValidation(EWorkloadValidation valid) {
+        return valid switch {
+            EWorkloadValidation.Ok => "Validace vstupu proběhla v pořádku!",
+            EWorkloadValidation.EmptyUsers => "Pro pokračování musíte zvolit aspoň jednoho uživatele!",
+            EWorkloadValidation.InvalidFromDate => "Pro pokračování musíte zvolit validní od datum!",
+            EWorkloadValidation.InvalidToDate => "Pro pokračování musíte zvolit validní do datum!",
+            EWorkloadValidation.TooLongScope => "Zvolený časový rozsah je moc dlouhý!",
+            _ => throw new ArgumentOutOfRangeException(nameof(valid), valid, null)
+        };
     }
 }
