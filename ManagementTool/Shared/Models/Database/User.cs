@@ -1,7 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using ManagementTool.Shared.Utils;
-
-namespace ManagementTool.Shared.Models.Database;
+﻿namespace ManagementTool.Shared.Models.Database;
 
 public class User : UserBase {
     
@@ -15,12 +12,12 @@ public class User : UserBase {
     }
     
     public User(UserBase userBase): base(userBase.Id, userBase.Username, userBase.FullName, 
-        userBase.PrimaryWorkplace, userBase.EmailAddress) {
+        userBase.PrimaryWorkplace, userBase.EmailAddress, userBase.PwdInit) {
 
     }
     
     public User(long id, string username,  string fullName, string primaryWorkplace, string emailAddress,
-        string pwd, string salt) : base(id, username, fullName, primaryWorkplace, emailAddress) {
+        string pwd, string salt, bool pwdInit) : base(id, username, fullName, primaryWorkplace, emailAddress, pwdInit) {
         Pwd = pwd;
         Salt = salt;
     }

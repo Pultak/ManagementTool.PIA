@@ -7,6 +7,7 @@ public enum EApiHttpResponse {
     UnknownException,
     InvalidData,
     ConflictFound,
-    HttpResponseException
+    HttpResponseException,
+    Unauthorized
 
 }

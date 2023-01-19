@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using ManagementTool.Shared.Utils;
 
-namespace ManagementTool.Shared.Models.Database; 
+namespace ManagementTool.Shared.Models.Database;
 
 public class UserBase {
     public long Id { get; set; }
@@ -9,11 +9,12 @@ public class UserBase {
     [Required(ErrorMessage = "Orion jméno musí být vyplněno!")]
     [StringLength(UserUtils.MaxUsernameLength, MinimumLength = UserUtils.MinUsernameLength,
         ErrorMessage = "Orion jméno musí být mezi 3 a 32 znaky!")]
+    [RegularExpression(UserUtils.SpecialCharactersRegexPattern, ErrorMessage = "Speciální znaky do uživatelského jména nepatří!")]
     public string Username { get; set; }
 
     [Required(ErrorMessage = "Jméno uživatele musí být vyplněno!")]
     [StringLength(UserUtils.MaxFullnameLength, MinimumLength = UserUtils.MinFullnameLength,
-        ErrorMessage = "Celé jméno uživatele musí být mezi 2 a 124 znaky!")]
+        ErrorMessage = "Celé jméno uživatele musí být mezi 4 a 124 znaky!")]
     public string FullName { get; set; }
 
     [Required(ErrorMessage = "Pracovní místo musí být vyplněno!")]
@@ -30,19 +31,16 @@ public class UserBase {
 
 
     public UserBase() {
-        Username = "Unknown";
-        FullName = "Unknown";
-        PrimaryWorkplace = "Unknown";
-        EmailAddress = "Unknown";
     }
 
     public UserBase(long id, string username,  string fullName, string primaryWorkplace,
-        string emailAddress) {
+        string emailAddress, bool pwdInit) {
         Id = id;
         Username = username;
         FullName = fullName;
         PrimaryWorkplace = primaryWorkplace;
         EmailAddress = emailAddress;
+        PwdInit = pwdInit;
     }
 
 }

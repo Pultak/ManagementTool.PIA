@@ -25,6 +25,7 @@ public class Assignment {
     public long UserId { get; set; }
 
     [Required(ErrorMessage = "Úkol musí mít stanovenou alokaci!")]
+    [Range(1, long.MaxValue, ErrorMessage = "Alokace může být pouze v kladných hodnotách!")]
     public long AllocationScope { get; set; }
 
     [Required(ErrorMessage = "Datum nesmí být prázdný!")]

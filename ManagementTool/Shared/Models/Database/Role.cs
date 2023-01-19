@@ -1,5 +1,4 @@
-﻿using ManagementTool.Shared.Models.Login;
-using ManagementTool.Shared.Models.Utils;
+﻿using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Shared.Models.Database;
 

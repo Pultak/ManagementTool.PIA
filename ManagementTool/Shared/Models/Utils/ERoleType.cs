@@ -2,6 +2,6 @@
 
 public enum ERoleType {
 
-    Superior, DepartmentManager, Secretariat, ProjectManager
+    Superior, DepartmentManager, Secretariat, ProjectManager, NoRole
 
 }

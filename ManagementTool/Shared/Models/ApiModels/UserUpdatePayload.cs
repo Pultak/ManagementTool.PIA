@@ -11,6 +11,10 @@ public class UserUpdatePayload <T> where T: UserBase{
     public List<UserBase> Superiors { get; set; }
 
 
+    public UserUpdatePayload() {
+
+    }
+
     public UserUpdatePayload(T updatedUser) {
         UpdatedUser = updatedUser;
         AssignedRoles = new List<DataModelAssignment<Role>>();

@@ -1,5 +1,4 @@
-﻿using System.Net.Mail;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using ManagementTool.Shared.Models.Database;
 using ManagementTool.Shared.Models.Login;
 using ManagementTool.Shared.Models.Utils;
@@ -7,22 +6,31 @@ using ManagementTool.Shared.Models.Utils;
 namespace ManagementTool.Shared.Utils;
 
 public static class UserUtils {
-
-    public const string PasswordRegexPattern = "^.*(?=.{8,})(?=.*[a-z])(?=.*[A-Z]).*$";
+    /// <summary>
+    /// Regex pattern for passwords that need to contain at least 8 characters.
+    /// It should contain at least one number, one small and also one big character
+    /// </summary>
+    public const string PasswordRegexPattern = "^.*(?=.{8,})(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).*$";
     public static Regex PasswordRegex = new(PasswordRegexPattern);
     
+    /// <summary>
+    /// Regex pattern for checking of string email structure.
+    /// The standard emails go like 'email@domain.cz'
+    /// </summary>
     public const string EmailRegexPattern = "^([a-zA-Z0-9_\\.\\-])+\\@(([a-zA-Z0-9\\-])+\\.)+([a-zA-Z0-9]{2,4})+$";
     public static Regex EmailRegex = new(EmailRegexPattern);
 
+    /// <summary>
+    /// Regex pattern for checking if there is any special character in string.
+    /// This can be used to validate strings that should not contain any of these.
+    /// </summary>
+    public const string SpecialCharactersRegexPattern = "^[a-zA-Z0-9]*$";
+    public static Regex SpecialCharactersRegex = new(SpecialCharactersRegexPattern);
     
-
-    //public static Regex FullNameRegex = new("\\w+, [\\w]+[ \\w+]*");
-    public static Regex SpecialCharactersRegex = new("^[a-zA-Z0-9 ]*$");
-
-    public const int MinUsernameLength = 4;
+    public const int MinUsernameLength = 3;
     public const int MaxUsernameLength = 32;
 
-    public const int MinFullnameLength = 2;
+    public const int MinFullnameLength = 4;
     public const int MaxFullnameLength = 124;
     
     public const int MinPwdLength = 8;
@@ -35,7 +43,7 @@ public static class UserUtils {
 
     public static bool IsValidPassword(string password) {
         if (password.Length < MinPwdLength || password.Length > MaxPwdLength
-            && !PasswordRegex.IsMatch(password)) {
+            || !PasswordRegex.IsMatch(password)) {
             return false;
         }
 
@@ -47,7 +55,7 @@ public static class UserUtils {
             return EUserCreationResponse.EmptyUser;
         }
         if (user.Username.Length < MinUsernameLength || user.Username.Length > MaxUsernameLength
-            && SpecialCharactersRegex.IsMatch(user.Username)) {
+            || !SpecialCharactersRegex.IsMatch(user.Username)) {
             return EUserCreationResponse.InvalidUsername;
         }
 
@@ -60,7 +68,7 @@ public static class UserUtils {
         }
 
 
-        if (!EmailRegex.IsMatch(user.EmailAddress)) {
+        if (string.IsNullOrEmpty(user.EmailAddress) || !EmailRegex.IsMatch(user.EmailAddress)) {
             return EUserCreationResponse.InvalidEmail;
         }
         
@@ -86,12 +94,17 @@ public static class UserUtils {
             return false;
         }
 
+        if (role == ERoleType.NoRole) {
+            return false;
+        }
+
         if (role == null ) {
             return true;
         }
 
-        return loggedUser.Roles != null 
-               && loggedUser.Roles.Any(userRole => userRole.Type == role);
+        var result = loggedUser.Roles != null
+                     && loggedUser.Roles.Any(userRole => userRole.Type == role);
+        return result;
     }
     
 }

@@ -11,6 +11,10 @@ public class LoggedUserPayload {
 
     public bool HasInitPwd { get; set; }
 
+    public LoggedUserPayload() {
+
+    }
+
     public LoggedUserPayload(string? userName, string? fullName, Role[]? roles, bool hasInitPwd) {
         UserName = userName;
         FullName = fullName;

@@ -5,6 +5,9 @@ public class DataModelAssignment<T> {
     public bool IsAssigned { get; set; }
     public T DataModel { get; set; }
 
+    public DataModelAssignment() {
+
+    }
     public DataModelAssignment(T dataModel) {
         this.DataModel = dataModel;
     }
