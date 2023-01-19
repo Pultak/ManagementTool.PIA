@@ -16,4 +16,5 @@ builder.Services.AddSingleton<StateContainer<UserBase>>();
 builder.Services.AddSingleton<StateContainer<Project>>();
 builder.Services.AddSingleton<StateContainer<LoggedUserPayload>>();
 builder.Services.AddSingleton<StateContainer<AssignmentWrapper>>();
+
 await builder.Build().RunAsync();

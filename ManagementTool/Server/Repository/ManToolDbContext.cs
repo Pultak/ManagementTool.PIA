@@ -206,7 +206,7 @@ public class ManToolDbContext : DbContext {
                 .HasColumnName("id_user");
             entity.Property(e => e.IdSuperior)
                 .IsRequired()
-                .HasColumnName("id_superior");
+                .HasColumnName("id_superior_user");
             entity.Property(e => e.AssignedDate)
                 .IsRequired()
                 .HasColumnName("assigned_date")

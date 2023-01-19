@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 	<RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+	<UserSecretsId>af976cba-a66e-47f9-9d2f-7250678d6876</UserSecretsId>
+	<InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,7 +16,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Abstractions" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.5" />
     <PackageReference Include="Microsoft.AspNetCore.Routing.Abstractions" Version="2.2.0" />
-    <PackageReference Include="Syncfusion.Blazor" Version="20.4.0.42" />
   </ItemGroup>
 
   <ItemGroup>

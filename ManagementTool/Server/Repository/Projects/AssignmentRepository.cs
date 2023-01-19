@@ -1,12 +1,14 @@
-﻿using ManagementTool.Shared.Models.ApiModels;
+﻿using ManagementTool.Server.Services;
+using ManagementTool.Server.Services.Projects;
+using ManagementTool.Shared.Models.ApiModels;
 using ManagementTool.Shared.Models.Database;
 using Microsoft.EntityFrameworkCore;
 
-namespace ManagementTool.Server.Services.Projects;
+namespace ManagementTool.Server.Repository.Projects;
 
-public class AssignmentDataService : IAssignmentDataService {
+public class AssignmentRepository : IAssignmentRepository {
     private readonly ManToolDbContext _db; 
-    public AssignmentDataService(ManToolDbContext db) {
+    public AssignmentRepository(ManToolDbContext db) {
         _db = db;
     }
 
@@ -17,6 +19,11 @@ public class AssignmentDataService : IAssignmentDataService {
 
     public Assignment? GetAssignmentById(long id) {
         return _db.Assignment.Find(id);
+    }
+
+
+    public IEnumerable<Assignment> GetAllPlainAssignments() {
+        return _db.Assignment;
     }
 
     public IEnumerable<AssignmentWrapper> GetAllAssignments() {
@@ -50,7 +57,7 @@ public class AssignmentDataService : IAssignmentDataService {
                 State = assign.State
             }).Distinct();
         
-        return GetAssignmentWrappers(allSuperiorAssignments);
+        return GetAssignmentWrappers(allSuperiorAssignments).ToList();
     }
 
     private IEnumerable<AssignmentWrapper> GetAssignmentWrappers(IQueryable<Assignment> assignments) {
@@ -63,7 +70,7 @@ public class AssignmentDataService : IAssignmentDataService {
                 UserName = usr.FullName,
                 ProjectName = prj.ProjectName
             };
-        return result;
+        return result.ToList();
     }
 
 
@@ -82,6 +89,11 @@ public class AssignmentDataService : IAssignmentDataService {
         return rowsChanged > 0;
     }
 
+    public IEnumerable<Assignment> GetAllUsersAssignments(long[] userIds) {
+        var allAssignments = _db.Assignment.Where(x => userIds.Contains(x.UserId));
+        return allAssignments;
+    }
+
 
     public bool DeleteAssignment(Assignment assignment) {
         _db.Assignment.Remove(assignment);
@@ -89,6 +101,8 @@ public class AssignmentDataService : IAssignmentDataService {
 
         return rowsChanged > 0;
     }
+
+
 
     public bool DeleteAssignment(long id) {
         var dbAssignment = GetAssignmentById(id);

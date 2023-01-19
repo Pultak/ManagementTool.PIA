@@ -1,8 +1,8 @@
 ﻿using ManagementTool.Shared.Models.Database;
 
-namespace ManagementTool.Server.Services.Projects;
+namespace ManagementTool.Server.Repository.Projects;
 
-public interface IProjectDataService {
+public interface IProjectRepository {
 
     public IEnumerable<Project> GetAllProjects();
     public Project? GetProjectByName(string name);
@@ -13,6 +13,8 @@ public interface IProjectDataService {
     public bool DeleteProject(long id);
     public bool DeleteProject(Project project);
     public bool UpdateProject(Project project);
+
+    public bool AreUsersUnderProjects(long[] usersIds, long[] projectIds);
 
     public bool DeleteProjectUserAssignments(Project project);
     public bool DeleteAllProjectAssignments(Project project);

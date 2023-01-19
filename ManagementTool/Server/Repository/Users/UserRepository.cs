@@ -1,16 +1,18 @@
-﻿using ManagementTool.Shared.Models.ApiModels;
+﻿using ManagementTool.Server.Services;
+using ManagementTool.Server.Services.Users;
+using ManagementTool.Shared.Models.ApiModels;
 using ManagementTool.Shared.Models.Database;
 using Microsoft.EntityFrameworkCore;
 
-namespace ManagementTool.Server.Services.Users;
+namespace ManagementTool.Server.Repository.Users;
 
-public class UserDataService : IUserDataService{
+public class UserRepository : IUserRepository{
     private readonly ManToolDbContext _db; 
-    public UserDataService(ManToolDbContext db){
+    public UserRepository(ManToolDbContext db){
         _db = db;
     }
 
-    public IEnumerable<User> GetAllUsers() {
+    public IEnumerable<UserBase> GetAllUsers() {
         return _db.User.ToList();
     }
 
@@ -24,16 +26,6 @@ public class UserDataService : IUserDataService{
         return user.Id;
     }
 
-    public bool DeleteUser(long id) {
-        var dbUser = GetUserById(id);
-        if (dbUser == null) {
-            return false;
-        }
-        //_db.User.Attach(dummyUser);
-        _db.User.Remove(dbUser);
-        var rowsChanged = _db.SaveChanges();
-        return rowsChanged > 0;
-    }
     public bool DeleteUser(User user) {
         //_db.User.Attach(dummyUser);
         _db.User.Remove(user);
@@ -43,6 +35,12 @@ public class UserDataService : IUserDataService{
 
     public User? GetUserById(long id) {
         return _db.User.Find(id);
+    }
+
+    public IEnumerable<UserBase> GetUsersById(IEnumerable<long> userIds) {
+        var result = _db.User.Where(x => userIds.Contains(x.Id)).
+            Select(x => new UserBase(x.Id, x.Username, x.FullName, x.PrimaryWorkplace, x.EmailAddress, x.PwdInit));
+        return result;
     }
 
     public User? GetUserByName(string username) {
@@ -72,7 +70,7 @@ public class UserDataService : IUserDataService{
         return rowsChanged > 0;
     }
 
-    public IEnumerable<User> GetAllUsersByRole(Role role) {
+    public IEnumerable<UserBase> GetAllUsersByRole(Role role) {
         var queryResult = _db.UserRoleXRefs.Join(_db.User,
                 refs => refs.IdUser,
                 user => user.Id,
@@ -88,7 +86,7 @@ public class UserDataService : IUserDataService{
                     roleId = refs.IdRole
                 }).Where(x => x.roleId == role.Id).
             Select(x => new User(x.id, x.username, x.fullName, x.primaryWorkplace,
-                x.emailAddress, x.pwd, x.salt, x.pwdInit)).ToList();
+                x.emailAddress, x.pwd, x.salt, x.pwdInit));
         return queryResult;
     }
 
@@ -100,38 +98,41 @@ public class UserDataService : IUserDataService{
 
 
     public IEnumerable<DataModelAssignment<UserBase>> GetAllUsersAssignedToProject(long projectId) {
-
-        var query = from user in _db.User
+        var query = (from user in _db.User
             from refs in _db.UserProjectXRefs.Where(x => x.IdProject == projectId).DefaultIfEmpty()
-            select new DataModelAssignment<UserBase>(refs != null, new UserBase(user.Id, user.Username, user.FullName,
-                user.PrimaryWorkplace, user.EmailAddress, user.PwdInit));
-        /*join refs in _db.UserProjectXRefs 
-            on user.Id equals refs.IdUser into allCols
-        from subRefs in allCols.DefaultIfEmpty()
-        group subRefs by user into grouped
-        select new{grouped.Key.};*/
-
-        /*var result = _db.User.GroupJoin(_db.UserProjectXRefs,
-        user => user.Id,
-        refs => refs.IdUser,
-        (user, refs) => new {
-            id = user.Id,
-            username = user.Username,
-            fullName = user.FullName,
-            workplace = user.PrimaryWorkplace,
-            email = user.EmailAddress,
-            pwdInit = user.PwdInit,
-            superiorId = user.SuperiorId,
-            projectId = refs == null ? 0 : refs.IdProject
-        }).Where(x => x.projectId == projectId || x.projectId == 0)
-    .Select(x => new DataModelAssignment<UserBase>(
-        x.projectId != 0, 
-        new UserBase(x.id, x.username, x.fullName, x.workplace, x.email, x.superiorId))
-    ).ToList();
-
-*/
-        //todo empty return
+            select new DataModelAssignment<UserBase>(refs != null, 
+                new UserBase(user.Id, user.Username, user.FullName,
+                user.PrimaryWorkplace, user.EmailAddress, user.PwdInit))).Distinct().ToList();
+        
         return query;
+    }
+
+
+    public bool AssignSuperiorsToUser(List<long> superiorsIds, UserBase user) {
+        List<UserSuperiorXRefs> resultRange = new();
+        foreach (var superiorId in superiorsIds) {
+            var newRefs = new UserSuperiorXRefs{
+                IdUser = user.Id,
+                IdSuperior = superiorId,
+                AssignedDate = DateTime.Now
+            };
+            resultRange.Add(newRefs);
+        }
+        _db.UserSuperiorXRefs.AddRange(resultRange);
+        
+        var changedRows = _db.SaveChanges();
+        return changedRows > 0;
+    }
+
+    public bool UnassignSuperiorsFromUser(List<long> superiorsIds, UserBase user){
+        var result = _db.UserSuperiorXRefs.Where(
+            o => o.IdUser == user.Id && superiorsIds.Contains(o.IdSuperior));
+        if (!result.Any()) {
+            return false;
+        }
+        _db.RemoveRange(result);
+        var changedRows = _db.SaveChanges();
+        return changedRows > 0;
     }
 
     public IEnumerable<UserBase> GetAllUsersUnderProject(long projectId) {
@@ -142,28 +143,33 @@ public class UserDataService : IUserDataService{
 
         return query;
     }
+    
 
-
-    public bool AssignUserToProject(User user, Project project) {
-        var newRefs = new UserProjectXRefs {
-            IdUser = user.Id,
-            IdProject = project.Id,
-            AssignedDate = DateTime.Now
-        };
-        
-        _db.UserProjectXRefs.Add(newRefs);
+    public bool AssignUsersToProject(List<long> usersIds, Project project) {
+        List<UserProjectXRefs> resultRange = new();
+        foreach (var userId in usersIds) {
+            var newRefs = new UserProjectXRefs {
+                IdUser = userId,
+                IdProject = project.Id,
+                AssignedDate = DateTime.Now,
+                Id = default
+            };
+            resultRange.Add(newRefs);
+        }
+        _db.UserProjectXRefs.AddRange(resultRange);
         var changedRows = _db.SaveChanges();
         return changedRows > 0;
     }
 
 
-    public bool UnassignUserFromProject(User user, Project project) {
+    public bool UnassignUsersFromProject(List<long> usersIds, Project project) {
         var result = _db.UserProjectXRefs.Where(
-            o => o.IdUser == user.Id && o.IdProject == project.Id);
+            o => usersIds.Contains(o.IdUser) && o.IdProject == project.Id);
         if (!result.Any()) {
             return false;
         }
-        _db.Remove(result);
+        
+        _db.RemoveRange(result);
         var changedRows = _db.SaveChanges();
         return changedRows > 0;
     }
@@ -176,11 +182,6 @@ public class UserDataService : IUserDataService{
             );
 
         return reference != null;
-    }
-    
-    public User? GetUserById(int id) {
-        var user = _db.User.Find(id);
-        return user;
     }
     
     public void DeleteUser(int id) {

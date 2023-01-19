@@ -219,3 +219,7 @@ ul {
         transform: rotate(360deg)
     }
 }
+
+.col {
+    border-left: 1px solid black;
+}

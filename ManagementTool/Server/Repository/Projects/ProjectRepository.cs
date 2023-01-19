@@ -1,10 +1,12 @@
-﻿using ManagementTool.Shared.Models.Database;
+﻿using ManagementTool.Server.Services;
+using ManagementTool.Server.Services.Projects;
+using ManagementTool.Shared.Models.Database;
 
-namespace ManagementTool.Server.Services.Projects;
+namespace ManagementTool.Server.Repository.Projects;
 
-public class ProjectDataService : IProjectDataService {
+public class ProjectRepository : IProjectRepository {
     private readonly ManToolDbContext _db; //To Get all employees details
-    public ProjectDataService(ManToolDbContext db) {
+    public ProjectRepository(ManToolDbContext db) {
         _db = db;
     }
 
@@ -59,7 +61,14 @@ public class ProjectDataService : IProjectDataService {
         return rowsChanged > 0;
     }
 
-    
+
+    public bool AreUsersUnderProjects(long[] usersIds, long[] projectIds) {
+        var count = _db.UserProjectXRefs.Where(x => usersIds.Contains(x.IdUser) && projectIds.Contains(x.IdProject))
+            .DistinctBy(x => x.IdUser).Count();
+        return count == usersIds.Length;
+    }
+
+
     public bool DeleteProjectUserAssignments(Project project) {
 
         var userAssignments = _db.UserProjectXRefs.Where(o => o.IdProject == project.Id);

@@ -3,9 +3,9 @@ using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Server.Services.Users;
 
-public class UserRoleDataService : IUserRoleDataService {
+public class UserRoleRepository : IUserRoleRepository {
     private readonly ManToolDbContext _db; //To Get all employees details
-    public UserRoleDataService(ManToolDbContext db){
+    public UserRoleRepository(ManToolDbContext db){
         _db = db;
     }
 
@@ -61,6 +61,7 @@ public class UserRoleDataService : IUserRoleDataService {
     }
 
     public bool AssignRolesToUser(List<Role> roles, long userId) {
+        List<UserRoleXRefs> resultRange = new List<UserRoleXRefs>();
         foreach (var role in roles) {
 
             UserRoleXRefs newAssignment = new() {
@@ -68,8 +69,10 @@ public class UserRoleDataService : IUserRoleDataService {
                 IdRole = role.Id,
                 IdUser = userId
             };
-            _db.UserRoleXRefs.Add(newAssignment);
+            resultRange.Add(newAssignment);
         }
+
+        _db.UserRoleXRefs.AddRange(resultRange);
         var changedLines = _db.SaveChanges();
         return changedLines > 0;
     }

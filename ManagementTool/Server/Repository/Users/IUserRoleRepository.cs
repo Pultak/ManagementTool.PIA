@@ -3,7 +3,7 @@ using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Server.Services.Users;
 
-public interface IUserRoleDataService {
+public interface IUserRoleRepository {
 
     public IEnumerable<Role> GetAllRoles();
     public IEnumerable<Role> GetAllNonProjectManRoles();
