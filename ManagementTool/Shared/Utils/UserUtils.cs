@@ -27,20 +27,39 @@ public static class UserUtils {
     public const string SpecialCharactersRegexPattern = "^[a-zA-Z0-9]*$";
     public static Regex SpecialCharactersRegex = new(SpecialCharactersRegexPattern);
     
+    /// <summary>
+    /// Validation constants for users orion name (username)
+    /// </summary>
     public const int MinUsernameLength = 3;
     public const int MaxUsernameLength = 32;
 
+
+    /// <summary>
+    /// Validation constants for users full name 
+    /// </summary>
     public const int MinFullnameLength = 4;
     public const int MaxFullnameLength = 124;
-    
+
+    /// <summary>
+    /// Validation constants for users password length
+    /// </summary>
     public const int MinPwdLength = 8;
     public const int MaxPwdLength = 32;
-    
+
+
+    /// <summary>
+    /// Validation constants for users workplace
+    /// </summary>
     public const int MinWorkplaceNameLength = 1;
     public const int MaxWorkplaceNameLength = 64;
 
 
-
+    /// <summary>
+    /// Checks passed password in string and validates if it is secure enough.
+    /// Note that the password should not be in hashed state
+    /// </summary>
+    /// <param name="password">not hashed password</param>
+    /// <returns>true if valid</returns>
     public static bool IsValidPassword(string password) {
         if (password.Length < MinPwdLength || password.Length > MaxPwdLength
             || !PasswordRegex.IsMatch(password)) {
@@ -50,6 +69,11 @@ public static class UserUtils {
         return true;
     }
 
+    /// <summary>
+    /// Checks if the passed user contains all required variables of needed quality.
+    /// </summary>
+    /// <param name="user">user base to check</param>
+    /// <returns>Ok if valid, otherwise EUserCreationResponse with error</returns>
     public static EUserCreationResponse ValidateUser(UserBase? user) {
         if (user == null) {
             return EUserCreationResponse.EmptyUser;
@@ -76,6 +100,12 @@ public static class UserUtils {
     }
 
 
+    /// <summary>
+    /// Creates random password of desired length. It contains random number, characters and special characters.
+    /// Note that it is possible that it can generate password that is not containing all required characters
+    /// </summary>
+    /// <param name="passwordLength">Desired length of the newly generated password</param>
+    /// <returns>newly generated password</returns>
     public static string CreateRandomPassword(int passwordLength) {
         var allowedChars = "0123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ*/-+!@#$%^&(";
         var randNum = new Random();
@@ -87,7 +117,12 @@ public static class UserUtils {
         return new string(chars);
     }
 
-
+    /// <summary>
+    /// Method check if the passed user is authorized with desired Role
+    /// </summary>
+    /// <param name="loggedUser">user of which you want to check his roles</param>
+    /// <param name="role">Role you want to check</param>
+    /// <returns>true if user is authorized</returns>
     public static bool IsUserAuthorized(LoggedUserPayload? loggedUser, ERoleType? role) {
 
         if (loggedUser == null) {
