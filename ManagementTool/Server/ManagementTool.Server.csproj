@@ -26,6 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Client\ManagementTool.Client.csproj" />
     <ProjectReference Include="..\Shared\ManagementTool.Shared.csproj" />
   </ItemGroup>
 

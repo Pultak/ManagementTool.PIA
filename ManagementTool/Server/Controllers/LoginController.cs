@@ -31,14 +31,14 @@ public class LoginController : ControllerBase {
         new(2, "TEST2ProjectManager", ERoleType.ProjectManager, 2)
     };
 
-    public LoginController(IUserDataService userService, IUserRoleDataService roleService) {
-        UserDataService = userService;
-        UserRoleDataService = roleService;
+    public LoginController(IUserRepository userService, IUserRoleRepository roleService) {
+        UserRepository = userService;
+        UserRoleRepository = roleService;
     }
 
 
-    public IUserDataService UserDataService { get; }
-    public IUserRoleDataService UserRoleDataService { get; }
+    public IUserRepository UserRepository { get; }
+    public IUserRoleRepository UserRoleRepository { get; }
 
 
     [HttpPost]
@@ -54,7 +54,7 @@ public class LoginController : ControllerBase {
             return EAuthResponse.AlreadyLoggedIn;
         }
 
-        var user = UserDataService.GetUserByName(authPayload.Username);
+        var user = UserRepository.GetUserByName(authPayload.Username);
         if (user == null) {
             //Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return EAuthResponse.UnknownUser;
@@ -66,7 +66,7 @@ public class LoginController : ControllerBase {
             return EAuthResponse.WrongPassword;
         }
 
-        var roles = UserRoleDataService.GetUserRolesByUserId(user.Id);
+        var roles = UserRoleRepository.GetUserRolesByUserId(user.Id);
 
         var rolesArray = roles as Role[] ?? roles.ToArray();
 
@@ -94,13 +94,13 @@ public class LoginController : ControllerBase {
     public LoggedUserPayload GetLoggedInUser() {
         //todo remove latter
 
-        /*HttpContext.Session.SetInt32(UserIdKey, 1);
+        HttpContext.Session.SetInt32(UserIdKey, 1);
         HttpContext.Session.SetString(UsernameKey, "DummyOrion");
         HttpContext.Session.SetString(UserFullNameKey, "Dummy Full Name");
         HttpContext.Session.SetObject(UserRolesKey, DummyRoles);
-        HttpContext.Session.SetInt32(UserHasInitPwdKey, 1);
-        return new LoggedUserPayload("DummyOrion", "Dummy Full Name", DummyRoles, true);
-        */
+        HttpContext.Session.SetInt32(UserHasInitPwdKey, 0);
+        return new LoggedUserPayload("DummyOrion", "Dummy Full Name", DummyRoles, false);
+        
 
         var name = HttpContext.Session.GetString(UsernameKey);
         if (name == null) {
@@ -120,7 +120,7 @@ public class LoginController : ControllerBase {
             return;
         }
 
-        var user = UserDataService.GetUserById((long)userId);
+        var user = UserRepository.GetUserById((long)userId);
         if (user == null) {
             HttpContext.Session.Clear();
             Response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -128,13 +128,13 @@ public class LoginController : ControllerBase {
         }
 
         if (!UserUtils.IsValidPassword(newPwd)) {
-            Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
             return;
         }
 
 
         user.Pwd = HashPwd(newPwd, Convert.FromBase64String(user.Salt));
-        var ok = UserDataService.UpdateUserPwd(user);
+        var ok = UserRepository.UpdateUserPwd(user);
         Response.StatusCode = (int)HttpStatusCode.OK;
     }
 
@@ -160,10 +160,10 @@ public class LoginController : ControllerBase {
     }
 
     public static bool IsUserAuthorized(ERoleType? neededRole, Role[]? roles) {
-        return roles != null && (neededRole == null ||
-                                 //no one is logged in
-                                 roles.Any(role => role.Type.Equals(neededRole))
-            );
+        var userAuthorized = roles != null && (neededRole == null ||
+                                               //no one is logged in
+                                               roles.Any(role => role.Type.Equals(neededRole)));
+        return userAuthorized;
     }
 
     public static Role[]? GetAllProjectManagerRoles(ISession session) {

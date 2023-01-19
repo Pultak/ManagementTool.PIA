@@ -1,7 +1,6 @@
 ﻿using System.Net;
-using ManagementTool.Server.Services.Projects;
+using ManagementTool.Server.Repository.Projects;
 using ManagementTool.Server.Services.Users;
-using ManagementTool.Shared.Models;
 using ManagementTool.Shared.Models.Database;
 using ManagementTool.Shared.Models.Utils;
 using ManagementTool.Shared.Utils;
@@ -14,19 +13,19 @@ namespace ManagementTool.Server.Controllers;
 [Microsoft.AspNetCore.Mvc.Route("api/[controller]")]
 [ApiController]
 public class ProjectsController : ControllerBase {
-    public IProjectDataService ProjectDataService { get; }
-    public IUserRoleDataService UserRoleDataService { get; }
-    public IUserDataService UserDataService { get; }
+    public IProjectRepository ProjectRepository { get; }
+    public IUserRoleRepository UserRoleRepository { get; }
+    public IUserRepository UserRepository { get; }
 
-    public ProjectsController(IProjectDataService projectService, IUserRoleDataService roleService, IUserDataService userService){
-        ProjectDataService = projectService;
-        UserRoleDataService = roleService;
-        UserDataService = userService;
+    public ProjectsController(IProjectRepository projectService, IUserRoleRepository roleService, IUserRepository userService){
+        ProjectRepository = projectService;
+        UserRoleRepository = roleService;
+        UserRepository = userService;
     }
 
     
     [HttpGet]
-    public IEnumerable<Project>? GetAllProjects() {
+    public Project[]? GetAllProjects() {
         var roles = LoginController.GetLoggedUserRoles(HttpContext.Session);
         if (roles == null) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
@@ -37,13 +36,13 @@ public class ProjectsController : ControllerBase {
         if (LoginController.IsUserAuthorized(ERoleType.Secretariat, roles) ||
             LoginController.IsUserAuthorized(ERoleType.DepartmentManager, roles)) {
 
-            return ProjectDataService.GetAllProjects();
+            return ProjectRepository.GetAllProjects().ToArray();
         }
-        else if (LoginController.IsUserAuthorized(ERoleType.ProjectManager, roles)) {
+        if (LoginController.IsUserAuthorized(ERoleType.ProjectManager, roles)) {
 
             var managerRoles = LoginController.GetAllProjectManagerRoles(roles);
             var projectIds = managerRoles.Select(x => x.ProjectId).OfType<long>().ToList();
-            return ProjectDataService.GetProjectsByIds(projectIds);
+            return ProjectRepository.GetProjectsByIds(projectIds).ToArray();
         }
 
 
@@ -53,7 +52,7 @@ public class ProjectsController : ControllerBase {
     
     [HttpGet("{name}")]
     public Project? GetProjectByName(string name) {
-        if (LoginController.IsUserAuthorized(null, HttpContext.Session)) {
+        if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
@@ -63,7 +62,7 @@ public class ProjectsController : ControllerBase {
             return null;
         }
 
-        var project = ProjectDataService.GetProjectByName(name);
+        var project = ProjectRepository.GetProjectByName(name);
         if (project == null) {
             Response.StatusCode = (int)HttpStatusCode.NotFound;
             return null;
@@ -75,7 +74,7 @@ public class ProjectsController : ControllerBase {
 
     [HttpGet("{projectId:long}/users")]
     public IEnumerable<UserBase>? GetAllUsersUnderProject(long projectId) {
-        if (LoginController.IsUserAuthorized(null, HttpContext.Session)) {
+        if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
@@ -85,7 +84,7 @@ public class ProjectsController : ControllerBase {
             return null;
         }
 
-        var resultUsers = UserDataService.GetAllUsersUnderProject(projectId);
+        var resultUsers = UserRepository.GetAllUsersUnderProject(projectId);
         Response.StatusCode = (int)HttpStatusCode.OK;
         return resultUsers;
     }
@@ -94,7 +93,7 @@ public class ProjectsController : ControllerBase {
     [HttpPut]
     public long CreateProject([FromBody] Project project) {
         
-        if (LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
+        if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
             //only secretariat can create projects
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return -1;
@@ -118,7 +117,7 @@ public class ProjectsController : ControllerBase {
         }
 
 
-        var projectId = ProjectDataService.AddProject(project);
+        var projectId = ProjectRepository.AddProject(project);
 
         if (projectId < 0) {
             Response.StatusCode = (int)HttpStatusCode.InternalServerError;
@@ -130,7 +129,7 @@ public class ProjectsController : ControllerBase {
             Type = ERoleType.ProjectManager,
             ProjectId = projectId
         };
-        var roleId = UserRoleDataService.AddRole(newRole);
+        var roleId = UserRoleRepository.AddRole(newRole);
 
         if (roleId < 0) {
             Response.StatusCode = (int)HttpStatusCode.InternalServerError;
@@ -143,7 +142,7 @@ public class ProjectsController : ControllerBase {
 
     [HttpPatch("update")]
     public void UpdateProject([FromBody] Project project) {
-        if (IsAuthorizedToManageProjects(project.Id, HttpContext.Session)) {
+        if (!IsAuthorizedToManageProjects(project.Id, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return;
         }
@@ -159,20 +158,20 @@ public class ProjectsController : ControllerBase {
             return;
         }
         
-        var updateOk = ProjectDataService.UpdateProject(project);
+        var updateOk = ProjectRepository.UpdateProject(project);
         
         if (!updateOk) {
             Response.StatusCode = (int)HttpStatusCode.InternalServerError;
         }
 
-        UserRoleDataService.UpdateProjectRoleName(project.Id, project.ProjectName + " Manažer");
+        UserRoleRepository.UpdateProjectRoleName(project.Id, project.ProjectName + " Manažer");
         Response.StatusCode = (int)HttpStatusCode.OK;
     }
     
     [HttpDelete]
     public void Delete([FromBody] Project project) {
         Response.StatusCode = (int)HttpStatusCode.OK;
-        if (IsAuthorizedToManageProjects(project.Id, HttpContext.Session)) {
+        if (!IsAuthorizedToManageProjects(project.Id, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return;
         }
@@ -181,10 +180,10 @@ public class ProjectsController : ControllerBase {
             return;
         }
 
-        if (ProjectDataService.DeleteProject(project) &&
-            UserRoleDataService.DeleteProjectRole(project.Id) &&
-            ProjectDataService.DeleteProjectUserAssignments(project) &&
-            ProjectDataService.DeleteAllProjectAssignments(project)) {
+        if (ProjectRepository.DeleteProject(project) &&
+            UserRoleRepository.DeleteProjectRole(project.Id) &&
+            ProjectRepository.DeleteProjectUserAssignments(project) &&
+            ProjectRepository.DeleteAllProjectAssignments(project)) {
             return;
         }
 
@@ -194,7 +193,7 @@ public class ProjectsController : ControllerBase {
 
 
     private EProjectCreationResponse CheckProjectDataConflicts(Project project) {
-        var allProjects = ProjectDataService.GetAllProjects();
+        var allProjects = ProjectRepository.GetAllProjects();
         if (allProjects.Any(existingProject => existingProject.ProjectName.Equals(project.ProjectName))) {
             return EProjectCreationResponse.NameTaken;
         }

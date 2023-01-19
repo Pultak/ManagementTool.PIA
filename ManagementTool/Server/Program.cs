@@ -1,3 +1,5 @@
+using ManagementTool.Server.Repository.Projects;
+using ManagementTool.Server.Repository.Users;
 using ManagementTool.Server.Services;
 using ManagementTool.Server.Services.Projects;
 using ManagementTool.Server.Services.Users;
@@ -45,10 +47,10 @@ internal class Program {
 
     private static void ConfigureServices(IServiceCollection services) {
         // Add services to the container.
-        services.AddTransient<IUserDataService, UserDataService>();
-        services.AddTransient<IUserRoleDataService, UserRoleDataService>();
-        services.AddTransient<IAssignmentDataService, AssignmentDataService>();
-        services.AddTransient<IProjectDataService, ProjectDataService>();
+        services.AddTransient<IUserRepository, UserRepository>();
+        services.AddTransient<IUserRoleRepository, UserRoleRepository>();
+        services.AddTransient<IAssignmentRepository, AssignmentRepository>();
+        services.AddTransient<IProjectRepository, ProjectRepository>();
     }
 
     private static void Configure(IServiceCollection services, IConfiguration configuration) {
@@ -59,7 +61,6 @@ internal class Program {
 
         services.AddDistributedMemoryCache();
         services.AddSession(options => {
-            options.IdleTimeout = TimeSpan.FromMinutes(30);
             options.Cookie.HttpOnly = true;
             options.Cookie.IsEssential = true;
         });

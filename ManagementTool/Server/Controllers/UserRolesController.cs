@@ -12,47 +12,50 @@ namespace ManagementTool.Server.Controllers;
 [ApiController]
 public class UserRolesController : ControllerBase {
 
-    public IUserRoleDataService UserRoleDataService { get; }
-    public IUserDataService UserDataService { get; }
+    public IUserRoleRepository UserRoleRepository { get; }
+    public IUserRepository UserRepository { get; }
 
-    public UserRolesController(IUserRoleDataService roleService, IUserDataService userService) {
-        UserRoleDataService = roleService;
-        UserDataService = userService;
+    public UserRolesController(IUserRoleRepository roleService, IUserRepository userService) {
+        UserRoleRepository = roleService;
+        UserRepository = userService;
     }
 
     
     [HttpGet]
     public IEnumerable<Role>? GetAllRoles() {
-        if (LoginController.IsUserAuthorized(null, HttpContext.Session)) {
+        if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
         Response.StatusCode = (int)HttpStatusCode.OK;
-        return UserRoleDataService.GetAllRoles();
+        return UserRoleRepository.GetAllRoles();
     }
 
     [HttpGet("allUserAssigned/{userId:long}")]
     public List<DataModelAssignment<Role>>? GetAllUserRoles(long userId) {
-        if (LoginController.IsUserAuthorized(null, HttpContext.Session)) {
+        if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
-        var allRoles = UserRoleDataService.GetAllNonProjectManRoles();
+        var allRoles = UserRoleRepository.GetAllNonProjectManRoles();
         
-        var userRoles = userId < 1 ? Array.Empty<Role>() : UserRoleDataService.GetUserRolesByUserId(userId).ToArray();
+        var userRoles = userId < 1 ? Array.Empty<Role>() : UserRoleRepository.GetUserRolesByUserId(userId).ToArray();
 
         Response.StatusCode = (int)HttpStatusCode.OK;
-        return (from role in allRoles let assigned = userRoles.Contains(role) select new DataModelAssignment<Role>(assigned, role)).ToList();
+        var result = (from role in allRoles
+            let assigned = userRoles.Any(x => x.Id == role.Id)
+            select new DataModelAssignment<Role>(assigned, role)).ToList();
+        return result;
     }
 
 
     [HttpGet("superiors")]
-    public IEnumerable<UserBase>? GetAllSuperiors() {
-        if (LoginController.IsUserAuthorized(null, HttpContext.Session)) {
+    public UserBase[]? GetAllSuperiors() {
+        if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
-        var supRole = UserRoleDataService.GetRolesByType(ERoleType.Superior).FirstOrDefault();
+        var supRole = UserRoleRepository.GetRolesByType(ERoleType.Superior).FirstOrDefault();
         if (supRole == null) {
             //role is not found. Not possible without direct db changes
             Response.StatusCode = (int)HttpStatusCode.InternalServerError;
@@ -60,13 +63,14 @@ public class UserRolesController : ControllerBase {
         }
         
         Response.StatusCode = (int)HttpStatusCode.OK;
-        return UserDataService.GetAllUsersByRole(supRole);
+        var result = UserRepository.GetAllUsersByRole(supRole);
+        return result.ToArray();
     }
 
 
     [HttpGet("superiors/{userId:long}")]
      public IEnumerable<long>? GetAllSuperiors(long userId) {
-        if (LoginController.IsUserAuthorized(null, HttpContext.Session)) {
+        if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
@@ -75,7 +79,7 @@ public class UserRolesController : ControllerBase {
             return null;
         }
 
-        var supIds = UserDataService.GetAllUserSuperiorsIds(userId);
+        var supIds = UserRepository.GetAllUserSuperiorsIds(userId);
         Response.StatusCode = (int)HttpStatusCode.OK;
         return supIds;
     }
@@ -84,7 +88,7 @@ public class UserRolesController : ControllerBase {
     // GET api/<UserRolesController>/5
     [HttpGet("{id}")]
     public IEnumerable<Role>? GetUserRolesById(long userId) {
-        if (LoginController.IsUserAuthorized(null, HttpContext.Session)) {
+        if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
@@ -94,6 +98,6 @@ public class UserRolesController : ControllerBase {
             return null;
         }
         Response.StatusCode = (int)HttpStatusCode.OK;
-        return UserRoleDataService.GetUserRolesByUserId(userId);
+        return UserRoleRepository.GetUserRolesByUserId(userId);
     }
 }

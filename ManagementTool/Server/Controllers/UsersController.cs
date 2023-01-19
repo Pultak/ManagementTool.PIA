@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Security.Cryptography;
+using ManagementTool.Server.Repository.Projects;
 using ManagementTool.Server.Services.Projects;
 using ManagementTool.Server.Services.Users;
 using ManagementTool.Shared.Models.ApiModels;
@@ -16,24 +17,26 @@ namespace ManagementTool.Server.Controllers;
 [ApiController]
 public class UsersController : ControllerBase {
     
-    public IUserDataService UserDataService { get; }
-    public IProjectDataService ProjectDataService { get; }
-    public IUserRoleDataService RoleDataService { get; }
+    public IUserRepository UserRepository { get; }
+    public IProjectRepository ProjectRepository { get; }
+    public IUserRoleRepository RoleRepository { get; }
 
-    public UsersController(IUserDataService userService, IProjectDataService projectService, IUserRoleDataService roleDataService) {
-        UserDataService = userService;
-        ProjectDataService = projectService;
-        RoleDataService = roleDataService;
+    public UsersController(IUserRepository userService, IProjectRepository projectService, IUserRoleRepository roleRepository) {
+        UserRepository = userService;
+        ProjectRepository = projectService;
+        RoleRepository = roleRepository;
     }
     
     [HttpGet]
     public IEnumerable<UserBase>? GetAllUsers() {
-        if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
+        if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session) &&
+            !LoginController.IsUserAuthorized(ERoleType.ProjectManager, HttpContext.Session) &&
+            !LoginController.IsUserAuthorized(ERoleType.DepartmentManager, HttpContext.Session)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
         Response.StatusCode = (int)HttpStatusCode.OK;
-        return UserDataService.GetAllUsers();
+        return UserRepository.GetAllUsers();
     }
 
 
@@ -49,7 +52,7 @@ public class UsersController : ControllerBase {
             return null;
         }
 
-        var result = UserDataService.GetAllUsersAssignedToProject(idProject);
+        var result = UserRepository.GetAllUsersAssignedToProject(idProject);
         Response.StatusCode = (int)HttpStatusCode.OK;
         return result;
     }
@@ -66,7 +69,7 @@ public class UsersController : ControllerBase {
             return null;
         }
 
-        var user = UserDataService.GetUserById(id);
+        var user = UserRepository.GetUserById(id);
 
         if (user == null) {
             Response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -102,7 +105,8 @@ public class UsersController : ControllerBase {
         userPayload.UpdatedUser.Salt = Convert.ToBase64String(salt);
         
 
-        var userId = UserDataService.AddUser(userPayload.UpdatedUser);
+        var userId = UserRepository.AddUser(userPayload.UpdatedUser);
+        userPayload.UpdatedUser.Id = userId;
 
         if (userId < 0) {
             Response.StatusCode = (int)HttpStatusCode.InternalServerError;
@@ -110,6 +114,7 @@ public class UsersController : ControllerBase {
         }
 
         UpdateUserRoleAssignments(userPayload.AssignedRoles, userId);
+        UpdateUserSuperiorAssignments(userPayload.Superiors, userPayload.UpdatedUser);
 
         Response.StatusCode = (int)HttpStatusCode.OK;
         return userId;
@@ -127,31 +132,15 @@ public class UsersController : ControllerBase {
         if (valResult == EUserCreationResponse.Ok) {
             
             var dbUser = new User(userPayload.UpdatedUser);
-            UserDataService.UpdateUser(dbUser);
+            UserRepository.UpdateUser(dbUser);
             UpdateUserRoleAssignments(userPayload.AssignedRoles, userPayload.UpdatedUser.Id);
+            UpdateUserSuperiorAssignments(userPayload.Superiors, userPayload.UpdatedUser);
             Response.StatusCode = (int)HttpStatusCode.OK;
         }
         else {
             Response.StatusCode = (int)HttpStatusCode.BadRequest;
         }
     }
-    /* todo remove
-    [HttpDelete]
-    public void DeleteUser([FromBody] UserBase user) {
-        if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
-            //only secretariat can delete users
-            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            return;
-        }
-        var dbUser = new User(user);
-        var ok = UserDataService.DeleteUser(dbUser);
-        Response.StatusCode = (int)HttpStatusCode.OK;
-
-        if (!ok) {
-            Response.StatusCode = (int)HttpStatusCode.NoContent;
-        }
-    }
-    */
 
     [HttpDelete("{id}")]
     public void DeleteUser(long id) {
@@ -165,13 +154,13 @@ public class UsersController : ControllerBase {
             return;
         }
 
-        var user = UserDataService.GetUserById(id);
+        var user = UserRepository.GetUserById(id);
 
         if (user == null) {
             Response.StatusCode = (int)HttpStatusCode.NotFound;
             return;
         }
-        var ok = UserDataService.DeleteUser(user);
+        var ok = UserRepository.DeleteUser(user);
         Response.StatusCode = (int)HttpStatusCode.OK;
 
         if (!ok) {
@@ -181,32 +170,26 @@ public class UsersController : ControllerBase {
 
 
     
-    [HttpPut("assignUser/{idUser:long}/{idProject:long}")]
-    public void AssignUserToProject(long idUser, long idProject) {
+    [HttpPost("assignUser")]
+    public void AssignUsersToProject([FromBody]ProjectAssignPayload projectAssignPayload) {
         
         if (!LoginController.IsUserAuthorized(ERoleType.Secretariat, HttpContext.Session)) {
             //only secretariat can assign users
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return;
         }
-        if (idUser < 0 && idProject < 0) {
+        if (projectAssignPayload.ProjectId < 0) {
             Response.StatusCode = (int)HttpStatusCode.BadRequest;
             return;
         }
 
-        var user = UserDataService.GetUserById(idUser);
-        if (user == null) {
-            Response.StatusCode = (int)HttpStatusCode.NotFound;
-            return;
-        }
-
-        var project = ProjectDataService.GetProjectById(idProject);
+        var project = ProjectRepository.GetProjectById(projectAssignPayload.ProjectId);
         if (project == null) {
             Response.StatusCode = (int)HttpStatusCode.NotFound;
             return;
         }
         
-        var ok = UserDataService.AssignUserToProject(user, project);
+        var ok = UpdateUserProjectAssignments(projectAssignPayload.AssignedUsers, project);
         Response.StatusCode = (int)HttpStatusCode.OK;
         if (!ok) {
             Response.StatusCode = (int)HttpStatusCode.InternalServerError;
@@ -215,16 +198,68 @@ public class UsersController : ControllerBase {
     
 
     private EUserCreationResponse CheckUserDataConflicts(User user) {
-        var allUsers = UserDataService.GetAllUsers();
+        var allUsers = UserRepository.GetAllUsers();
         if (allUsers.Any(existingUser => existingUser.Username.Equals(user.Username))) {
             return EUserCreationResponse.UsernameTaken;
         }
         return EUserCreationResponse.Ok;
     }
-
     
-    private bool UpdateUserRoleAssignments(List<DataModelAssignment<Role>> roleAssignments, long userId) {
-        var userRoles = RoleDataService.GetUserRolesByUserId(userId).ToArray();
+    private bool UpdateUserProjectAssignments(IReadOnlyCollection<UserBase> assignedUsers, Project project) {
+        var dbProjectAssignees = UserRepository.GetAllUsersAssignedToProject(project.Id).ToArray();
+        
+        List<long> unassignList = new();
+        List<long> assignList = new();
+        foreach (var projectAssignee in dbProjectAssignees) {
+            if (projectAssignee.IsAssigned) {
+                if (assignedUsers.All(role => role.Id != projectAssignee.DataModel.Id)) {
+                    //we need to remove reference
+                    unassignList.Add(projectAssignee.DataModel.Id);
+                }
+                //assigned and should be assigned => nothing changed
+            }
+            else {
+                if (assignedUsers.Any(role => role.Id == projectAssignee.DataModel.Id)) {
+                    //we need to add reference
+                    assignList.Add(projectAssignee.DataModel.Id);
+                }
+            }
+        }
+        if (assignList.Count > 0) {
+            UserRepository.AssignUsersToProject(assignList, project);
+        }
+
+        if (unassignList.Count > 0) {
+            UserRepository.UnassignUsersFromProject(unassignList, project);
+        }
+
+        return true;
+    }
+    
+    
+    private void UpdateUserSuperiorAssignments(IReadOnlyCollection<UserBase> newAssignedSuperiors, UserBase user) {
+        var dbAssignedSuperiors = UserRepository.GetAllUserSuperiorsIds(user.Id).ToArray();
+
+        //select all superior references that should be removed from db
+        //if not present in newList then remove from db
+        var unassignList = dbAssignedSuperiors.Where(x => newAssignedSuperiors.All(newAssign => newAssign.Id != x)).ToList();
+        
+        //select all superior references that should be added to the db
+        //if not present in dbList then add to db
+        var assignList = newAssignedSuperiors.Where(x => !dbAssignedSuperiors.Contains(x.Id)).Select(x=> x.Id).ToList();
+        
+        if (assignList.Count > 0) {
+            UserRepository.AssignSuperiorsToUser(assignList, user);
+        }
+
+        if (unassignList.Count > 0) {
+            UserRepository.UnassignSuperiorsFromUser(unassignList, user);
+        }
+    }
+
+
+    private void UpdateUserRoleAssignments(List<DataModelAssignment<Role>> roleAssignments, long userId) {
+        var userRoles = RoleRepository.GetUserRolesByUserId(userId).ToArray();
         
         List<Role> unassignList = new();
         List<Role> assignList = new();
@@ -245,14 +280,12 @@ public class UsersController : ControllerBase {
         }
 
         if (assignList.Count > 0) {
-            RoleDataService.AssignRolesToUser(assignList, userId);
+            RoleRepository.AssignRolesToUser(assignList, userId);
         }
 
         if (unassignList.Count > 0) {
-            RoleDataService.UnassignRolesFromUser(unassignList, userId);
+            RoleRepository.UnassignRolesFromUser(unassignList, userId);
         }
-
-        return true;
     }
 
 
