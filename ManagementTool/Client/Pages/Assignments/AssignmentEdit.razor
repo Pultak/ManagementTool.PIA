@@ -1,106 +1,177 @@
-﻿@page "/assignments/edit"
-@using ManagementTool.Shared.Models.AppState
+﻿@page "/assignments/edit/{ReturnEndpoint:int}"
+@using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.ApiModels
+@using ManagementTool.Shared.Models.AppState
 @using ManagementTool.Shared.Models.Database
+@using ManagementTool.Shared.Models.Login
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
-@using Microsoft.AspNetCore.Components
-@using ManagementTool.Client.Utils
+@using System.ComponentModel.DataAnnotations
 
 
 @inject HttpClient Http
 @inject NavigationManager UriHelper
 @inject StateContainer<AssignmentWrapper> AssignmentContainer
+@inject StateContainer<LoggedUserPayload> LoggedUserContainer
 @inject ILogger<AssignmentEdit> Logger
 @inject IJSRuntime JsRuntime
 
-<h3>Editace úkolu</h3>
 
 <button @onclick="ReturnToAssignments">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" />
+        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
     </svg>
 </button>
 
-@if (WaitingForApiResponse) {
+@if (!IsAuthorized) {
+    <div>Vypadá to, že nemáte dostatečné práva na zobrazení této stránky!</div>
+}
+else if (WaitingForApiResponse) {
     <div class="spinner"></div>
 }
 else {
+    @if (NewAssignmentCreation) {
+        <h3>Vytváření nového úkolu</h3>
+    }
+    else {
+        <h3>Editace úkolu</h3>
+    }
+
     <div>
         <section>
-            <EditForm id="@SubmitBtnId" EditContext="@_editContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+            <EditForm id="@SubmitBtnId" EditContext="@EditContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
                 <DataAnnotationsValidator/>
+                <table>
 
-                <div>
-                    <p>
-                        <label>
+                    <tr>
+                        <td>
                             Název úkolu
-                        </label>
-                        <InputText id="txtName" type="text" required @bind-Value="@SelectedAssignment.Assignment.Name" />
-                        <ValidationMessage For="@(() => SelectedAssignment.Assignment.Name)" />
-                    </p>
-                </div>
-                <div>
-                    <p>
-                        <label>
+                        </td>
+                        <td>
+                            <InputText id="txtName" type="text" required @bind-Value="@SelectedAssignment.Assignment.Name"/>
+                            <ValidationMessage For="@(() => SelectedAssignment.Assignment.Name)"/>
+                        </td>
+
+                    </tr>
+
+                    <tr>
+                        <td>
                             Projekt: @SelectedAssignment.ProjectName
-                        </label>
-                    </p>
-                </div>
-                <div>
-                    <p>
-                        <label>
+                        </td>
+                        <td>
+                            <select @onchange="OnSelectedProjectChange">
+                                <option value=0 disabled selected hidden>
+                                    @if (NewAssignmentCreation) {
+                                        <b>[projekt zatím nezvolen]</b>
+                                    }
+                                    else {
+                                        @SelectedAssignment.ProjectName
+                                    }
+
+                                </option>
+                                @foreach (var project in AllProjects) {
+                                    <option value="@project.Id">
+                                        @project.ProjectName
+                                    </option>
+                                }
+                            </select>
+                            <ValidationMessage For="@(() => SelectedProject)"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
                             Datum od
-                        </label>
-                        <input id="txtDate" type="date" @bind-value="@SelectedAssignment.Assignment.FromDate" min="1970-01-01" />
-                        <ValidationMessage For="@(() => SelectedAssignment.Assignment.FromDate)" />
-                    </p>
-                </div>
-                <div>
-                    <p>
-                        <label>
+                        </td>
+                        <td>
+                            <input id="txtDate" type="date" @bind-value="@SelectedAssignment.Assignment.FromDate" min="01/01/1970" Format="dd/MM/yyyy"/>
+                            <ValidationMessage For="@(() => SelectedAssignment.Assignment.FromDate)"/>
+
+                        </td>
+
+                    </tr>
+                    <tr>
+                        <td>
                             Datum do
-                        </label>
-                        <input id="txtDate" type="date" @bind-value="@SelectedAssignment.Assignment.ToDate" min="1970-01-01" />
-                        <ValidationMessage For="@(() => SelectedAssignment.Assignment.FromDate)" />
-                    </p>
-                </div>
+                        </td>
+                        <td>
+                            <input id="txtDate" type="date" @bind-value="@SelectedAssignment.Assignment.ToDate" min="01/01/1970" Format="dd/MM/yyyy"/>
+                            <ValidationMessage For="@(() => SelectedAssignment.Assignment.ToDate)"/>
+                        </td>
+                    </tr>
+                    <tr>
 
 
-                <div>
-                    <p>
-                        <label>
+                        <td>
                             Přiřazená osoba
-                        </label>
-                        <InputSelect id="txtName" type="text" required @bind-Value="@AssignedUser.FullName">
-                        
-                        
-                        </InputSelect>
-                        <ValidationMessage For="@(() => SelectedAssignment.Assignment.Note)" />
-                    </p>
-                </div>
+                        </td>
+                        <td>
+                            <select @onchange="@OnSelectedUserChange">
+                                <option value=0 disabled selected hidden>
+                                    @if (NewAssignmentCreation) {
+                                        <b>[uživatel zatím nezvolen]</b>
+                                    }
+                                    else {
+                                        @SelectedAssignment.UserName
+                                    }
 
+                                </option>
+                                @foreach (var assignee in PossibleAssignees) {
+                                    <option value="@assignee.Id">
+                                        @assignee.FullName
+                                    </option>
+                                }
+                            </select>
+                            <ValidationMessage For="@(() => SelectedUser)"/>
+                        </td>
+                    </tr>
+                    <tr>
 
-                <div>
-                    <p>
-                        <label>
+                        <td>
+                            Přiřazené časové kvantum
+                        </td>
+                        <td>
+                            <InputNumber id="txtNumber" required @bind-Value="@SelectedAssignment.Assignment.AllocationScope" ParsingErrorMessage=""/>
+                            <ValidationMessage For="@(() => SelectedAssignment.Assignment.AllocationScope)"/>
+                        </td>
+                        <td>
+                            <p>FTE</p>
+                        </td>
+                        <td>
+                            <input class="form-check-input" type="checkbox" name="FTE" @bind="FteMode">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
                             Popisek
-                        </label>
-                        <InputText id="txtName" type="text" required @bind-Value="@SelectedAssignment.Assignment.Note" />
-                        <ValidationMessage For="@(() => SelectedAssignment.Assignment.Note)" />
-                    </p>
-                </div>
+                        </td>
+                        <td>
+                            <InputText id="txtName" type="text" required @bind-Value="@SelectedAssignment.Assignment.Note"/>
+                            <ValidationMessage For="@(() => SelectedAssignment.Assignment.Note)"/>
+                        </td>
+                    </tr>
 
+                    <tr>
+                        <td>
+                            Stav úkolu
+                        </td>
+                        <td>
+                            <InputSelect @bind-Value="SelectedAssignment.Assignment.State">
+                                @foreach (var state in Enum.GetValues(typeof(EAssignmentState))) {
+                                    <option value="@state">@state</option>
+                                }
+                            </InputSelect>
+                        </td>
+                    </tr>
+                </table>
             </EditForm>
 
-            else if (ExceptionMessage != null) {
+            @if (ExceptionMessage != null) {
                 <div>
                     <p>@ExceptionMessage</p>
                 </div>
             }
             <p>
-                @if (NewAssignmentCreation)
-                {
+                @if (NewAssignmentCreation) {
                     <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Vytvořit projekt</button>
                 }
                 else {
@@ -110,7 +181,7 @@ else {
                     </button>
                 }
                 <button type="button" class="btn btn-light"
-                    @onclick="@ReturnToAssignments">
+                        @onclick="@ReturnToAssignments">
                     Zrušit
                 </button>
             </p>
@@ -121,20 +192,35 @@ else {
 
 
 @code {
-    private const string SubmitBtnId = "submitButton";
 
-    public AssignmentWrapper SelectedAssignment{ get; set; } = new();
-    private EditContext _editContext { get; set; }
+    [Parameter]
+    public int ReturnEndpoint { get; set; }
 
-    public Project[] AllProjects { get; set; } = {};
+    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.ProjectManager) ||
+                                 UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.DepartmentManager);
+
+
+        private const string SubmitBtnId = "submitButton";
+
+    public AssignmentWrapper SelectedAssignment { get; set; } = new();
+    private EditContext? EditContext { get; set; }
+
+    public Project[] AllProjects { get; set; } = { };
     public UserBase[] PossibleAssignees { get; set; } = { };
 
-    public Project? AssignmentProject { get; set; } = null;
-    public User AssignedUser { get; set; } = new();
+
+    private bool FteMode { get; set; }
+
+
+    [Required(ErrorMessage = "Projekt musí být přiřazen k úkolu!")]
+    private string? SelectedProject { get; set; }
+
+    [Required(ErrorMessage = "Uživatel musí být přiřazen k úkolu!")]
+    private string? SelectedUser { get; set; }
 
     private bool NewAssignmentCreation { get; set; }
     private bool WaitingForApiResponse { get; set; } = true;
-    
+
     private string? ExceptionMessage { get; set; }
 
 
@@ -146,38 +232,70 @@ else {
         else {
             SelectedAssignment = AssignmentContainer.Value;
         }
+        if (IsAuthorized) {
+            await GetData();
+        }
 
-        await GetData();
-        
-        _editContext = new EditContext(SelectedAssignment);
+        EditContext = new EditContext(SelectedAssignment);
         WaitingForApiResponse = false;
         StateHasChanged();
     }
 
     private async Task GetData() {
-        if (NewAssignmentCreation) {
-            var req = await Http.SendApiGetRequestAsync<Project[]>(Logger, "api/Projects");
+        var req = await Http.SendApiGetRequestAsync<Project[]?>(Logger, "api/Projects");
 
 
-            if (req.status != EApiHttpResponse.Ok) {
-                ExceptionMessage = StringResolver.ResolveApiResponse(req.status);
-                StateHasChanged();
-            }
-            if (req.response != null) {
-                AllProjects = req.response;
-            }
+        if (req.status != EApiHttpResponse.Ok) {
+            ExceptionMessage = StringResolver.ResolveApiResponse(req.status);
+            StateHasChanged();
+        }
+        if (req.response != null) {
+            AllProjects = req.response;
+        }
+
+        if (!NewAssignmentCreation) {
             await GetPossibleAssigneesData(SelectedAssignment.Assignment.ProjectId);
         }
     }
 
+
+    private void OnSelectedProjectChange(ChangeEventArgs evt) {
+        if (evt.Value is not string selectedProjectId) {
+            return;
+        }
+        SelectedProject = selectedProjectId;
+        SelectedUser = null;
+        PossibleAssignees = Array.Empty<UserBase>();
+
+        if (long.TryParse(selectedProjectId, out var resultId)) {
+            SelectedAssignment.Assignment.ProjectId = resultId;
+            SelectedAssignment.Assignment.UserId = 0;
+
+            GetPossibleAssigneesData(resultId);
+        }
+    }
+
+
+    private void OnSelectedUserChange(ChangeEventArgs evt) {
+        if (evt.Value is not string selectedUserId) {
+            return;
+        }
+        SelectedUser = selectedUserId;
+
+        if (long.TryParse(selectedUserId, out var resultId)) {
+            SelectedAssignment.Assignment.UserId = resultId;
+        }
+    }
+
     private void ReturnToAssignments() {
-        UriHelper.NavigateTo("/assignments");
+        var uri = $"/assignments/{(EAssignmentPage)ReturnEndpoint}".ToLower();
+        UriHelper.NavigateTo(uri);
     }
 
 
     private async Task GetPossibleAssigneesData(long projectId) {
-        if (projectId < 1) {
-            var req = await Http.SendApiGetRequestAsync<UserBase[]>(Logger, "api/Projects/{projectId}/users");
+        if (projectId > 0) {
+            var req = await Http.SendApiGetRequestAsync<UserBase[]>(Logger, $"api/Projects/{projectId}/users");
 
 
             if (req.status != EApiHttpResponse.Ok) {
@@ -187,25 +305,32 @@ else {
             if (req.response != null) {
                 PossibleAssignees = req.response;
             }
+            StateHasChanged();
         }
     }
 
 
-    
     private void HandleValidSubmit() {
         ExceptionMessage = null;
 
 
-        var valResult = AssignmentUtils.ValidateNewAssignment(SelectedAssignment.Assignment, AssignmentProject, AssignedUser);
+        var project = AllProjects.FirstOrDefault(x => x.Id == SelectedAssignment.Assignment.ProjectId);
+        var user = PossibleAssignees.FirstOrDefault(x => x.Id == SelectedAssignment.Assignment.UserId);
+        var valResult = AssignmentUtils.ValidateNewAssignment(SelectedAssignment.Assignment, project, user);
         if (valResult != EAssignmentCreationResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveAssignmentValidation(valResult);
         }
-        else{
+        else {
             WaitingForApiResponse = true;
+            if (FteMode) {
+    //FTE is 40 hours 
+                SelectedAssignment.Assignment.AllocationScope *= 40;
+            }
+            FteMode = false;
             if (NewAssignmentCreation) {
                 Http.SendApiPutRequestAsync(Logger, "api/Assignments", SelectedAssignment.Assignment, ResolveResponse);
             }
-            else if (_editContext.IsModified()){
+            else if (EditContext?.IsModified() ?? false) {
                 Http.SendApiPatchRequestAsync(Logger, "api/Assignments", SelectedAssignment.Assignment, ResolveResponse);
             }
             else {
@@ -215,13 +340,13 @@ else {
         }
         StateHasChanged();
     }
-    
+
     protected void HandleInvalidSubmit() {
         ExceptionMessage = "Můžete vkládat pouze validní data!";
         StateHasChanged();
     }
 
-    
+
     private async void DeleteAssignment() {
         var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Doopravdy chcete odstranit tento úkol?");
         if (confirmed) {
@@ -236,7 +361,7 @@ else {
     private void ResolveResponse(EApiHttpResponse apiResponse, bool changePage) {
         WaitingForApiResponse = false;
         if (apiResponse == EApiHttpResponse.Ok) {
-            UriHelper.NavigateTo("/assignments");
+            ReturnToAssignments();
         }
         else {
             ExceptionMessage = StringResolver.ResolveApiResponse(apiResponse);

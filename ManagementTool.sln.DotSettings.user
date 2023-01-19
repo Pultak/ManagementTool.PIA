@@ -1,0 +1,17 @@
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=2ee8847f_002D35ee_002D4369_002D8f0e_002D6fd9216260ad/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="CreateUser_InvalidPayloadInvalidPassword_UnprocessableEntity" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;TestAncestor&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::93F55BF9-6BE9-4D1A-A13B-080E5539ADB8::net6.0::ManagementTool.ServerTests.Controllers.UsersControllerTests&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::93F55BF9-6BE9-4D1A-A13B-080E5539ADB8::net6.0::ManagementTool.ServerTests.Controllers.LoginControllerTests&lt;/TestId&gt;&#xD;
+  &lt;/TestAncestor&gt;&#xD;
+&lt;/SessionState&gt;</s:String>
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=9cf47e6f_002D9069_002D4fac_002D8e98_002D0dcb1446b7e3/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="CreateUser_InvalidPayloadInvalidUsernameName_UnprocessableEntity" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;TestAncestor&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::93F55BF9-6BE9-4D1A-A13B-080E5539ADB8::net6.0::ManagementTool.ServerTests.Controllers.UsersControllerTests.CreateUser_InvalidPayloadInvalidUsernameName_UnprocessableEntity&lt;/TestId&gt;&#xD;
+  &lt;/TestAncestor&gt;&#xD;
+&lt;/SessionState&gt;</s:String>
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=ace1f4a8_002D307c_002D4fac_002D8a40_002Db85fc7067a36/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="UsersControllerTests" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;TestAncestor&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::93F55BF9-6BE9-4D1A-A13B-080E5539ADB8::net6.0::ManagementTool.ServerTests.Controllers.UsersControllerTests&lt;/TestId&gt;&#xD;
+  &lt;/TestAncestor&gt;&#xD;
+&lt;/SessionState&gt;</s:String></wpf:ResourceDictionary>

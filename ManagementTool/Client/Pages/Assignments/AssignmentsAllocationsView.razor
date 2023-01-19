@@ -1,0 +1,202 @@
+﻿@page "/assignments/allocations"
+@using ManagementTool.Shared.Models.ApiModels
+@using ManagementTool.Shared.Models.AppState
+@using ManagementTool.Shared.Models.Database
+@using ManagementTool.Shared.Models.Login
+@using ManagementTool.Shared.Models.Utils
+@using ManagementTool.Shared.Utils
+@using ManagementTool.Client.Utils
+@using System.ComponentModel.DataAnnotations
+
+@inject StateContainer<LoggedUserPayload> LoggedUserContainer
+@inject HttpClient Http
+@inject ILogger<AssignmentsAllocationsView> Logger
+
+
+@if (!IsAuthorized) {
+    <div>Vypadá to, že nemáte dostatečné práva na zobrazení této stránky!</div>
+}
+else {
+    <h3>Zobrazení vytíženosti</h3>
+    <p>Na následující stránce je možné pro zvolené uživatele zobrazit jejich pracovní vytížení v časovém rozmezí. </p>
+    <p>  Kde 0 je žádné vytížení a 1 je plné (8 pracovních hodin).</p>
+
+    <p>Po zadání a zaslání parametrů na server, se zobrazí tabulka v jejíž hlavičce jsou zobrazeny zvolené datumy. </p>
+    <p>  Tělo pak pro každý sloupeček obsahuje nejdříve pracovní vytížení aktivních úkolů a druhý záznam je pro všechny (i neaktivni). </p>
+
+    
+    <table>
+        <tr>
+            <td>Uživatelé</td>
+            <td>
+                <select class="form-control" multiple @onchange="@UsersSelectionChanged">
+                    @foreach (var user in AllUsers) {
+                        <option value="@user.Id">
+                            @user.FullName
+                        </option>
+                    }
+                </select>
+            </td>
+
+        </tr>
+        <tr>
+            <td>
+                Datum od
+            </td>
+            <td>
+                <input id="txtDate" type="date" @bind-value="@FromDate" min="01/01/1970" Format="dd/MM/yyyy"/>
+            </td>
+
+        </tr>
+        <tr>
+            <td>
+                Datum do
+            </td>
+            <td>
+                <input id="txtDate" type="date" @bind-value="@ToDate" min="01/01/1970" Format="dd/MM/yyyy"/>
+            </td>
+        </tr>
+    </table>
+    @if (WaitingForApiResponse) {
+        <div class="spinner"></div>
+    }
+    else {
+        <button type="submit" class="btn btn-primary" @onclick="@HandleSubmit">Vytvořit uživatele</button>
+
+    }
+    @if (ExceptionMessage != null) {
+        <div>@ExceptionMessage</div>
+    }
+
+
+    @if (Days.Length > 0) {
+        <div class="table-responsive">
+            <table class="table table-bordered w-auto table-sm">
+                <thead>
+                <tr>
+                    <th class="text-center">Jméno pracovníka</th>
+                    @foreach(var day in @Days){
+                            <th colspan="2" class="text-center col">@day.ToString("dd.MM.")</th>
+                    }
+                </tr>
+                </thead>
+                <tbody>
+            
+                @foreach (var userWorkload in @Workloads) {
+                    <tr>
+                        <td>@userWorkload.UserFullName</td>
+                        @for (var i = 0; i < @userWorkload.AllWorkload.Length; ++i) {
+                                <td class="@GetColumnColorForLoad(userWorkload.ActiveWorkload[i])">@Math.Round(@userWorkload.ActiveWorkload[i], 2)</td>
+                                <td class="@GetColumnColorForLoad(userWorkload.AllWorkload[i])">@Math.Round(@userWorkload.AllWorkload[i], 2)</td>
+                        }
+                    </tr>
+                }
+            
+                </tbody>
+            </table>
+        </div>
+    }
+    
+
+}
+
+@code {
+    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.ProjectManager) ||
+                                 UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.DepartmentManager);
+
+
+    public UserBase[] AllUsers = Array.Empty<UserBase>();
+
+
+    public string[] SelectedUsers { get; set; } = Array.Empty<string>();
+    [Required]
+    public DateTime? FromDate { get; set; } = DateTime.Now;
+    [Required]
+    public DateTime? ToDate { get; set; } = DateTime.Now.AddDays(1);
+    
+    
+    public UserWorkload[] Workloads { get; set; } = Array.Empty<UserWorkload>();
+    public DateTime[] Days = Array.Empty<DateTime>();
+
+    public string? ExceptionMessage { get; set; }
+    private bool WaitingForApiResponse { get; set; } = true;
+
+    
+    protected override async Task OnInitializedAsync() {
+        if (IsAuthorized) {
+            await GetUsersData();
+        }
+        
+        WaitingForApiResponse = false;
+        StateHasChanged();
+    }
+
+
+    private async Task GetUsersData() {
+        var req = await Http.SendApiGetRequestAsync<UserBase[]>(Logger, "api/Users");
+
+        if (req.status != EApiHttpResponse.Ok) {
+            ExceptionMessage = StringResolver.ResolveApiResponse(req.status);
+            StateHasChanged();
+        }
+        if (req.response != null) {
+            AllUsers = req.response;
+        }
+        StateHasChanged();
+        
+    }
+
+
+    private string GetColumnColorForLoad(double load) {
+        if (load > 1) {
+            return "table-danger";
+        }
+        if (load > 0.75) {
+            return "table-warning";
+        }
+        if (load > 0.40) {
+            return "table-secondary";
+        }
+        return "table-success";
+    }
+
+
+
+    
+    private void UsersSelectionChanged(ChangeEventArgs e) {
+        var value = e.Value;
+        if (value is string[]strings) {
+            SelectedUsers = strings;
+        }
+
+    }
+
+    
+    private async void HandleSubmit() {
+        ExceptionMessage = null;
+        WaitingForApiResponse = true;
+
+        var valid = AssignmentUtils.ValidateWorkloadPayload(SelectedUsers, FromDate, ToDate);
+        if (valid == EWorkloadValidation.Ok) {
+
+            var selectedIds = "ids=" + string.Join("&ids=", SelectedUsers);
+            var fromDate = FromDate!.Value.ToString("dd-MM-yyyy");
+            var toDate = ToDate!.Value.ToString("dd-MM-yyyy");
+
+            var uri = $"api/Assignments/workload/{fromDate}/{toDate}?{selectedIds}";
+            var userResult = await Http.SendApiGetRequestAsync <UserWorkloadPayload> (Logger, uri);
+            if (userResult.status != EApiHttpResponse.Ok) {
+                ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
+            }
+            else {
+                Days = userResult.response.Dates;
+                Workloads = userResult.response.Workloads;
+            }
+        }
+        else {
+            ExceptionMessage = StringResolver.ResolveWorkloadValidation(valid);
+        }
+        WaitingForApiResponse = false;
+        StateHasChanged();
+    }
+}

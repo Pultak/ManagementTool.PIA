@@ -1,21 +1,26 @@
-﻿@page "/assignments"
-@using ManagementTool.Shared.Utils
+﻿@page "/assignments/my"
+@page "/assignments/superior"
+@page "/assignments/project"
+@page "/assignments/department"
+@using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.ApiModels
 @using ManagementTool.Shared.Models.AppState
 @using ManagementTool.Shared.Models.Database
+@using ManagementTool.Shared.Models.Login
 @using ManagementTool.Shared.Models.Utils
-@using ManagementTool.Client.Utils
-@using Microsoft.AspNetCore.WebUtilities
-
+@using ManagementTool.Shared.Utils
+@implements IDisposable
 
 @inject HttpClient Http
 @inject NavigationManager UriHelper
 @inject StateContainer<AssignmentWrapper> AssignmentContainer
-@inject Logger<AssignmentsView> Logger
+@inject StateContainer<LoggedUserPayload> LoggedUserContainer
+@inject ILogger<AssignmentsView> Logger
 
-<h3>Úkoly</h3>
-
-@if (Assignments == null) {
+@if (!IsAuthorized) {
+        <div>Vypadá to, že nemáte dostatečné práva na zobrazení tohoto listu!</div>
+}
+else if (WaitingForApiResponse) {
     <div class="spinner"></div>
 }
 else if (DataFetchFailed) {
@@ -23,43 +28,71 @@ else if (DataFetchFailed) {
     <p>@ExceptionMessage</p>
 }
 else {
-    <button @onclick="CreateNewAssignment">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-        </svg>
-    </button>
+    @switch (CurrentEndpoint) {
+        case EAssignmentPage.My:
+                <h3>Moje úkoly</h3>
+                <p>Na následující stránce můžu vidět všechny úkoly, které mi byly přiřazeny.</p>
+            break;
+        case EAssignmentPage.Superior:
+                <h3>Úkoly podřízených</h3>
+                <p>Na následující stránce můžu vidět všechny úkoly všech mých podřízených.</p>
+            break;
+        case EAssignmentPage.Department:
+                <h3>Úkoly celého oddělení</h3>
+                <p>Na následující stránce můžu vidět všechny úkoly.</p>
+            break;
+        case EAssignmentPage.Project:
+                <h3>Úkoly projektů</h3>
+                <p>Na následující stránce můžu vidět všechny úkoly spadající pod mé projekty.</p>
+            break;
+        default:
+            throw new ArgumentOutOfRangeException();
+    }
+    @if (NeededRole != null && NeededRole != ERoleType.Superior) {
+        <button @onclick="CreateNewAssignment">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+            </svg>
+        </button>
+    }
 
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Název projektu</th>
-            <th>Jméno pracovníka</th>
-            <th>Název úkolu</th>
-            <th>Časové kvantum</th>
-            <th>Datum od</th>
-            <th>Datum do</th>
-            <th>Stav</th>
-
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var wrapper in Assignments) {
-            <tr>
-                <td>@wrapper.ProjectName</td>
-                <td>@wrapper.UserName</td>
-                <td>@wrapper.Assignment.Name</td>
-                <!--<td>@StringResolver.ResolveTimeScope(wrapper.Assignment.AllocationScope)</td> -->
-                <td>@wrapper.Assignment.FromDate</td>
-                <td>@wrapper.Assignment.ToDate</td>
-                <td>@StringResolver.ResolveAssignmentState(wrapper.Assignment.State) @AssignmentOverTime(wrapper.Assignment)</td>
-                <td>
-                    <button @onclick="_ => NavigateToEditMode(wrapper)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
-                            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
-                        </svg>
-                    </button>
-                </td>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+            <tr class="table-primary">
+                <th>Název projektu</th>
+                <th>Jméno pracovníka</th>
+                <th>Název úkolu</th>
+                <th>Časové kvantum</th>
+                <th>Datum od</th>
+                <th>Datum do</th>
+                <th>Stav</th>
+                <th>Detail</th>
+            @if (NeededRole != null) {
+                <th>Editace</th>
+            }
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var wrapper in Assignments) {
+                <tr>
+                    <td>@wrapper.ProjectName</td>
+                    <td>@wrapper.UserName</td>
+                    <td>@wrapper.Assignment.Name</td>
+                    <td>@StringResolver.ResolveTimeScope(wrapper.Assignment.AllocationScope)</td>
+                    <td>@wrapper.Assignment.FromDate.ToString("dd/MM/yyyy")</td>
+                    <td>@wrapper.Assignment.ToDate.ToString("dd/MM/yyyy")</td>
+                    <td>@StringResolver.ResolveAssignmentState(wrapper.Assignment.State) @AssignmentOverTime(wrapper.Assignment)</td>
+                    <td>
+                        <button @onclick="_ => NavigateToDetailMode(wrapper)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                                <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                            </svg>
+                        </button>
+                    </td>
+                    
+            @if (NeededRole != null) {
                 <td>
                     <button @onclick="_ => NavigateToEditMode(wrapper)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -67,41 +100,100 @@ else {
                         </svg>
                     </button>
                 </td>
-            </tr>
-        }
-        </tbody>
-    </table>
+            }
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
 }
 
 
 @code {
 
-    private AssignmentWrapper[]? Assignments { get; } = { };
+    private AssignmentWrapper[] Assignments { get; set; } = Array.Empty<AssignmentWrapper>();
     private readonly DateTime _actualTime = DateTime.Now;
 
     private bool DataFetchFailed { get; set; }
     private string? ExceptionMessage { get; set; }
 
-    protected override async Task OnInitializedAsync() {
-        var uri = UriHelper.ToAbsoluteUri(UriHelper.Uri);
-        var query = QueryHelpers.ParseQuery(uri.Query);
-        var requestUri = "api/Assignments";
-        if (query.ContainsKey("my")) {
-    //we should display only my assignments
-            requestUri = "api/Assignments/myAssignments";
-        }
+    private bool WaitingForApiResponse { get; set; }
 
-        var response = await Http.SendApiGetRequestAsync<AssignmentWrapper[]>(Logger, requestUri);
-        if (response.status != EApiHttpResponse.Ok) {
-            DataFetchFailed = true;
-            ExceptionMessage = StringResolver.ResolveApiResponse(response.status);
+    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, NeededRole);
+
+    private ERoleType? NeededRole { get; set; } = ERoleType.NoRole;
+    private EAssignmentPage CurrentEndpoint { get; set; } = EAssignmentPage.My;
+
+    protected override void OnInitialized() {
+        LoggedUserContainer.OnStateChange += StateHasChanged;
+        // Subscribe to the event
+        UriHelper.LocationChanged += LocationChanged;
+        base.OnInitialized();
+    }
+
+    async void LocationChanged(object? sender, LocationChangedEventArgs e) {
+        await CheckForRoleChanger();
+    }
+    
+    protected override async Task OnInitializedAsync() {
+        await CheckForRoleChanger();
+    }
+    
+    private async Task CheckForRoleChanger() {
+        var uri = UriHelper.ToAbsoluteUri(UriHelper.Uri);
+        var pagePath = uri.LocalPath;
+        string requestUri;
+        ERoleType? newRole;
+        switch (pagePath) {
+            case "/assignments/department":
+                requestUri = "api/assignments/";
+                newRole = ERoleType.DepartmentManager;
+                CurrentEndpoint = EAssignmentPage.Department;
+                break;
+            case "/assignments/my":
+                requestUri = "api/assignments/my";
+                newRole = null;
+                CurrentEndpoint = EAssignmentPage.My;
+                break;
+            case "/assignments/superior":
+                requestUri = "api/assignments/Subordinates";
+                newRole = ERoleType.Superior;
+                CurrentEndpoint = EAssignmentPage.Superior;
+                break;
+            case "/assignments/project":
+                requestUri = "api/assignments/ProjectSubordinates";
+                newRole = ERoleType.ProjectManager;
+                CurrentEndpoint = EAssignmentPage.Project;
+                break;
+            default:
+                return;
         }
-        StateHasChanged();
+        var roleChange = NeededRole != newRole;
+        NeededRole = newRole;
+
+        //user is authorized and role changed => different page probably
+        if (roleChange) {
+            if (IsAuthorized) {
+                var result = await Http.SendApiGetRequestAsync<AssignmentWrapper[]>(Logger, requestUri);
+                if (result.status != EApiHttpResponse.Ok)
+                {
+                    DataFetchFailed = true;
+                    ExceptionMessage = StringResolver.ResolveApiResponse(result.status);
+                }
+                else {
+                    if (result.response != null) {
+                        Assignments = result.response;
+                    }
+                }
+                WaitingForApiResponse = false;
+            }
+            StateHasChanged();
+        }
     }
 
 
     private string AssignmentOverTime(Assignment assignment) {
-        if (DateTime.Compare(assignment.ToDate, _actualTime) >= 0) {
+        if (DateTime.Compare(assignment.ToDate, _actualTime) < 0) {
             return "!vypršelý!";
         }
         return "";
@@ -110,12 +202,25 @@ else {
 
     private void NavigateToEditMode(AssignmentWrapper? selectedAssignment) {
         AssignmentContainer.SetValue(selectedAssignment);
-        UriHelper.NavigateTo("/assignments/edit");
+        UriHelper.NavigateTo($"/assignments/edit/{(int)CurrentEndpoint}");
+    }
+
+
+    private void NavigateToDetailMode(AssignmentWrapper? selectedAssignment) {
+        AssignmentContainer.SetValue(selectedAssignment);
+        UriHelper.NavigateTo($"/assignments/detail/{(int)CurrentEndpoint}");
     }
 
     private void CreateNewAssignment() {
         AssignmentContainer.SetValue(null);
         NavigateToEditMode(null);
+    }
+
+
+    public void Dispose() {
+        LoggedUserContainer.OnStateChange -= StateHasChanged;
+
+        UriHelper.LocationChanged -= LocationChanged;
     }
 
 }
