@@ -1,4 +1,4 @@
-﻿using ManagementTool.Shared.Models.ApiModels;
+﻿using ManagementTool.Shared.Models.Api.Payloads;
 using ManagementTool.Shared.Models.Database;
 
 namespace ManagementTool.Server.Services.Projects;
@@ -10,11 +10,16 @@ public interface IAssignmentRepository {
     public IEnumerable<Assignment> GetAllPlainAssignments();
     public IEnumerable<AssignmentWrapper> GetAllAssignments();
     public IEnumerable<AssignmentWrapper> GetAssignmentsByUserId(long userId);
-    public IEnumerable<AssignmentWrapper> GetAssignmentsByProjectIds(List<long> projectIds);
+    public IEnumerable<AssignmentWrapper> GetAssignmentsByProjectIds(IEnumerable<long> projectIds);
+    public IEnumerable<Assignment> GetAssignmentsByProjectId(long projectId);
+
+    public bool UpdateAssignmentProjectIds(long projectId, long newProjectId);
+
     public IEnumerable<AssignmentWrapper> GetAssignmentsUnderSuperior(long superiorId);
     public long AddAssignment(Assignment assignment);
 
     public bool UpdateAssignment(Assignment assignment);
+    public bool UpdateAssignments(IEnumerable<Assignment> assignments);
 
 
     public IEnumerable<Assignment> GetAllUsersAssignments(long[] userIds);

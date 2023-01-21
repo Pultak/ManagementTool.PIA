@@ -1,6 +1,6 @@
 ﻿using ManagementTool.Server.Services;
 using ManagementTool.Server.Services.Projects;
-using ManagementTool.Shared.Models.ApiModels;
+using ManagementTool.Shared.Models.Api.Payloads;
 using ManagementTool.Shared.Models.Database;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,10 +35,16 @@ public class AssignmentRepository : IAssignmentRepository {
         return GetAssignmentWrappers(assignments);
     }
 
-    public IEnumerable<AssignmentWrapper> GetAssignmentsByProjectIds(List<long> projectIds) {
+    public IEnumerable<AssignmentWrapper> GetAssignmentsByProjectIds(IEnumerable<long> projectIds) {
         var assignments = _db.Assignment.Where(assign => projectIds.Contains(assign.ProjectId));
         return GetAssignmentWrappers(assignments);
     }
+
+    public IEnumerable<Assignment> GetAssignmentsByProjectId(long projectId) {
+        var assignments = _db.Assignment.Where(x => x.ProjectId == projectId);
+        return assignments;
+    }
+
 
     public IEnumerable<AssignmentWrapper> GetAssignmentsUnderSuperior(long superiorId) {
         var allSuperiorAssignments = _db.UserSuperiorXRefs.Where(x => x.IdSuperior == superiorId).
@@ -88,6 +94,24 @@ public class AssignmentRepository : IAssignmentRepository {
         var rowsChanged = _db.SaveChanges();
         return rowsChanged > 0;
     }
+
+    public bool UpdateAssignments(IEnumerable<Assignment> assignments) { 
+        _db.Entry(assignments).State = EntityState.Modified;
+        var rowsChanged = _db.SaveChanges();
+        return rowsChanged > 0;
+    }
+
+    public bool UpdateAssignmentProjectIds(long projectId, long newProjectId) {
+        var assignments = GetAssignmentsByProjectId(projectId);
+        foreach (var assignment in assignments) {
+            assignment.ProjectId = newProjectId;
+        }
+        _db.Entry(assignments).State = EntityState.Modified;
+        var rowsChanged = _db.SaveChanges();
+        return rowsChanged > 0;
+    }
+
+
 
     public IEnumerable<Assignment> GetAllUsersAssignments(long[] userIds) {
         var allAssignments = _db.Assignment.Where(x => userIds.Contains(x.UserId));

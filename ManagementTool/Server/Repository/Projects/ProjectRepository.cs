@@ -1,11 +1,11 @@
 ﻿using ManagementTool.Server.Services;
-using ManagementTool.Server.Services.Projects;
 using ManagementTool.Shared.Models.Database;
 
 namespace ManagementTool.Server.Repository.Projects;
 
 public class ProjectRepository : IProjectRepository {
-    private readonly ManToolDbContext _db; //To Get all employees details
+    private readonly ManToolDbContext _db; 
+
     public ProjectRepository(ManToolDbContext db) {
         _db = db;
     }
@@ -22,7 +22,7 @@ public class ProjectRepository : IProjectRepository {
         return _db.Project.Find(projectId);
     }
 
-    public IEnumerable<Project> GetProjectsByIds(List<long> projectIds) {
+    public IEnumerable<Project> GetProjectsByIds(IEnumerable<long> projectIds) {
         return _db.Project.Where(x => projectIds.Contains(x.Id)).ToList();
     }
 
@@ -69,9 +69,9 @@ public class ProjectRepository : IProjectRepository {
     }
 
 
-    public bool DeleteProjectUserAssignments(Project project) {
+    public bool DeleteProjectUserAssignments(long projectId) {
 
-        var userAssignments = _db.UserProjectXRefs.Where(o => o.IdProject == project.Id);
+        var userAssignments = _db.UserProjectXRefs.Where(o => o.IdProject == projectId);
         if (!userAssignments.Any()) {
             //project can be without assignments
             return true;
@@ -81,9 +81,9 @@ public class ProjectRepository : IProjectRepository {
         return changedRows > 0;
     }
 
-    public bool DeleteAllProjectAssignments(Project project) {
+    public bool DeleteAllProjectAssignments(long projectId) {
 
-        var assignments = _db.Assignment.Where(o => o.ProjectId == project.Id);
+        var assignments = _db.Assignment.Where(o => o.ProjectId == projectId);
         if (!assignments.Any()) {
             //project can be without assignments
             return true;

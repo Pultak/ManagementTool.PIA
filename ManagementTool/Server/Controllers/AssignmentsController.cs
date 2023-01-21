@@ -1,15 +1,10 @@
-﻿using ManagementTool.Server.Services.Projects;
-using ManagementTool.Server.Services.Users;
+﻿using ManagementTool.Server.Services.Users;
 using ManagementTool.Shared.Models.Database;
 using ManagementTool.Shared.Models.Utils;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
-using ManagementTool.Shared.Models.ApiModels;
-using ManagementTool.Shared.Utils;
-using System.Globalization;
-using ManagementTool.Server.Repository.Projects;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+using ManagementTool.Server.Services.Assignments;
+using ManagementTool.Shared.Models.Api.Payloads;
 
 namespace ManagementTool.Server.Controllers;
 
@@ -17,53 +12,57 @@ namespace ManagementTool.Server.Controllers;
 [ApiController]
 public class AssignmentsController : ControllerBase {
     
+    private IAuthService AuthService { get; }
+    private IAssignmentService AssignmentService { get; }
+    private IWorkloadService WorkloadService { get; }
 
-    public IAssignmentRepository AssignmentsRepository { get; }
-    public IProjectRepository ProjectRepository { get; }
-    public IUserRepository UserRepository { get; }
-
-
-    public AssignmentsController(IAssignmentRepository assignmentsRepository, IProjectRepository projectService, 
-        IUserRepository userService) {
-        AssignmentsRepository = assignmentsRepository;
-        ProjectRepository = projectService;
-        UserRepository = userService;
+    public AssignmentsController(IAuthService authService, IAssignmentService assignmentService, IWorkloadService workloadService) {
+        AuthService = authService;
+        AssignmentService = assignmentService;
+        WorkloadService = workloadService;
     }
 
-
-    [HttpGet("subordinates")]
+    //todo changed
+    [HttpGet("superior")]
     public IEnumerable<AssignmentWrapper>? GetSuperiorsSubordinateAssignments() {
-        if (!LoginController.IsUserAuthorized(ERoleType.Superior, HttpContext.Session)) {
+        if (!AuthService.IsUserAuthorized(ERoleType.Superior)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
         
-        var superiorId = LoginController.GetLoggedUserId(HttpContext.Session);
+        var superiorId = AuthService.GetLoggedUserId();
         if (superiorId == null) {
             Response.StatusCode = (int)HttpStatusCode.NotFound;
             return null;
         }
         Response.StatusCode = (int)HttpStatusCode.OK;
-        return AssignmentsRepository.GetAssignmentsUnderSuperior((long)superiorId);
+        return AssignmentService.GetAssignmentsUnderSuperior((long)superiorId);
     }
 
-    
-    [HttpGet("projectSubordinates")]
+    //todo changed uri
+    [HttpGet("project")]
     public IEnumerable<AssignmentWrapper>? GetProjectSubordinateAssignments() {
-        var userRoles = LoginController.GetLoggedUserRoles(HttpContext.Session);
+        var userRoles = AuthService.GetLoggedUserRoles();
         if (userRoles == null) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
-        if (!LoginController.IsUserAuthorized(ERoleType.ProjectManager, userRoles)) {
+        if (!AuthService.IsUserAuthorized(ERoleType.ProjectManager, userRoles)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
 
-        var managerRoles = LoginController.GetAllProjectManagerRoles(userRoles);
-        var projectIds = managerRoles.Select(x => x.ProjectId).OfType<long>().ToList();
-        Response.StatusCode = (int)HttpStatusCode.OK;
-        return AssignmentsRepository.GetAssignmentsByProjectIds(projectIds);
+        var projectIds = AuthService.GetAllProjectManagerProjectIds(userRoles);
+        
+        var result = AssignmentService.GetAssignmentsByProjectIds(projectIds);
+        if (result.Any()) {
+            //is the list empty?
+            Response.StatusCode = (int)HttpStatusCode.NoContent;
+        }
+        else {
+            Response.StatusCode = (int)HttpStatusCode.OK;
+        }
+        return result;
     }
 
 
@@ -71,196 +70,93 @@ public class AssignmentsController : ControllerBase {
 
     [HttpGet]
     public IEnumerable<AssignmentWrapper>? GetAllAssignments() {
-        if (!LoginController.IsUserAuthorized(ERoleType.DepartmentManager, HttpContext.Session)) {
+        if (!AuthService.IsUserAuthorized(ERoleType.DepartmentManager)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
         Response.StatusCode = (int)HttpStatusCode.OK;
-        return AssignmentsRepository.GetAllAssignments();
+        return AssignmentService.GetAllAssignments();
     }
     
     [HttpGet("my")]
     public IEnumerable<AssignmentWrapper>? GetMyAssignments() {
-        if (!LoginController.IsUserAuthorized(null, HttpContext.Session)) {
+        var userId = AuthService.GetLoggedUserId();
+        if (userId == null) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
 
-        var userId = LoginController.GetLoggedUserId(HttpContext.Session);
-        if (userId == null) {
-            Response.StatusCode = (int)HttpStatusCode.NotFound;
+        var result = AssignmentService.GetAssignmentsByUserId((long)userId).ToArray();
+        if (result.Any()) {
+            Response.StatusCode = (int)HttpStatusCode.NoContent;
             return null;
         }
-
-        var result = AssignmentsRepository.GetAssignmentsByUserId((long)userId);
         Response.StatusCode = (int)HttpStatusCode.OK;
-        return result.ToList();
+        return result;
     }
 
 
 
-    [HttpGet("workload/{fromDateString}/{toDateString}")]
-    public UserWorkloadPayload? GetUsersWorkloads([FromRoute] string fromDateString, string toDateString, [FromQuery] long[] ids) {
-        var userRoles = LoginController.GetLoggedUserRoles(HttpContext.Session);
+    [HttpGet("workloads/{fromDateString}/{toDateString}")]
+    public UserWorkloadWrapper? GetUsersWorkloads([FromRoute] string fromDateString, string toDateString, [FromQuery] long[] ids) {
+        var userRoles = AuthService.GetLoggedUserRoles();
         if (userRoles == null) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
 
-        DateTime fromDate;
-        DateTime toDate;
-        try {
-            fromDate = DateTime.ParseExact(fromDateString, "dd-MM-yyyy", CultureInfo.InvariantCulture);
-            toDate = DateTime.ParseExact(toDateString, "dd-MM-yyyy", CultureInfo.InvariantCulture);
+        UserWorkloadWrapper? resultWorkloads = null;
 
-        }
-        catch (ArgumentNullException e) {
-            Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            return null;
-        }
-        catch (FormatException e) {
-            Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            return null;
-        }
-        
+        var onlyBusinessDays = Request.Query.ContainsKey("businessDays");
 
-        if (AssignmentUtils.ValidateWorkloadPayload(ids, fromDate, toDate) != EWorkloadValidation.Ok) {
+        if (AuthService.IsUserAuthorized(ERoleType.DepartmentManager)) {
+            //nothing needed to do. Department man can do everything
+            resultWorkloads = WorkloadService.GetUsersWorkloads(fromDateString, toDateString, ids,
+                projectMan: false, onlyBusinessDays);
+        }else if (AuthService.IsUserAuthorized(ERoleType.ProjectManager)) {
+            resultWorkloads = WorkloadService.GetUsersWorkloads(fromDateString, toDateString, ids,
+                projectMan: true, onlyBusinessDays);
+        }
+
+        if (resultWorkloads == null) {
             Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
             return null;
         }
-        
-        if (LoginController.IsUserAuthorized(ERoleType.DepartmentManager, userRoles)) {
-            //nothing needed to do. Department man can do everything
-        }else if (LoginController.IsUserAuthorized(ERoleType.ProjectManager, userRoles)) {
 
-            var managerRoles = LoginController.GetAllProjectManagerRoles(userRoles);
-            var projectIds = managerRoles.Select(x => x.ProjectId).OfType<long>().ToArray();
-            if (!ProjectRepository.AreUsersUnderProjects(ids, projectIds)) {
-                Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
-                return null;
-            }
+        if (resultWorkloads.Dates.Length == 0) {
+            Response.StatusCode = (int)HttpStatusCode.NoContent;
         }
         else {
-            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            return null;
+            Response.StatusCode = (int)HttpStatusCode.OK;
         }
-
-        var users = UserRepository.GetUsersById(ids);
-        var assignments = AssignmentsRepository.GetAllUsersAssignments(ids);
-        
-        var days = AssignmentUtils.Split(fromDate, toDate).ToArray();
-        var onlyBusinessDays = Request.Query.ContainsKey("businessDays");
-        if (onlyBusinessDays) {
-            //remove weekends if requested
-            days = days.Where(x => x.DayOfWeek != DayOfWeek.Sunday
-                                   && x.DayOfWeek != DayOfWeek.Saturday).ToArray();
-        }
-        Response.StatusCode = (int)HttpStatusCode.OK;
-        return ParseDataIntoWorkload(assignments, days, onlyBusinessDays, users);
+        return resultWorkloads;
     }
 
-    private UserWorkloadPayload? ParseDataIntoWorkload(IEnumerable<Assignment> assignments, DateTime[] days,
-        bool onlyBusinessDays, IEnumerable<UserBase> users) {
-
-        var firstDate = days.First();
-        var lastDate = days.Last();
-
-        var selectedDaysCount = days.Length;
-
-        var workloadDict = users.ToDictionary(user => user.Id, user => new UserWorkload(user.FullName, selectedDaysCount));
-
-
-        foreach (var assignment in assignments) {
-            var timeDiff = DateTime.Compare(firstDate, assignment.ToDate);
-            if (timeDiff > 0) {
-                //to date is earlier or from the same time => no reason to check workload
-                continue;
-            }
-
-            timeDiff = DateTime.Compare(lastDate, assignment.FromDate);
-            if (timeDiff < 0) {
-                //from date is later or from the same time => no reason to check workload
-                continue;
-            }
-
-            var currentUserWorkload = workloadDict[assignment.UserId];
-
-            int dayCount;
-
-            if (onlyBusinessDays) {
-                dayCount = assignment.FromDate.Date.BusinessDaysUntil(assignment.ToDate.Date);
-            }
-            else {
-                dayCount = (assignment.ToDate.Date - assignment.FromDate.Date).Days;
-            }
-            // divide by 8 to get daily workload (8 work hours)
-            var load = ((double)assignment.AllocationScope / (double)dayCount) / 8.0;
-
-            var firstDayMatchIndex = AssignmentUtils.GetDayIndex(days, assignment.FromDate);
-            if (firstDayMatchIndex < 0) {
-                //the first date was not inside of our scope => We need to start from the first index
-                firstDayMatchIndex = 0;
-            }
-
-            for (var i = firstDayMatchIndex; i < selectedDaysCount; i++) {
-                currentUserWorkload.AllWorkload[i] += load;
-                if (assignment.State == EAssignmentState.Active) {
-                    currentUserWorkload.ActiveWorkload[i] += load;
-                }
-                if (DateTime.Compare(days[i].Date, assignment.ToDate.Date) >= 0) {
-                    //we reached the to date
-                    break;
-                }
-            }
-        }
-
-        var result = new UserWorkloadPayload{
-                Workloads = workloadDict.Select(x => x.Value).ToArray(),
-                Dates = days
-
-        };
-        return result;
-    }
-
-    [HttpPut]
-    public long CreateAssignment([FromBody] Assignment assignment) {
-        if (!IsAuthorizedToManageAssignments(assignment.ProjectId)) {
+    //todo changed
+    [HttpPost]
+    public void CreateAssignment([FromBody] Assignment assignment) {
+        if (!AuthService.IsAuthorizedToManageAssignments(assignment.ProjectId)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            return -1;
-        }
-
-        if (ValidateAssignmentData(assignment) != EAssignmentCreationResponse.Ok) {
-            return -1;
+            return;
         }
         
-        assignment.State = EAssignmentState.Draft;
-
-        var assignmentId = AssignmentsRepository.AddAssignment(assignment);
-        if (assignmentId < 0) {
-            //Assignment creation failure
-
-            Response.StatusCode = (int)HttpStatusCode.NotFound;
-            return -1;
+        if (AssignmentService.AddNewAssignment(assignment)) {
+            Response.StatusCode = (int)HttpStatusCode.OK;
+        }else {
+            Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
         }
-
-        Response.StatusCode = (int)HttpStatusCode.OK;
-        return assignmentId;
     }
 
 
     [HttpPatch]
     public void UpdateAssignment([FromBody] Assignment assignment) {
 
-        if (!IsAuthorizedToManageAssignments(assignment.ProjectId)) {
+        if (!AuthService.IsAuthorizedToManageAssignments(assignment.ProjectId)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return;
         }
 
-        if (ValidateAssignmentData(assignment) != EAssignmentCreationResponse.Ok) {
-            return;
-        }
-        
-        var updated = AssignmentsRepository.UpdateAssignment(assignment);
+        var updated = AssignmentService.UpdateAssignment(assignment);
         Response.StatusCode = (int)HttpStatusCode.OK;
         if (!updated) {
             //Assignment update failure
@@ -268,72 +164,19 @@ public class AssignmentsController : ControllerBase {
         }
     }
 
-    private bool IsAuthorizedToManageAssignments(long relevantProjectId) {
-        var userRoles = LoginController.GetLoggedUserRoles(HttpContext.Session);
-        if (userRoles == null) {
-            return false;
-        }
-        if (LoginController.IsUserAuthorized(ERoleType.DepartmentManager, userRoles)) {
-            //all ok, department manager can do everything
-            return true;
-        }
 
-        if (!LoginController.IsUserAuthorized(ERoleType.ProjectManager, userRoles)) {
-            return false;
-        }
-
-        var managerRoles = LoginController.GetAllProjectManagerRoles(userRoles);
-
-        //can this manager manage assignments for this project?
-        Response.StatusCode = (int)HttpStatusCode.OK;
-        return managerRoles.Any(x => x.ProjectId == relevantProjectId);
-    }
-
-    private EAssignmentCreationResponse ValidateAssignmentData(Assignment assignment) {
-        
-        var project = ProjectRepository.GetProjectById(assignment.ProjectId);
-        if (project == null) {
-            Response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
-            return EAssignmentCreationResponse.InvalidProject;
-        }
-
-        var user = UserRepository.GetUserById(assignment.UserId);
-        if (user == null) {
-            Response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
-            return EAssignmentCreationResponse.InvalidUser;
-        }
-
-        if (!UserRepository.IsUserAssignedToProject(user, project)) {
-            Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
-            return EAssignmentCreationResponse.UserNotAssignedToProject;
-        }
-
-        var valResult = AssignmentUtils.ValidateNewAssignment(assignment, project, user);
-        if (valResult != EAssignmentCreationResponse.Ok){
-
-            Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
-            return valResult;
-        }
-        Response.StatusCode = (int)HttpStatusCode.OK;
-        return EAssignmentCreationResponse.Ok;
-    }
 
     
     [HttpDelete("{assignmentId:long}")]
     public void Delete(long assignmentId) {
-        if (!IsAuthorizedToManageAssignments(assignmentId)) {
+        if (!AuthService.IsAuthorizedToManageAssignments(assignmentId)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return;
         }
-        if (assignmentId < 0) {
-            Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
-            return;
-        }
 
-        var done = AssignmentsRepository.DeleteAssignment(assignmentId);
-        Response.StatusCode = (int)HttpStatusCode.OK;
-
-        if (!done) {
+        if (AssignmentService.DeleteAssignment(assignmentId)) {
+            Response.StatusCode = (int)HttpStatusCode.OK;
+        }else{
             //Something failed during deletion
             Response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
         }

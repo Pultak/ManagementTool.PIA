@@ -1,6 +1,6 @@
 ﻿using ManagementTool.Server.Services;
 using ManagementTool.Server.Services.Users;
-using ManagementTool.Shared.Models.ApiModels;
+using ManagementTool.Shared.Models.Api.Payloads;
 using ManagementTool.Shared.Models.Database;
 using Microsoft.EntityFrameworkCore;
 

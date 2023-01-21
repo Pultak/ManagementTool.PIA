@@ -1,6 +1,6 @@
 ﻿using ManagementTool.Shared.Models.Database;
 using System.Collections.Generic;
-using ManagementTool.Shared.Models.ApiModels;
+using ManagementTool.Shared.Models.Api.Payloads;
 
 namespace ManagementTool.Server.Services.Users;
 

@@ -12,3 +12,7 @@
 /ManagementTool.ServerTests/bin/Debug/net6.0
 /ManagementTool.ServerTests/obj
 /UpgradeLog.htm
+/bin/Debug
+/ManagementTool/Client/bin/Release/net6.0
+/ManagementTool/Shared/bin/Release/net6.0
+/obj

@@ -3,7 +3,12 @@ using ManagementTool.Server.Repository.Users;
 using ManagementTool.Server.Services;
 using ManagementTool.Server.Services.Projects;
 using ManagementTool.Server.Services.Users;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption;
+using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel;
 using Microsoft.EntityFrameworkCore;
+using ManagementTool.Server.Services.Assignments;
+using ManagementTool.Server.Services.Roles;
 
 namespace ManagementTool.Server;
 
@@ -11,6 +16,7 @@ internal class Program {
     public static void Main(string[] args) {
         var builder = WebApplication.CreateBuilder(args);
         Configure(builder.Services, builder.Configuration);
+        ConfigureRepositories(builder.Services, builder.Configuration);
         ConfigureServices(builder.Services);
 
         var app = builder.Build();
@@ -22,7 +28,6 @@ internal class Program {
         }
         else {
             app.UseExceptionHandler("/Error");
-            // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
             app.UseHsts();
         }
 
@@ -36,7 +41,6 @@ internal class Program {
         app.UseSession();
         app.UseAuthorization();
 
-
         app.MapRazorPages();
         app.MapControllers();
         app.MapFallbackToFile("index.html");
@@ -45,7 +49,13 @@ internal class Program {
     }
 
 
-    private static void ConfigureServices(IServiceCollection services) {
+    private static void ConfigureRepositories(IServiceCollection services, IConfiguration configuration) {
+        var dbConnectionString = configuration.GetValue<string>("DBPosgreSQL");
+
+        services.AddDbContext<ManToolDbContext>(x =>
+            x.UseNpgsql(dbConnectionString)
+        );
+
         // Add services to the container.
         services.AddTransient<IUserRepository, UserRepository>();
         services.AddTransient<IUserRoleRepository, UserRoleRepository>();
@@ -53,22 +63,34 @@ internal class Program {
         services.AddTransient<IProjectRepository, ProjectRepository>();
     }
 
+    private static void ConfigureServices(IServiceCollection services) {
+
+        services.AddTransient<IAssignmentRepository, AssignmentRepository>();
+        services.AddTransient<IWorkloadService, WorkloadService>();
+        services.AddTransient<IProjectsService, ProjectsService>();
+        services.AddTransient<IRolesService, RolesService>();
+        services.AddTransient<IAuthService, AuthService>();
+        services.AddTransient<IUsersService, UsersService>();
+    }
+
     private static void Configure(IServiceCollection services, IConfiguration configuration) {
 
+        //services.AddAutoMapper(typeof(Program));
         services.AddControllersWithViews();
         services.AddRazorPages();
-
-
+        var keysDirectory = configuration.GetValue<string>("KeysFolder");
+        services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keysDirectory))
+            .UseCryptographicAlgorithms(new AuthenticatedEncryptorConfiguration{
+                EncryptionAlgorithm = EncryptionAlgorithm.AES_256_CBC,
+                ValidationAlgorithm = ValidationAlgorithm.HMACSHA256
+            });
+        services.AddHttpContextAccessor();
         services.AddDistributedMemoryCache();
         services.AddSession(options => {
             options.Cookie.HttpOnly = true;
             options.Cookie.IsEssential = true;
         });
-        var dbConnectionString = configuration.GetValue<string>("DBPosgreSQL");
-
-        services.AddDbContext<ManToolDbContext>(x =>
-            x.UseNpgsql(dbConnectionString)
-        );
+        
     }
 }
 
