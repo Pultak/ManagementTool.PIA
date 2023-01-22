@@ -1,7 +1,10 @@
 ﻿using System.Net;
 using System.Security.Cryptography;
-using ManagementTool.Shared.Models.Database;
+using AutoMapper;
+using ManagementTool.Server.Models.Business;
+using ManagementTool.Server.Repository.Users;
 using ManagementTool.Shared.Models.Login;
+using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Utils;
 using ManagementTool.Shared.Utils;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
@@ -13,11 +16,13 @@ public class AuthService : IAuthService {
     private IHttpContextAccessor Accessor { get; }
     private IUserRepository UserRepository { get; }
     private IUserRoleRepository RoleRepository { get; }
-
-    public AuthService(IHttpContextAccessor accessor, IUserRepository userRepository, IUserRoleRepository roleRepository) : base() {
+    private IMapper Mapper { get; }
+    public AuthService(IHttpContextAccessor accessor, IUserRepository userRepository, 
+        IUserRoleRepository roleRepository, IMapper mapper) {
         Accessor = accessor;
         UserRepository = userRepository;
         RoleRepository = roleRepository;
+        Mapper = mapper;
     }
 
      public (AuthResponse authResponse, HttpStatusCode statusCode) Login(AuthPayload authPayload) {
@@ -29,20 +34,25 @@ public class AuthService : IAuthService {
             return (AuthResponse.AlreadyLoggedIn, HttpStatusCode.OK);
         }
 
-        var user = UserRepository.GetUserByName(authPayload.Username);
-        if (user == null) {
+        var userCredentials = UserRepository.GetUserCredentials(authPayload.Username);
+        if (userCredentials == null) {
             return (AuthResponse.UnknownUser, HttpStatusCode.Unauthorized);
         }
 
-        var hashedPwd = HashPwd(authPayload.Password, Convert.FromBase64String(user.Salt));
+        var hashedPwd = HashPwd(authPayload.Password, Convert.FromBase64String(userCredentials.Value.salt));
 
-        if (!user.Pwd.Equals(hashedPwd)) {
+        if (!userCredentials.Value.pwd.Equals(hashedPwd)) {
             return (AuthResponse.WrongPassword, HttpStatusCode.Unauthorized);
         }
 
+        var user = UserRepository.GetUserById(userCredentials.Value.id);
+        if (user == null) {
+            //user not found in db. Should not happen
+            return (AuthResponse.UnknownUser, HttpStatusCode.Unauthorized);
+        }
         var roles = RoleRepository.GetUserRolesByUserId(user.Id);
 
-        var rolesArray = roles as Role[] ?? roles.ToArray();
+        var rolesArray = roles as RoleBLL[] ?? roles.ToArray();
         Accessor.HttpContext?.Session.SetInt32(IAuthService.UserIdKey, (int)user.Id);
         Accessor.HttpContext?.Session.SetString(IAuthService.UsernameKey, user.Username);
         Accessor.HttpContext?.Session.SetString(IAuthService.UserFullNameKey, user.FullName);
@@ -66,12 +76,13 @@ public class AuthService : IAuthService {
      public LoggedUserPayload? GetLoggedInUser(){
          var name = Accessor.HttpContext?.Session.GetString(IAuthService.UsernameKey);
          if (name == null) {
-             return new LoggedUserPayload(null, null, null, false);
+             return null;
          }
 
+         var blRoles = Accessor.HttpContext?.Session.GetObject<RoleBLL[]>(IAuthService.UserRolesKey);
          var result = new LoggedUserPayload(name, 
              Accessor.HttpContext?.Session.GetString(IAuthService.UserFullNameKey),
-             Accessor.HttpContext?.Session.GetObject<Role[]>(IAuthService.UserRolesKey),
+             Mapper.Map<RolePL[]>(blRoles),
              Accessor.HttpContext?.Session.GetInt32(IAuthService.UserHasInitPwdKey) != 0);
 
          return result;
@@ -84,7 +95,8 @@ public class AuthService : IAuthService {
             return HttpStatusCode.Unauthorized;
         }
 
-        var user = UserRepository.GetUserById((long)userId);
+        
+        var user = UserRepository.GetUserCredentials((long)userId);
         if (user == null) {
             Accessor.HttpContext?.Session.Clear();
             return HttpStatusCode.NotFound;
@@ -95,10 +107,9 @@ public class AuthService : IAuthService {
         }
 
 
-        user.Pwd = HashPwd(newPwd, Convert.FromBase64String(user.Salt));
-        user.PwdInit = false;
-        Accessor.HttpContext?.Session.SetInt32(IAuthService.UserHasInitPwdKey, user.PwdInit ? 1 : 0);
-        UserRepository.UpdateUserPwd(user);
+        var hashedPwd = HashPwd(newPwd, Convert.FromBase64String(user.Value.salt));
+        Accessor.HttpContext?.Session.SetInt32(IAuthService.UserHasInitPwdKey, 0); // false
+        UserRepository.UpdateUserPwd(user.Value.id, hashedPwd);
         return HttpStatusCode.OK;
     }
 
@@ -125,17 +136,17 @@ public class AuthService : IAuthService {
     }
 
 
-    public Role[]? GetLoggedUserRoles() => Accessor.HttpContext?.Session.GetObject<Role[]>(IAuthService.UserRolesKey);
+    public RoleBLL[]? GetLoggedUserRoles() => Accessor.HttpContext?.Session.GetObject<RoleBLL[]>(IAuthService.UserRolesKey);
 
 
-    public bool IsUserAuthorized(ERoleType? neededRole, Role[]? roles) {
+    public bool IsUserAuthorized(ERoleType? neededRole, RoleBLL[]? roles) {
         var userAuthorized = roles != null && (neededRole == null ||
                                                //no one is logged in
                                                roles.Any(role => role.Type.Equals(neededRole)));
         return userAuthorized;
     }
 
-    public Role[]? GetAllProjectManagerRoles() {
+    public RoleBLL[]? GetAllProjectManagerRoles() {
         var roles = GetLoggedUserRoles();
         if (roles == null) {
             return null;
@@ -144,7 +155,7 @@ public class AuthService : IAuthService {
         return GetAllProjectManagerRoles(roles);
     }
 
-    public Role[] GetAllProjectManagerRoles(Role[] roles) {
+    public RoleBLL[] GetAllProjectManagerRoles(RoleBLL[] roles) {
         return roles.Where(role => role.Type == ERoleType.ProjectManager).ToArray();
     }
     public IEnumerable<long> GetAllProjectManagerProjectIds() {
@@ -156,7 +167,7 @@ public class AuthService : IAuthService {
         var resultIds = manRoles.Select(x => x.ProjectId).OfType<long>();
         return resultIds;
     }
-    public IEnumerable<long> GetAllProjectManagerProjectIds(Role[] roles) {
+    public IEnumerable<long> GetAllProjectManagerProjectIds(RoleBLL[] roles) {
         var manRoles = GetAllProjectManagerRoles(roles);
         var resultIds = manRoles.Select(x => x.ProjectId).OfType<long>();
         return resultIds;

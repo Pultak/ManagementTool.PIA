@@ -1,12 +1,11 @@
-﻿using System.Collections;
-using System.Net;
+﻿using AutoMapper;
+using ManagementTool.Server.Models.Business;
 using ManagementTool.Server.Repository.Projects;
+using ManagementTool.Server.Repository.Users;
 using ManagementTool.Server.Services.Roles;
-using ManagementTool.Server.Services.Users;
-using ManagementTool.Shared.Models.Database;
+using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Utils;
 using ManagementTool.Shared.Utils;
-using Microsoft.AspNetCore.Identity;
 
 namespace ManagementTool.Server.Services.Projects; 
 
@@ -17,20 +16,25 @@ public class ProjectsService: IProjectsService {
     private IAssignmentRepository AssignmentRepository { get; }
     private IUserRoleRepository RolesRepository { get; }
     private IUserRepository UserRepository { get; }
+    private IMapper Mapper { get; }
 
     public ProjectsService(IProjectRepository projectRepository, IRolesService rolesService, 
-        IAssignmentRepository assignmentRepository, IUserRoleRepository rolesRepository, IUserRepository userRepository) {
+        IAssignmentRepository assignmentRepository, IUserRoleRepository rolesRepository, 
+        IUserRepository userRepository, IMapper mapper) {
         ProjectRepository = projectRepository;
         RolesService = rolesService;
         AssignmentRepository = assignmentRepository;
         RolesRepository = rolesRepository;
         UserRepository = userRepository;
+        Mapper = mapper;
     }
 
 
-    public EProjectCreationResponse CreateProject(Project project) {
+    public EProjectCreationResponse CreateProject(ProjectPL project) {
 
-        if (string.IsNullOrEmpty(project.ProjectName)) {
+        var blProject = Mapper.Map<ProjectBLL>(project);
+
+        if (string.IsNullOrEmpty(blProject.ProjectName)) {
             return EProjectCreationResponse.InvalidName;
         }
 
@@ -39,20 +43,22 @@ public class ProjectsService: IProjectsService {
             return valResult;
         }
 
-        valResult = CheckProjectDataConflicts(project);
+        valResult = CheckProjectDataConflicts(blProject);
         if (valResult != EProjectCreationResponse.Ok) {
             return valResult;
         }
 
-        var roleOk = RolesService.CreateNewProjectRole(project.ProjectName, project.Id);
+        var roleOk = RolesService.CreateNewProjectRole(blProject.ProjectName, blProject.Id);
         
         
         return roleOk? EProjectCreationResponse.Ok : EProjectCreationResponse.InvalidRoleName;
     }
 
     
-    public bool UpdateProject(Project project) {
-        if (string.IsNullOrEmpty(project.ProjectName)){
+    public bool UpdateProject(ProjectPL project) {
+        var blProject = Mapper.Map<ProjectBLL>(project);
+
+        if (string.IsNullOrEmpty(blProject.ProjectName)){
             return false;
         }
 
@@ -61,13 +67,13 @@ public class ProjectsService: IProjectsService {
             return false;
         }
         
-        var updateOk = ProjectRepository.UpdateProject(project);
+        var updateOk = ProjectRepository.UpdateProject(blProject);
         
         if (!updateOk) {
             return false;
         }
 
-        updateOk = RolesService.UpdateProjectRoleName(project.ProjectName, project.Id);
+        updateOk = RolesService.UpdateProjectRoleName(blProject.ProjectName, blProject.Id);
 
         return updateOk;
     }
@@ -92,8 +98,10 @@ public class ProjectsService: IProjectsService {
         return deletionOk;
     }
 
-    public bool AssignUsersToProject(IEnumerable<UserBase> users, long projectId) {
+    public bool AssignUsersToProject(IEnumerable<UserBasePL> users, long projectId) {
         
+        var blUsers = Mapper.Map<IEnumerable<UserBaseBLL>>(users);
+
         if (projectId < 0) {
             return false;
         }
@@ -103,14 +111,14 @@ public class ProjectsService: IProjectsService {
             return false;
         }
         
-        var ok = UpdateUserProjectAssignments(users, project);
+        var ok = UpdateUserProjectAssignments(blUsers, project);
         return ok;
     }
 
 
-    public IEnumerable<Project>? GetProjects(IEnumerable<long>? projectIds) {
+    public IEnumerable<ProjectPL>? GetProjects(IEnumerable<long>? projectIds) {
 
-        IEnumerable<Project>? projects;
+        IEnumerable<ProjectBLL>? projects;
 
         if (projectIds == null) {
             projects = ProjectRepository.GetAllProjects();
@@ -125,12 +133,12 @@ public class ProjectsService: IProjectsService {
             }
         }
 
-        return projects;
+        return Mapper.Map<IEnumerable<ProjectPL>>(projects);
     }
 
 
     
-    private bool UpdateUserProjectAssignments(IEnumerable<UserBase> assignedUsers, Project project) {
+    private bool UpdateUserProjectAssignments(IEnumerable<UserBaseBLL> assignedUsers, ProjectBLL project) {
         var dbProjectAssignees = UserRepository.GetAllUsersAssignedToProject(project.Id).ToArray();
         
         List<long> unassignList = new();
@@ -151,18 +159,18 @@ public class ProjectsService: IProjectsService {
             }
         }
         if (assignList.Count > 0) {
-            UserRepository.AssignUsersToProject(assignList, project);
+            UserRepository.AssignUsersToProject(assignList, project.Id);
         }
 
         if (unassignList.Count > 0) {
-            UserRepository.UnassignUsersFromProject(unassignList, project);
+            UserRepository.UnassignUsersFromProject(unassignList, project.Id);
         }
 
         return true;
     }
 
 
-    private EProjectCreationResponse CheckProjectDataConflicts(Project project) {
+    private EProjectCreationResponse CheckProjectDataConflicts(ProjectBLL project) {
         var namedProject = ProjectRepository.GetProjectByName(project.ProjectName);
         if (namedProject != null) {
             return EProjectCreationResponse.NameTaken;

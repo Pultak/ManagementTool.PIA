@@ -1,8 +1,8 @@
-﻿using System.Net;
+﻿using AutoMapper;
+using ManagementTool.Server.Models.Business;
+using ManagementTool.Server.Repository.Users;
 using ManagementTool.Server.Services.Roles;
-using ManagementTool.Shared.Models.Api.Payloads;
-using ManagementTool.Shared.Models.Api.Requests;
-using ManagementTool.Shared.Models.Database;
+using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Utils;
 using ManagementTool.Shared.Utils;
 
@@ -13,41 +13,42 @@ public class UsersService : IUsersService {
     private IUserRepository UserRepository { get; }
     private IAuthService AuthService { get; }
     private IRolesService RolesService { get; }
+    private IMapper Mapper { get; }
 
-    public UsersService(IUserRepository userRepository, IAuthService authService, IRolesService rolesService) {
+    public UsersService(IUserRepository userRepository, IAuthService authService, IRolesService rolesService, IMapper mapper) {
         UserRepository = userRepository;
         AuthService = authService;
         RolesService = rolesService;
+        Mapper = mapper;
     }
 
-    public IEnumerable<UserBase> GetUsers() {
+    public IEnumerable<UserBasePL> GetUsers() {
         var result = UserRepository.GetAllUsers();
-        return result;
+        return Mapper.Map<IEnumerable<UserBasePL>>(result);
     }
 
 
-    public EUserCreationResponse CreateUser(User userRequest) {
-        var valResult = UserUtils.ValidateUser(userRequest);
-        if (valResult != EUserCreationResponse.Ok || !UserUtils.IsValidPassword(userRequest.Pwd)) {
+    public EUserCreationResponse CreateUser(UserBasePL newUser, string pwd) {
+        var valResult = UserUtils.ValidateUser(newUser);
+        var blNewUser = Mapper.Map<UserBaseBLL>(newUser);
+
+        if (valResult != EUserCreationResponse.Ok || !UserUtils.IsValidPassword(pwd)) {
             return valResult;
         }
         
-        valResult = CheckUserDataConflicts(userRequest);
+        valResult = CheckUserDataConflicts(blNewUser);
         if (valResult != EUserCreationResponse.Ok) {
             return valResult;
         }
 
         var salt = AuthService.GenerateSalt(); 
 
-        userRequest.Pwd = AuthService.HashPwd(userRequest.Pwd, salt);
-        userRequest.Salt = Convert.ToBase64String(salt);
+        var hashedPwd = AuthService.HashPwd(pwd, salt);
         
 
-        var userId = UserRepository.AddUser(userRequest);
-        userRequest.Id = userId;
-
-        if (userId < 0) {
-            return EUserCreationResponse.UsernameTaken;
+        var userId = UserRepository.AddUser(blNewUser, hashedPwd, Convert.ToBase64String(salt));
+        if (userId < 1) {
+            return EUserCreationResponse.EmptyUser;
         }
         
         return EUserCreationResponse.Ok;
@@ -55,35 +56,38 @@ public class UsersService : IUsersService {
 
 
 
-    public IEnumerable<DataModelAssignment<UserBase>>? GetAllUsersUnderProject(long projectId) {
+    public IEnumerable<DataModelAssignmentPL<UserBasePL>>? GetAllUsersUnderProject(long projectId) {
         if (projectId < 1) {
             return null;
         }
 
         var result = UserRepository.GetAllUsersAssignedToProject(projectId);
-        return result;
+        return Mapper.Map<IEnumerable<DataModelAssignmentPL<UserBasePL>>>(result);
     }
     
 
-    public EUserCreationResponse UpdateUser(UserBase user) {
+    public EUserCreationResponse UpdateUser(UserBasePL user) {
         var valResult = UserUtils.ValidateUser(user);
         if (valResult != EUserCreationResponse.Ok) {
             return valResult;
         }
-
-        var dbUser = new User(user);
-        UserRepository.UpdateUser(dbUser);
+        var blUserBase = Mapper.Map<UserBaseBLL>(user);
+        
+        UserRepository.UpdateUser(blUserBase);
         return EUserCreationResponse.Ok;
     }
 
-    public IEnumerable<UserBase> GetAllUsersWithRole(ERoleType roleType) {
-        var role = RolesService.GetRoleByType(roleType);
-        if (role != null) {
-            return Array.Empty<UserBase>();
+    public IEnumerable<UserBasePL> GetAllUsersWithRole(ERoleType roleType) {
+        if (roleType == ERoleType.NoRole) {
+            return Array.Empty<UserBasePL>();
         }
 
-        var result = UserRepository.GetAllUsersByRole(role);
-        return result;
+        var role = RolesService.GetRoleByType(roleType);
+        if (role == null) {
+            return Array.Empty<UserBasePL>();
+        }
+        var result = UserRepository.GetAllUsersByRole(role.Id);
+        return Mapper.Map<IEnumerable<UserBasePL>>(result);
     }
 
     public IEnumerable<long>? GetAllUserSuperiorsIds(long userId) {
@@ -106,14 +110,14 @@ public class UsersService : IUsersService {
         if (user == null) {
             return false;
         }
-        var ok = UserRepository.DeleteUser(user);
+        var ok = UserRepository.DeleteUser(user.Id);
         return ok;
     }
 
 
-    private EUserCreationResponse CheckUserDataConflicts(User user) {
-        var allUsers = UserRepository.GetAllUsers();
-        if (allUsers.Any(existingUser => existingUser.Username.Equals(user.Username))) {
+    private EUserCreationResponse CheckUserDataConflicts(UserBaseBLL user) {
+        var dbUser = UserRepository.GetUserByName(user.Username);
+        if (dbUser != null) {
             return EUserCreationResponse.UsernameTaken;
         }
         return EUserCreationResponse.Ok;
@@ -121,7 +125,7 @@ public class UsersService : IUsersService {
     
     
     
-    public void UpdateUserSuperiorAssignments(IReadOnlyCollection<UserBase> newAssignedSuperiors, UserBase user) {
+    public void UpdateUserSuperiorAssignments(IEnumerable<UserBasePL> newAssignedSuperiors, UserBasePL user) {
         var dbAssignedSuperiors = UserRepository.GetAllUserSuperiorsIds(user.Id).ToArray();
 
         //select all superior references that should be removed from db
@@ -133,11 +137,11 @@ public class UsersService : IUsersService {
         var assignList = newAssignedSuperiors.Where(x => !dbAssignedSuperiors.Contains(x.Id)).Select(x=> x.Id).ToList();
         
         if (assignList.Count > 0) {
-            UserRepository.AssignSuperiorsToUser(assignList, user);
+            UserRepository.AssignSuperiorsToUser(assignList, user.Id);
         }
 
         if (unassignList.Count > 0) {
-            UserRepository.UnassignSuperiorsFromUser(unassignList, user);
+            UserRepository.UnassignSuperiorsFromUser(unassignList, user.Id);
         }
     }
 

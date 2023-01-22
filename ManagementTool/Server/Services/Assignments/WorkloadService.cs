@@ -1,16 +1,13 @@
 ﻿using System.Globalization;
-using System.Net;
+using ManagementTool.Server.Models.Business;
 using ManagementTool.Server.Repository.Projects;
 using ManagementTool.Server.Repository.Users;
-using ManagementTool.Server.Services.Projects;
 using ManagementTool.Server.Services.Users;
-using ManagementTool.Shared.Models.Api.Payloads;
-using ManagementTool.Shared.Models.Database;
+using ManagementTool.Shared.Models.Presentation.Api.Payloads;
 using ManagementTool.Shared.Models.Utils;
 using ManagementTool.Shared.Utils;
-using Microsoft.AspNetCore.Mvc;
 
-namespace ManagementTool.Server.Services.Assignments; 
+namespace ManagementTool.Server.Services.Assignments;
 
 public class WorkloadService: IWorkloadService {
 
@@ -19,7 +16,8 @@ public class WorkloadService: IWorkloadService {
     private IUserRepository UserRepository { get; }
     private IAssignmentRepository AssignmentRepository { get; }
 
-    public WorkloadService(IProjectRepository projectRepository, IUserRepository userRepository, IAssignmentRepository assignmentRepository, IAuthService authService) {
+    public WorkloadService(IProjectRepository projectRepository, IUserRepository userRepository, 
+        IAssignmentRepository assignmentRepository, IAuthService authService) {
         ProjectRepository = projectRepository;
         AuthService = authService;
         UserRepository = userRepository;
@@ -27,7 +25,8 @@ public class WorkloadService: IWorkloadService {
     }
 
 
-    public UserWorkloadWrapper? GetUsersWorkloads(string fromDateString, string toDateString, long[] ids, bool projectMan, bool onlyBusinessDays) {
+    public UserWorkloadPayload? GetUsersWorkloads(string fromDateString, string toDateString, long[] ids, 
+        bool projectMan, bool onlyBusinessDays) {
 
         DateTime fromDate;
         DateTime toDate;
@@ -76,8 +75,8 @@ public class WorkloadService: IWorkloadService {
     }
 
 
-    private UserWorkloadWrapper ParseDataIntoWorkload(IEnumerable<Assignment> assignments, DateTime[] days,
-        bool onlyBusinessDays, IEnumerable<UserBase> users) {
+    private UserWorkloadPayload ParseDataIntoWorkload(IEnumerable<AssignmentBLL> assignments, DateTime[] days,
+        bool onlyBusinessDays, IEnumerable<UserBaseBLL> users) {
 
         var firstDate = days.First();
         var lastDate = days.Last();
@@ -110,7 +109,7 @@ public class WorkloadService: IWorkloadService {
                 dayCount = (assignment.ToDate.Date - assignment.FromDate.Date).Days;
             }
             // divide by 8 to get daily workload (8 work hours)
-            var load = ((double)assignment.AllocationScope / (double)dayCount) / 8.0;
+            var load = ((double)assignment.AllocationScope / dayCount) / 8.0;
 
             var firstDayMatchIndex = AssignmentUtils.GetDayIndex(days, assignment.FromDate);
             if (firstDayMatchIndex < 0) {
@@ -130,7 +129,7 @@ public class WorkloadService: IWorkloadService {
             }
         }
 
-        var result = new UserWorkloadWrapper{
+        var result = new UserWorkloadPayload{
                 Workloads = workloadDict.Select(x => x.Value).ToArray(),
                 Dates = days
 

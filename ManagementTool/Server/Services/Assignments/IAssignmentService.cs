@@ -1,20 +1,17 @@
-﻿using ManagementTool.Shared.Models.Api.Payloads;
-using ManagementTool.Shared.Models.Database;
-using ManagementTool.Shared.Models.Utils;
+﻿using ManagementTool.Shared.Models.Presentation;
+using ManagementTool.Shared.Models.Presentation.Api.Payloads;
 
-namespace ManagementTool.Server.Services.Assignments; 
+namespace ManagementTool.Server.Services.Assignments;
 
 public interface IAssignmentService {
-    IEnumerable<AssignmentWrapper> GetAssignmentsByProjectIds(IEnumerable<long> projectIds);
+    public IEnumerable<AssignmentWrapperPayload> GetAssignmentsByProjectIds(IEnumerable<long> projectIds);
+    
+    public bool AddNewAssignment(AssignmentPL assignment);
+    public IEnumerable<AssignmentWrapperPayload> GetAssignmentsByUserId(long userId);
+    public IEnumerable<AssignmentWrapperPayload> GetAllAssignments();
+    public bool DeleteAssignment(long assignmentId);
+    public bool UpdateAssignment(AssignmentPL assignment);
+    public IEnumerable<AssignmentWrapperPayload>? GetAssignmentsUnderSuperior(long superiorId);
 
-    protected EAssignmentCreationResponse ValidateAssignmentData(Assignment assignment);
-
-    public bool AddNewAssignment(Assignment assignment);
-    IEnumerable<AssignmentWrapper> GetAssignmentsByUserId(long userId);
-    IEnumerable<AssignmentWrapper> GetAllAssignments();
-    bool DeleteAssignment(long assignmentId);
-    bool UpdateAssignment(Assignment assignment);
-    IEnumerable<AssignmentWrapper> GetAssignmentsUnderSuperior(long superiorId);
-
-    bool UpdateProjectAssignmentsId(long projectId, long newId);
+    public bool UpdateProjectAssignmentsId(long projectId, long newId);
 }

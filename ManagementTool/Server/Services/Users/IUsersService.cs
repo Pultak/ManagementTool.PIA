@@ -1,24 +1,23 @@
-﻿using ManagementTool.Shared.Models.Api.Payloads;
-using ManagementTool.Shared.Models.Database;
+﻿using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Server.Services.Users; 
 
 public interface IUsersService {
 
-    public IEnumerable<UserBase> GetUsers();
+    public IEnumerable<UserBasePL> GetUsers();
 
-    IEnumerable<DataModelAssignment<UserBase>>? GetAllUsersUnderProject(long projectId);
+    public IEnumerable<DataModelAssignmentPL<UserBasePL>>? GetAllUsersUnderProject(long projectId);
 
-    EUserCreationResponse CreateUser(User user);
+    public EUserCreationResponse CreateUser(UserBasePL user, string pwd);
 
-    public EUserCreationResponse UpdateUser(UserBase dbUser);
+    public EUserCreationResponse UpdateUser(UserBasePL dbUser);
 
     public bool DeleteUser(long userId);
 
-    public void UpdateUserSuperiorAssignments(IReadOnlyCollection<UserBase> newAssignedSuperiors, UserBase user);
+    public void UpdateUserSuperiorAssignments(IEnumerable<UserBasePL> newAssignedSuperiors, UserBasePL user);
 
-    public IEnumerable<UserBase> GetAllUsersWithRole(ERoleType roleType);
+    public IEnumerable<UserBasePL> GetAllUsersWithRole(ERoleType roleType);
 
     public IEnumerable<long>? GetAllUserSuperiorsIds(long userId);
 

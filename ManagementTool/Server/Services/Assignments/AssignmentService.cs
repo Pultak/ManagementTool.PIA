@@ -1,59 +1,65 @@
-﻿using System.Net;
+﻿using AutoMapper;
+using ManagementTool.Server.Models.Business;
 using ManagementTool.Server.Repository.Projects;
 using ManagementTool.Server.Repository.Users;
-using ManagementTool.Server.Services.Projects;
-using ManagementTool.Server.Services.Users;
-using ManagementTool.Shared.Models.Api.Payloads;
-using ManagementTool.Shared.Models.Database;
+using ManagementTool.Shared.Models.Presentation;
+using ManagementTool.Shared.Models.Presentation.Api.Payloads;
 using ManagementTool.Shared.Models.Utils;
 using ManagementTool.Shared.Utils;
 
-namespace ManagementTool.Server.Services.Assignments; 
+namespace ManagementTool.Server.Services.Assignments;
 
 public class AssignmentService: IAssignmentService {
 
     private IAssignmentRepository AssignmentsRepository { get; }
     private IProjectRepository ProjectRepository{ get; }
     private IUserRepository UserRepository{ get; }
+    private IMapper Mapper { get; }
 
-    public AssignmentService(IAssignmentRepository assignRepository, IProjectRepository projectRepository, IUserRepository userRepository) {
+    public AssignmentService(IAssignmentRepository assignRepository, IProjectRepository projectRepository,
+        IUserRepository userRepository, IMapper mapper) {
         AssignmentsRepository = assignRepository;
         ProjectRepository = projectRepository;
         UserRepository = userRepository;
+        Mapper = mapper;
     }
 
-    public IEnumerable<AssignmentWrapper> GetAssignmentsByProjectIds(IEnumerable<long> projectIds) {
+    public IEnumerable<AssignmentWrapperPayload> GetAssignmentsByProjectIds(IEnumerable<long> projectIds) {
 
-        if (projectIds.Any()) {
+        if (!projectIds.Any()) {
             //is empty?
-            return Array.Empty<AssignmentWrapper>();
+            return Array.Empty<AssignmentWrapperPayload>();
         }
 
-        return AssignmentsRepository.GetAssignmentsByProjectIds(projectIds);
+        var result = AssignmentsRepository.GetAssignmentsByProjectIds(projectIds);
+        return Mapper.Map<IEnumerable<AssignmentWrapperPayload>>(result);
     }
 
 
 
 
-    public bool AddNewAssignment(Assignment assignment) {
-        if (ValidateAssignmentData(assignment) != EAssignmentCreationResponse.Ok) {
+    public bool AddNewAssignment(AssignmentPL assignment) {
+        var blAssignment = Mapper.Map<AssignmentBLL>(assignment);
+
+        if (ValidateAssignmentData(blAssignment) != EAssignmentCreationResponse.Ok) {
             return false;
         }
 
-        var assignmentId = AssignmentsRepository.AddAssignment(assignment);
+        var assignmentId = AssignmentsRepository.AddAssignment(blAssignment);
         return assignmentId < 1;
     }
 
-    public IEnumerable<AssignmentWrapper> GetAssignmentsByUserId(long userId) {
+    public IEnumerable<AssignmentWrapperPayload> GetAssignmentsByUserId(long userId) {
         if (userId < 1) {
-            return Array.Empty<AssignmentWrapper>();
+            return Array.Empty<AssignmentWrapperPayload>();
         }
-        var result = AssignmentsRepository.GetAssignmentsByUserId((long)userId);
-        return result;
+        var result = AssignmentsRepository.GetAssignmentsByUserId(userId);
+        return Mapper.Map<IEnumerable<AssignmentWrapperPayload>>(result);
     }
 
-    public IEnumerable<AssignmentWrapper> GetAllAssignments() {
-        return AssignmentsRepository.GetAllAssignments();
+    public IEnumerable<AssignmentWrapperPayload> GetAllAssignments() {
+        var result = AssignmentsRepository.GetAllAssignments();
+        return Mapper.Map<IEnumerable<AssignmentWrapperPayload>>(result);
     }
 
     public bool DeleteAssignment(long assignmentId) {
@@ -67,16 +73,24 @@ public class AssignmentService: IAssignmentService {
 
     }
 
-    public bool UpdateAssignment(Assignment assignment) {
-        if (ValidateAssignmentData(assignment) != EAssignmentCreationResponse.Ok) {
+    public bool UpdateAssignment(AssignmentPL assignment) {
+        var blAssignment = Mapper.Map<AssignmentBLL>(assignment);
+        if (ValidateAssignmentData(blAssignment) != EAssignmentCreationResponse.Ok) {
             return false;
         }
 
-        var ok = AssignmentsRepository.UpdateAssignment(assignment);
+        var ok = AssignmentsRepository.UpdateAssignment(blAssignment);
         return ok;
     }
 
-    public IEnumerable<AssignmentWrapper> GetAssignmentsUnderSuperior(long superiorId) => throw new NotImplementedException();
+    public IEnumerable<AssignmentWrapperPayload>? GetAssignmentsUnderSuperior(long superiorId) {
+        if (superiorId < 0) {
+            return null;
+        }
+
+        var result = AssignmentsRepository.GetAssignmentsUnderSuperior(superiorId);
+        return Mapper.Map<IEnumerable<AssignmentWrapperPayload>>(result);
+    }
 
     public bool UpdateProjectAssignmentsId(long projectId, long newId) {
         if (projectId < 1 || newId < 0) {
@@ -94,7 +108,7 @@ public class AssignmentService: IAssignmentService {
     }
 
 
-    public EAssignmentCreationResponse ValidateAssignmentData(Assignment assignment) {
+    private EAssignmentCreationResponse ValidateAssignmentData(AssignmentBLL assignment) {
         
         var project = ProjectRepository.GetProjectById(assignment.ProjectId);
         if (project == null) {
@@ -106,11 +120,14 @@ public class AssignmentService: IAssignmentService {
             return EAssignmentCreationResponse.InvalidUser;
         }
 
-        if (!UserRepository.IsUserAssignedToProject(user, project)) {
+        if (!UserRepository.IsUserAssignedToProject(user.Id, project.Id)) {
             return EAssignmentCreationResponse.UserNotAssignedToProject;
         }
 
-        var valResult = AssignmentUtils.ValidateNewAssignment(assignment, project, user);
+        var valResult = AssignmentUtils.ValidateNewAssignment(
+            Mapper.Map<AssignmentPL>(assignment), 
+            Mapper.Map<ProjectPL>(project), 
+            Mapper.Map<UserBasePL>(user));
         if (valResult != EAssignmentCreationResponse.Ok){
             return valResult;
         }

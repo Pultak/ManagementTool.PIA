@@ -1,9 +1,7 @@
-﻿using ManagementTool.Server.Controllers;
-using ManagementTool.Shared.Models.Database;
-using ManagementTool.Shared.Models.Login;
+﻿using ManagementTool.Shared.Models.Login;
 using ManagementTool.Shared.Models.Utils;
 using System.Net;
-using System.Security.Cryptography;
+using ManagementTool.Server.Models.Business;
 
 namespace ManagementTool.Server.Services.Users;
 
@@ -23,19 +21,17 @@ public interface IAuthService {
     public HttpStatusCode LoggedInUserChangePwd(string newPwd);
 
     public bool IsUserAuthorized(ERoleType? neededRole);
-    public bool IsUserAuthorized(ERoleType? neededRole, Role[]? roles);
-    //todo public bool IsUserAuthorized(ERoleType[] possibleRoles);
 
     public string HashPwd(string password, byte[] salt);
 
-    public Role[]? GetLoggedUserRoles();
+    public RoleBLL[]? GetLoggedUserRoles();
 
 
-    public Role[]? GetAllProjectManagerRoles();
+    public RoleBLL[]? GetAllProjectManagerRoles();
 
-    public Role[] GetAllProjectManagerRoles(Role[] roles);
+    public RoleBLL[] GetAllProjectManagerRoles(RoleBLL[] roles);
     public IEnumerable<long> GetAllProjectManagerProjectIds();
-    public IEnumerable<long> GetAllProjectManagerProjectIds(Role[] roles);
+    public IEnumerable<long> GetAllProjectManagerProjectIds(RoleBLL[] roles);
 
     public long? GetLoggedUserId();
 

@@ -1,25 +1,23 @@
-﻿using System.Collections;
-using ManagementTool.Client.Pages.Projects;
-using ManagementTool.Server.Repository.Projects;
-using ManagementTool.Server.Services.Users;
-using ManagementTool.Shared.Models.Api.Payloads;
-using ManagementTool.Shared.Models.Database;
+﻿using AutoMapper;
+using ManagementTool.Server.Models.Business;
+using ManagementTool.Server.Repository.Users;
+using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Server.Services.Roles; 
 
 public class RolesService: IRolesService {
-    private IProjectRepository ProjectRepository { get; }
     private IUserRoleRepository RolesRepository { get; }
+    private IMapper Mapper { get; }
 
-    public RolesService(IProjectRepository projectRepository, IUserRoleRepository rolesRepository) {
-        ProjectRepository = projectRepository;
+    public RolesService(IUserRoleRepository rolesRepository, IMapper mapper) {
         RolesRepository = rolesRepository;
+        Mapper = mapper;
     }
 
     public bool CreateNewProjectRole(string projectName, long projectId) {
         
-        var newRole = new Role {
+        var newRole = new RoleBLL {
             Name = $"{projectName} Manažer",
             Type = ERoleType.ProjectManager,
             ProjectId = projectId
@@ -37,23 +35,23 @@ public class RolesService: IRolesService {
         return result;
     }
     
-    public void UpdateUserRoleAssignments(List<DataModelAssignment<Role>> roleAssignments, long userId) {
+    public void UpdateUserRoleAssignments(List<DataModelAssignmentPL<RolePL>> roleAssignments, long userId) {
         var userRoles = RolesRepository.GetUserRolesByUserId(userId).ToArray();
         
-        List<Role> unassignList = new();
-        List<Role> assignList = new();
+        List<long> unassignList = new();
+        List<long> assignList = new();
         foreach (var roleAssignment in roleAssignments) {
             if (roleAssignment.IsAssigned) {
                 if (userRoles.All(role => role.Id != roleAssignment.DataModel.Id)) {
                     //we need to add reference
-                    assignList.Add(roleAssignment.DataModel);
+                    assignList.Add(roleAssignment.DataModel.Id);
                 }
                 //nothing changed
             }
             else {
                 if (userRoles.Any(role => role.Id == roleAssignment.DataModel.Id)) {
                     //we need to remove reference
-                    unassignList.Add(roleAssignment.DataModel);
+                    unassignList.Add(roleAssignment.DataModel.Id);
                 }
             }
         }
@@ -68,7 +66,7 @@ public class RolesService: IRolesService {
     }
 
 
-    public IEnumerable<DataModelAssignment<Role>>? GetAllRolesAssigned(long userId) {
+    public IEnumerable<DataModelAssignmentPL<RolePL>>? GetAllRolesAssigned(long userId) {
         if (userId < 1) {
             return null;
         }
@@ -76,24 +74,24 @@ public class RolesService: IRolesService {
         var allRoles = RolesRepository.GetAllNonProjectManRoles();
         var userRoles = RolesRepository.GetUserRolesByUserId(userId);
         if (!userRoles.Any()) {
-            return Array.Empty<DataModelAssignment<Role>>();
+            return Array.Empty<DataModelAssignmentPL<RolePL>>();
         }
 
-        var result = (from role in allRoles
+        var result = from role in allRoles
             let assigned = userRoles.Any(x => x.Id == role.Id)
-            select new DataModelAssignment<Role>(assigned, role));
+            select new DataModelAssignmentPL<RolePL>(assigned, Mapper.Map<RolePL>(role));
         
         return result;
     }
 
 
-    public Role? GetRoleByType(ERoleType roleType) {
+    public RolePL? GetRoleByType(ERoleType roleType) {
         if (roleType == ERoleType.NoRole) {
             return null;
         }
 
         var role = RolesRepository.GetRolesByType(roleType).FirstOrDefault();
-        return role;
+        return Mapper.Map<RolePL>(role);
     }
 
 }
