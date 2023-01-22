@@ -1,17 +1,10 @@
 ﻿using System.Net;
-using ManagementTool.Server.Repository.Projects;
-using ManagementTool.Server.Repository.Users;
 using ManagementTool.Server.Services.Projects;
-using ManagementTool.Server.Services.Roles;
 using ManagementTool.Server.Services.Users;
-using ManagementTool.Shared.Models.Api.Payloads;
-using ManagementTool.Shared.Models.Api.Requests;
-using ManagementTool.Shared.Models.Database;
+using ManagementTool.Shared.Models.Presentation;
+using ManagementTool.Shared.Models.Presentation.Api.Requests;
 using ManagementTool.Shared.Models.Utils;
-using ManagementTool.Shared.Utils;
 using Microsoft.AspNetCore.Mvc;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace ManagementTool.Server.Controllers;
 
@@ -22,37 +15,29 @@ public class ProjectsController : ControllerBase {
     private IAuthService AuthService { get; }
     private IProjectsService ProjectsService { get; }
     private IUsersService UsersService { get; }
-    private IRolesService RolesService { get; }
 
     public ProjectsController(IAuthService authService, IProjectsService projectsService, 
-        IUsersService usersService, IRolesService rolesService) {
+        IUsersService usersService) {
         AuthService = authService;
         ProjectsService = projectsService;
         UsersService = usersService;
-        RolesService = rolesService;
     }
 
     
     [HttpGet]
-    public IEnumerable<Project>? GetAllProjects() {
-        var roles = AuthService.GetLoggedUserRoles();
-        if (roles == null) {
-            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            return null;
-        }
-
+    public IEnumerable<ProjectPL>? GetAllProjects() {
         Response.StatusCode = (int)HttpStatusCode.OK;
-        if (AuthService.IsUserAuthorized(ERoleType.Secretariat, roles) ||
-            AuthService.IsUserAuthorized(ERoleType.DepartmentManager, roles)) {
+        if (AuthService.IsUserAuthorized(ERoleType.Secretariat) ||
+            AuthService.IsUserAuthorized(ERoleType.DepartmentManager)) {
             var result = ProjectsService.GetProjects(null);
             return result;
         }
-        if (AuthService.IsUserAuthorized(ERoleType.ProjectManager, roles)) {
+        if (AuthService.IsUserAuthorized(ERoleType.ProjectManager)) {
             var projectIds = AuthService.GetAllProjectManagerProjectIds();
             if (!projectIds.Any()) {
                 //is there anything in the returned array?
                 Response.StatusCode = (int)HttpStatusCode.NoContent;
-                return Enumerable.Empty<Project>();
+                return Enumerable.Empty<ProjectPL>();
             }
             var result = ProjectsService.GetProjects(projectIds);
             return result;
@@ -63,7 +48,7 @@ public class ProjectsController : ControllerBase {
     }
     
     [HttpGet("{projectId:long}/users")]
-    public IEnumerable<DataModelAssignment<UserBase>>? GetAllUsersUnderProject(long projectId) {
+    public IEnumerable<DataModelAssignmentPL<UserBasePL>>? GetAllUsersUnderProject(long projectId) {
         if (!AuthService.IsUserAuthorized(null)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
@@ -81,7 +66,7 @@ public class ProjectsController : ControllerBase {
 
     
     [HttpGet("{idProject:long}/users")]
-    public IEnumerable<DataModelAssignment<UserBase>>? GetAllUsersForProject(long idProject) {
+    public IEnumerable<DataModelAssignmentPL<UserBasePL>>? GetAllUsersForProject(long idProject) {
         if (!AuthService.IsAuthorizedToManageProjects(idProject)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
@@ -99,7 +84,7 @@ public class ProjectsController : ControllerBase {
 
     //todo changed 
     [HttpPost]
-    public void CreateProject([FromBody] Project project) {
+    public void CreateProject([FromBody] ProjectPL project) {
         if (!AuthService.IsUserAuthorized(ERoleType.Secretariat)) {
             //only secretariat can create projects
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
@@ -123,7 +108,7 @@ public class ProjectsController : ControllerBase {
 
 
     [HttpPatch("update")]
-    public void UpdateProject([FromBody] Project project) {
+    public void UpdateProject([FromBody] ProjectPL project) {
         if (!AuthService.IsAuthorizedToManageProjects(project.Id)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return;
@@ -138,7 +123,7 @@ public class ProjectsController : ControllerBase {
     }
     
     //todo needs to be implemented
-    [HttpDelete("{projectId:long")]
+    [HttpDelete("{projectId:long}")]
     public void Delete(long projectId) {
         Response.StatusCode = (int)HttpStatusCode.OK;
         if (!AuthService.IsUserAuthorized(ERoleType.Secretariat)) {

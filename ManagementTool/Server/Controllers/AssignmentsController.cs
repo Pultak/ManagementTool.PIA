@@ -1,10 +1,10 @@
 ﻿using ManagementTool.Server.Services.Users;
-using ManagementTool.Shared.Models.Database;
 using ManagementTool.Shared.Models.Utils;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using ManagementTool.Server.Services.Assignments;
-using ManagementTool.Shared.Models.Api.Payloads;
+using ManagementTool.Shared.Models.Presentation;
+using ManagementTool.Shared.Models.Presentation.Api.Payloads;
 
 namespace ManagementTool.Server.Controllers;
 
@@ -24,7 +24,7 @@ public class AssignmentsController : ControllerBase {
 
     //todo changed
     [HttpGet("superior")]
-    public IEnumerable<AssignmentWrapper>? GetSuperiorsSubordinateAssignments() {
+    public IEnumerable<AssignmentWrapperPayload>? GetSuperiorsSubordinateAssignments() {
         if (!AuthService.IsUserAuthorized(ERoleType.Superior)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
@@ -35,19 +35,28 @@ public class AssignmentsController : ControllerBase {
             Response.StatusCode = (int)HttpStatusCode.NotFound;
             return null;
         }
-        Response.StatusCode = (int)HttpStatusCode.OK;
-        return AssignmentService.GetAssignmentsUnderSuperior((long)superiorId);
+        var result = AssignmentService.GetAssignmentsUnderSuperior((long)superiorId);
+        if (result == null) {
+            Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
+        }else if (result.Any()) {
+            Response.StatusCode = (int)HttpStatusCode.OK;
+        }
+        else {
+            Response.StatusCode = (int)HttpStatusCode.NoContent;
+        }
+        return result;
     }
 
     //todo changed uri
     [HttpGet("project")]
-    public IEnumerable<AssignmentWrapper>? GetProjectSubordinateAssignments() {
-        var userRoles = AuthService.GetLoggedUserRoles();
-        if (userRoles == null) {
+    public IEnumerable<AssignmentWrapperPayload>? GetProjectSubordinateAssignments() {
+        if (!AuthService.IsUserAuthorized(ERoleType.ProjectManager)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
-        if (!AuthService.IsUserAuthorized(ERoleType.ProjectManager, userRoles)) {
+
+        var userRoles = AuthService.GetLoggedUserRoles();
+        if (userRoles == null) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
@@ -69,7 +78,7 @@ public class AssignmentsController : ControllerBase {
 
 
     [HttpGet]
-    public IEnumerable<AssignmentWrapper>? GetAllAssignments() {
+    public IEnumerable<AssignmentWrapperPayload>? GetAllAssignments() {
         if (!AuthService.IsUserAuthorized(ERoleType.DepartmentManager)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
@@ -79,7 +88,7 @@ public class AssignmentsController : ControllerBase {
     }
     
     [HttpGet("my")]
-    public IEnumerable<AssignmentWrapper>? GetMyAssignments() {
+    public IEnumerable<AssignmentWrapperPayload>? GetMyAssignments() {
         var userId = AuthService.GetLoggedUserId();
         if (userId == null) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
@@ -98,14 +107,14 @@ public class AssignmentsController : ControllerBase {
 
 
     [HttpGet("workloads/{fromDateString}/{toDateString}")]
-    public UserWorkloadWrapper? GetUsersWorkloads([FromRoute] string fromDateString, string toDateString, [FromQuery] long[] ids) {
+    public UserWorkloadPayload? GetUsersWorkloads([FromRoute] string fromDateString, string toDateString, [FromQuery] long[] ids) {
         var userRoles = AuthService.GetLoggedUserRoles();
         if (userRoles == null) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
         }
 
-        UserWorkloadWrapper? resultWorkloads = null;
+        UserWorkloadPayload? resultWorkloads = null;
 
         var onlyBusinessDays = Request.Query.ContainsKey("businessDays");
 
@@ -134,7 +143,7 @@ public class AssignmentsController : ControllerBase {
 
     //todo changed
     [HttpPost]
-    public void CreateAssignment([FromBody] Assignment assignment) {
+    public void CreateAssignment([FromBody] AssignmentPL assignment) {
         if (!AuthService.IsAuthorizedToManageAssignments(assignment.ProjectId)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return;
@@ -149,7 +158,7 @@ public class AssignmentsController : ControllerBase {
 
 
     [HttpPatch]
-    public void UpdateAssignment([FromBody] Assignment assignment) {
+    public void UpdateAssignment([FromBody] AssignmentPL assignment) {
 
         if (!AuthService.IsAuthorizedToManageAssignments(assignment.ProjectId)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;

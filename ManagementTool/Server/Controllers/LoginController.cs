@@ -35,8 +35,8 @@ public class LoginController : ControllerBase {
         return AuthService.GetLoggedInUser();
     }
 
-
-    [HttpPatch("pwd")]
+    //todo
+    [HttpPatch]
     public void LoggedInUserChangePwd([FromBody] string newPwd) {
         Response.StatusCode = (int)AuthService.LoggedInUserChangePwd(newPwd);
     }

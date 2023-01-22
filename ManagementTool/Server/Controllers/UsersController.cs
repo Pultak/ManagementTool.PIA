@@ -1,14 +1,10 @@
 ﻿using System.Net;
-using System.Security.Cryptography;
-using ManagementTool.Server.Repository.Projects;
 using ManagementTool.Server.Services.Roles;
 using ManagementTool.Server.Services.Users;
-using ManagementTool.Shared.Models.Api.Payloads;
-using ManagementTool.Shared.Models.Database;
+using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Utils;
-using ManagementTool.Shared.Utils;
 using Microsoft.AspNetCore.Mvc;
-using ManagementTool.Shared.Models.Api.Requests;
+using ManagementTool.Shared.Models.Presentation.Api.Requests;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -29,7 +25,7 @@ public class UsersController : ControllerBase {
     }
     
     [HttpGet]
-    public IEnumerable<UserBase>? GetAllUsers() {
+    public IEnumerable<UserBasePL>? GetAllUsers() {
         if (!AuthService.IsAuthorizedToViewUsers()) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
@@ -48,7 +44,7 @@ public class UsersController : ControllerBase {
 
     //todo changed
     [HttpPost]
-    public void CreateUser([FromBody] UserUpdateRequest<User> userRequest) {
+    public void CreateUser([FromBody] UserCreationRequest userRequest) {
         if (!AuthService.IsUserAuthorized(ERoleType.Secretariat)) {
             //only secretariat can 
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
@@ -56,7 +52,7 @@ public class UsersController : ControllerBase {
         }
 
 
-        var response = UsersService.CreateUser(userRequest.UpdatedUser);
+        var response = UsersService.CreateUser(userRequest.UpdatedUser, userRequest.Pwd);
         if (response != EUserCreationResponse.Ok) {
             if (response == EUserCreationResponse.UsernameTaken) {
                 Response.StatusCode = (int)HttpStatusCode.Conflict;
@@ -75,7 +71,7 @@ public class UsersController : ControllerBase {
 
     //todo changed
     [HttpPatch]
-    public void UpdateUser([FromBody] UserUpdateRequest<UserBase> userRequest) {
+    public void UpdateUser([FromBody] UserUpdateRequest userRequest) {
         if (!AuthService.IsUserAuthorized(ERoleType.Secretariat)) {
             //only secretariat can update users
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
@@ -97,7 +93,7 @@ public class UsersController : ControllerBase {
         Response.StatusCode = (int)HttpStatusCode.OK;
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:long}")]
     public void DeleteUser(long id) {
         if (!AuthService.IsUserAuthorized(ERoleType.Secretariat)) {
             //only secretariat can delete users
@@ -114,7 +110,7 @@ public class UsersController : ControllerBase {
     
     //todo changed from roles controller
     [HttpGet("{userId:long}/roles")]
-    public IEnumerable<DataModelAssignment<Role>>? GetAllUserRoles(long userId) {
+    public IEnumerable<DataModelAssignmentPL<RolePL>>? GetAllUserRoles(long userId) {
         if (!AuthService.IsUserAuthorized(null)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
@@ -135,7 +131,7 @@ public class UsersController : ControllerBase {
 
     //todo changed from roles controller
     [HttpGet("superiors")]
-    public IEnumerable<UserBase>? GetAllSuperiors() {
+    public IEnumerable<UserBasePL>? GetAllSuperiors() {
         if (!AuthService.IsUserAuthorized(null)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return null;
