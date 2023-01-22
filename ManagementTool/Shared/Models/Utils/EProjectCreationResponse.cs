@@ -7,5 +7,7 @@ public enum EProjectCreationResponse {
     
     NameTaken,
 
+    InvalidRoleName,
+
     Ok
 }
