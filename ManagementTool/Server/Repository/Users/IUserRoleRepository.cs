@@ -1,19 +1,19 @@
-﻿using ManagementTool.Shared.Models.Database;
+﻿using ManagementTool.Server.Models.Business;
 using ManagementTool.Shared.Models.Utils;
 
-namespace ManagementTool.Server.Services.Users;
+namespace ManagementTool.Server.Repository.Users;
 
 public interface IUserRoleRepository {
 
-    public IEnumerable<Role> GetAllRoles();
-    public IEnumerable<Role> GetAllNonProjectManRoles();
-    public IEnumerable<Role> GetUserRolesByUserId(long userId);
-    public IEnumerable<Role> GetRolesByType(ERoleType type);
-    public long AddRole(Role role);
+    public IEnumerable<RoleBLL> GetAllRoles();
+    public IEnumerable<RoleBLL> GetAllNonProjectManRoles();
+    public IEnumerable<RoleBLL> GetUserRolesByUserId(long userId);
+    public IEnumerable<RoleBLL> GetRolesByType(ERoleType type);
+    public long AddRole(RoleBLL role);
     public bool UpdateProjectRoleName(long projectId, string roleName);
     public bool DeleteProjectRole(long projectId);
 
-    public bool AssignRolesToUser(List<Role> roles, long userId);
-    public bool UnassignRolesFromUser(List<Role> roles, long userId);
+    public bool AssignRolesToUser(List<long> roles, long userId);
+    public bool UnassignRolesFromUser(List<long> roles, long userId);
 
 }

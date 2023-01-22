@@ -1,77 +1,103 @@
-﻿using ManagementTool.Server.Services;
-using ManagementTool.Server.Services.Users;
-using ManagementTool.Shared.Models.Api.Payloads;
-using ManagementTool.Shared.Models.Database;
+﻿using AutoMapper;
+using ManagementTool.Server.Models.Business;
+using ManagementTool.Server.Models.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace ManagementTool.Server.Repository.Users;
 
 public class UserRepository : IUserRepository{
     private readonly ManToolDbContext _db; 
-    public UserRepository(ManToolDbContext db){
+    private IMapper Mapper { get; }
+    public UserRepository(ManToolDbContext db, IMapper mapper){
         _db = db;
+        Mapper = mapper;
     }
 
-    public IEnumerable<UserBase> GetAllUsers() {
-        return _db.User.ToList();
+    public IEnumerable<UserBaseBLL> GetAllUsers() {
+        var result = _db.User;
+        
+        return result == null ? Enumerable.Empty<UserBaseBLL>() : Mapper.Map<UserBaseBLL[]>(_db.User);
     }
 
 
-
-    public long AddUser(User user) {
-        _db.User.Add(user);
+    public long AddUser(UserBaseBLL user, string pwd, string salt) {
+        var newUser = Mapper.Map<UserDAL>(user);
+        newUser.Pwd = pwd;
+        newUser.PwdInit = true;
+        newUser.Salt = salt;
+        _db.User?.Add(newUser);
         if (_db.SaveChanges() <= 0) {
             return -1;
         }
         return user.Id;
     }
 
-    public bool DeleteUser(User user) {
-        //_db.User.Attach(dummyUser);
-        _db.User.Remove(user);
+    public bool DeleteUser(long userId) {
+        var dbUser = _db.User?.Find(userId);
+        if (dbUser == null) {
+            return false;
+        }
+        _db.User?.Remove(dbUser);
         var rowsChanged = _db.SaveChanges();
         return rowsChanged > 0;
     }
 
-    public User? GetUserById(long id) {
-        return _db.User.Find(id);
+    public UserBaseBLL? GetUserById(long id) {
+        var result = _db.User?.Find(id);
+
+        return result == null ? null : Mapper.Map<UserBaseBLL>(result);
     }
 
-    public IEnumerable<UserBase> GetUsersById(IEnumerable<long> userIds) {
-        var result = _db.User.Where(x => userIds.Contains(x.Id)).
-            Select(x => new UserBase(x.Id, x.Username, x.FullName, x.PrimaryWorkplace, x.EmailAddress, x.PwdInit));
-        return result;
+    public IEnumerable<UserBaseBLL> GetUsersById(IEnumerable<long> userIds) {
+        var result = _db.User?.Where(x => userIds.Contains(x.Id)).
+            Select(x => new UserBaseBLL(x.Id, x.Username, x.FullName, x.PrimaryWorkplace, x.EmailAddress, x.PwdInit));
+        return result ?? Enumerable.Empty<UserBaseBLL>();
     }
 
-    public User? GetUserByName(string username) {
-        return _db.User.SingleOrDefault(user => string.Equals(user.Username, username));
+    public (long id, string pwd, string salt)? GetUserPassword(string username) {
+        var result = _db.User?.SingleOrDefault(user => string.Equals(user.Username, username));
+
+        return result == null ? null : (result.Id, result.Pwd, result.Salt);
     }
     
-    public bool UpdateUser(User user) {
-        _db.Entry(user).State = EntityState.Modified;
+    public bool UpdateUser(UserBaseBLL user) {
+        var dbUser = Mapper.Map<UserDAL>(user);
+        _db.Entry(dbUser).State = EntityState.Modified;
         //don't update pwd and username
-        _db.Entry(user).Property(o => o.Pwd).IsModified = false;
-        _db.Entry(user).Property(o => o.Username).IsModified = false;
-        _db.Entry(user).Property(o => o.Salt).IsModified = false;
+        var entry = _db.Entry(dbUser);
+            
+        entry.Property(o => o.Pwd).IsModified = false;
+        entry.Property(o => o.Username).IsModified = false;
+        entry.Property(o => o.Salt).IsModified = false;
         var rowsChanged = _db.SaveChanges();
         return rowsChanged > 0;
     }
 
-    public bool UpdateUserPwd(User user) {
-        _db.Entry(user).State = EntityState.Modified;
-        //don't update pwd and username
-        _db.Entry(user).Property(o => o.Pwd).IsModified = true;
-        _db.Entry(user).Property(o => o.PwdInit).IsModified = true;
-        _db.Entry(user).Property(o => o.Username).IsModified = false;
-        _db.Entry(user).Property(o => o.PrimaryWorkplace).IsModified = false;
-        _db.Entry(user).Property(o => o.EmailAddress).IsModified = false;
-        _db.Entry(user).Property(o => o.FullName).IsModified = false;
+    public bool UpdateUserPwd(long userId, string newPwd) {
+        var dbUser = _db.User?.Find(userId);
+        if (dbUser == null) {
+            return false;
+        }
+        var entry = _db.Entry(dbUser);
+        dbUser.Pwd = newPwd;
+        dbUser.PwdInit = false;
+        
+        //update only pwd and username
+        entry.Property(o => o.Pwd).IsModified = true;
+        entry.Property(o => o.PwdInit).IsModified = true;
+        /*entry.Property(o => o.Username).IsModified = false;
+        entry.Property(o => o.PrimaryWorkplace).IsModified = false;
+        entry.Property(o => o.EmailAddress).IsModified = false;
+        entry.Property(o => o.FullName).IsModified = false;*/
         var rowsChanged = _db.SaveChanges();
         return rowsChanged > 0;
     }
 
-    public IEnumerable<UserBase> GetAllUsersByRole(Role role) {
-        var queryResult = _db.UserRoleXRefs.Join(_db.User,
+    public IEnumerable<UserBaseBLL> GetAllUsersByRole(long roleId) {
+        if (_db.User == null) {
+            return Enumerable.Empty<UserBaseBLL>();
+        }
+        var queryResult = _db.UserRoleXRefs?.Join(_db.User,
                 refs => refs.IdUser,
                 user => user.Id,
                 (refs, user) => new {
@@ -84,50 +110,51 @@ public class UserRepository : IUserRepository{
                     salt = user.Salt,
                     pwdInit = user.PwdInit,
                     roleId = refs.IdRole
-                }).Where(x => x.roleId == role.Id).
-            Select(x => new User(x.id, x.username, x.fullName, x.primaryWorkplace,
-                x.emailAddress, x.pwd, x.salt, x.pwdInit));
-        return queryResult;
+                }).Where(x => x.roleId == roleId).
+            Select(x => new UserBaseBLL(x.id, x.username, x.fullName, x.primaryWorkplace,
+                x.emailAddress, x.pwdInit));
+
+        return queryResult ?? Enumerable.Empty<UserBaseBLL>();
     }
 
      public IEnumerable<long> GetAllUserSuperiorsIds(long userId) {
-         var queryResult = _db.UserSuperiorXRefs.Where(x => x.IdUser == userId).Select(x => x.IdSuperior);
-        return queryResult;
+         var queryResult = _db.UserSuperiorXRefs?.Where(x => x.IdUser == userId).Select(x => x.IdSuperior);
+        return queryResult ?? Enumerable.Empty<long>();
     }
 
 
 
-    public IEnumerable<DataModelAssignment<UserBase>> GetAllUsersAssignedToProject(long projectId) {
+    public IEnumerable<DataModelAssignmentBLL<UserBaseBLL>> GetAllUsersAssignedToProject(long projectId) {
         var query = (from user in _db.User
             from refs in _db.UserProjectXRefs.Where(x => x.IdProject == projectId).DefaultIfEmpty()
-            select new DataModelAssignment<UserBase>(refs != null, 
-                new UserBase(user.Id, user.Username, user.FullName,
+            select new DataModelAssignmentBLL<UserBaseBLL>(refs != null, 
+                new UserBaseBLL(user.Id, user.Username, user.FullName,
                 user.PrimaryWorkplace, user.EmailAddress, user.PwdInit))).Distinct().ToList();
         
         return query;
     }
 
 
-    public bool AssignSuperiorsToUser(List<long> superiorsIds, UserBase user) {
-        List<UserSuperiorXRefs> resultRange = new();
+    public bool AssignSuperiorsToUser(List<long> superiorsIds, long userId) {
+        List<UserSuperiorXRefsDAL> resultRange = new();
         foreach (var superiorId in superiorsIds) {
-            var newRefs = new UserSuperiorXRefs{
-                IdUser = user.Id,
+            var newRefs = new UserSuperiorXRefsDAL{
+                IdUser = userId,
                 IdSuperior = superiorId,
                 AssignedDate = DateTime.Now
             };
             resultRange.Add(newRefs);
         }
-        _db.UserSuperiorXRefs.AddRange(resultRange);
+        _db.UserSuperiorXRefs?.AddRange(resultRange);
         
         var changedRows = _db.SaveChanges();
         return changedRows > 0;
     }
 
-    public bool UnassignSuperiorsFromUser(List<long> superiorsIds, UserBase user){
-        var result = _db.UserSuperiorXRefs.Where(
-            o => o.IdUser == user.Id && superiorsIds.Contains(o.IdSuperior));
-        if (!result.Any()) {
+    public bool UnassignSuperiorsFromUser(List<long> superiorsIds, long userId){
+        var result = _db.UserSuperiorXRefs?.Where(
+            o => o.IdUser == userId && superiorsIds.Contains(o.IdSuperior));
+        if (result == null || !result.Any()) {
             return false;
         }
         _db.RemoveRange(result);
@@ -135,37 +162,41 @@ public class UserRepository : IUserRepository{
         return changedRows > 0;
     }
 
-    public IEnumerable<UserBase> GetAllUsersUnderProject(long projectId) {
-        var query = _db.UserProjectXRefs.Where(x => x.IdProject == projectId).Join(_db.User,
+    public IEnumerable<UserBaseBLL> GetAllUsersUnderProject(long projectId) {
+        if (_db.User == null) {
+            return Enumerable.Empty<UserBaseBLL>();
+        }
+        var query = _db.UserProjectXRefs?.Where(x => x.IdProject == projectId).Join(_db.User,
             refs => refs.IdUser,
             user => user.Id,
             (refs, user) => user);
 
-        return query;
+
+        return query == null ? Enumerable.Empty<UserBaseBLL>() : Mapper.Map<UserBaseBLL[]>(query);
     }
     
 
-    public bool AssignUsersToProject(List<long> usersIds, Project project) {
-        List<UserProjectXRefs> resultRange = new();
+    public bool AssignUsersToProject(List<long> usersIds, long projectId) {
+        List<UserProjectXRefsDAL> resultRange = new();
         foreach (var userId in usersIds) {
-            var newRefs = new UserProjectXRefs {
+            var newRefs = new UserProjectXRefsDAL {
                 IdUser = userId,
-                IdProject = project.Id,
+                IdProject = projectId,
                 AssignedDate = DateTime.Now,
                 Id = default
             };
             resultRange.Add(newRefs);
         }
-        _db.UserProjectXRefs.AddRange(resultRange);
+        _db.UserProjectXRefs?.AddRange(resultRange);
         var changedRows = _db.SaveChanges();
         return changedRows > 0;
     }
 
 
-    public bool UnassignUsersFromProject(List<long> usersIds, Project project) {
-        var result = _db.UserProjectXRefs.Where(
-            o => usersIds.Contains(o.IdUser) && o.IdProject == project.Id);
-        if (!result.Any()) {
+    public bool UnassignUsersFromProject(List<long> usersIds, long projectId) {
+        var result = _db.UserProjectXRefs?.Where(
+            o => usersIds.Contains(o.IdUser) && o.IdProject == projectId);
+        if (result == null || !result.Any()) {
             return false;
         }
         
@@ -175,20 +206,12 @@ public class UserRepository : IUserRepository{
     }
 
 
-    public bool IsUserAssignedToProject(User user, Project project) {
+    public bool IsUserAssignedToProject(long userId, long projectId) {
 
-        var reference = _db.UserProjectXRefs.SingleOrDefault(
-            refs => refs.IdProject == project.Id && refs.IdUser == user.Id
+        var reference = _db.UserProjectXRefs?.SingleOrDefault(
+            refs => refs.IdProject == projectId && refs.IdUser == userId
             );
 
         return reference != null;
-    }
-    
-    public void DeleteUser(int id) {
-        var dummyUser = new User {
-            Id = id
-        };
-        _db.User.Remove(dummyUser);
-        _db.SaveChanges();
     }
 }

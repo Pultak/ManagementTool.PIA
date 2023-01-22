@@ -1,57 +1,69 @@
-﻿using ManagementTool.Server.Services;
-using ManagementTool.Server.Services.Projects;
-using ManagementTool.Shared.Models.Api.Payloads;
-using ManagementTool.Shared.Models.Database;
+﻿using AutoMapper;
+using ManagementTool.Server.Models.Business;
+using ManagementTool.Server.Models.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace ManagementTool.Server.Repository.Projects;
 
 public class AssignmentRepository : IAssignmentRepository {
-    private readonly ManToolDbContext _db; 
-    public AssignmentRepository(ManToolDbContext db) {
+    private readonly ManToolDbContext _db;
+    private IMapper Mapper { get;}
+    
+    public AssignmentRepository(ManToolDbContext db, IMapper mapper) {
         _db = db;
+        Mapper = mapper;
     }
 
 
-    public Assignment? GetAssignmentByName(string name) {
-        return _db.Assignment.SingleOrDefault(assignment => string.Equals(assignment.Name, name));
+    public AssignmentBLL? GetAssignmentByName(string name) {
+        var result = _db.Assignment?.SingleOrDefault(assignment => string.Equals(assignment.Name, name));
+        return result != null ? Mapper.Map<AssignmentBLL>(result) : null;
     }
 
-    public Assignment? GetAssignmentById(long id) {
-        return _db.Assignment.Find(id);
+    public AssignmentBLL? GetAssignmentById(long id) {
+        var result = _db.Assignment?.Find(id);
+        return result != null ? Mapper.Map<AssignmentBLL>(result) : null;
     }
 
 
-    public IEnumerable<Assignment> GetAllPlainAssignments() {
-        return _db.Assignment;
+    public IEnumerable<AssignmentBLL> GetAllPlainAssignments() {
+        var result = _db.Assignment;
+        if (result == null) {
+            return Array.Empty<AssignmentBLL>();
+        }
+
+        return Mapper.Map<AssignmentBLL[]>(result);
     }
 
-    public IEnumerable<AssignmentWrapper> GetAllAssignments() {
+    public IEnumerable<AssignmentWrapperBLL> GetAllAssignments() {
         return GetAssignmentWrappers(_db.Assignment);
     }
 
-    public IEnumerable<AssignmentWrapper> GetAssignmentsByUserId(long userId) {
-        var assignments = _db.Assignment.Where(x => x.UserId == userId);
+    public IEnumerable<AssignmentWrapperBLL> GetAssignmentsByUserId(long userId) {
+        var assignments = _db.Assignment?.Where(x => x.UserId == userId);
         return GetAssignmentWrappers(assignments);
     }
 
-    public IEnumerable<AssignmentWrapper> GetAssignmentsByProjectIds(IEnumerable<long> projectIds) {
-        var assignments = _db.Assignment.Where(assign => projectIds.Contains(assign.ProjectId));
+    public IEnumerable<AssignmentWrapperBLL> GetAssignmentsByProjectIds(IEnumerable<long> projectIds) {
+        var assignments = _db.Assignment?.Where(assign => projectIds.Contains(assign.ProjectId));
         return GetAssignmentWrappers(assignments);
     }
 
-    public IEnumerable<Assignment> GetAssignmentsByProjectId(long projectId) {
-        var assignments = _db.Assignment.Where(x => x.ProjectId == projectId);
-        return assignments;
+    public IEnumerable<AssignmentBLL> GetAssignmentsByProjectId(long projectId) {
+        var assignments = _db.Assignment?.Where(x => x.ProjectId == projectId);
+        return assignments == null ? Enumerable.Empty<AssignmentBLL>() : Mapper.Map<AssignmentBLL[]>(assignments);
     }
 
 
-    public IEnumerable<AssignmentWrapper> GetAssignmentsUnderSuperior(long superiorId) {
-        var allSuperiorAssignments = _db.UserSuperiorXRefs.Where(x => x.IdSuperior == superiorId).
+    public IEnumerable<AssignmentWrapperBLL> GetAssignmentsUnderSuperior(long superiorId) {
+        if (_db.Assignment == null) {
+            return Enumerable.Empty<AssignmentWrapperBLL>();
+        }
+        var allSuperiorAssignments = _db.UserSuperiorXRefs?.Where(x => x.IdSuperior == superiorId).
             Join(_db.Assignment,
             refs => refs.IdUser,
             assign => assign.UserId,
-            (refs, assign) => new Assignment{
+            (refs, assign) => new AssignmentDAL{
                 Id = assign.Id,
                 ProjectId = assign.ProjectId,
                 Name = assign.Name,
@@ -66,13 +78,16 @@ public class AssignmentRepository : IAssignmentRepository {
         return GetAssignmentWrappers(allSuperiorAssignments).ToList();
     }
 
-    private IEnumerable<AssignmentWrapper> GetAssignmentWrappers(IQueryable<Assignment> assignments) {
+    private IEnumerable<AssignmentWrapperBLL> GetAssignmentWrappers(IQueryable<AssignmentDAL>? assignments) {
+        if (assignments == null) {
+            return Enumerable.Empty<AssignmentWrapperBLL>();
+        }
         var result = from assign in assignments
             join usr in _db.User on assign.UserId equals usr.Id
             join prj in _db.Project on assign.ProjectId equals prj.Id
-            select new AssignmentWrapper
+            select new AssignmentWrapperBLL
             {
-                Assignment = assign,
+                Assignment = Mapper.Map<AssignmentBLL>(assign),
                 UserName = usr.FullName,
                 ProjectName = prj.ProjectName
             };
@@ -80,8 +95,8 @@ public class AssignmentRepository : IAssignmentRepository {
     }
 
 
-    public long AddAssignment(Assignment assignment) {
-        _db.Assignment.Add(assignment);
+    public long AddAssignment(AssignmentBLL assignment) {
+        _db.Assignment?.Add(Mapper.Map<AssignmentDAL>(assignment));
         var savedCount = _db.SaveChanges();
         if (savedCount <= 0) {
             return -1;
@@ -89,14 +104,14 @@ public class AssignmentRepository : IAssignmentRepository {
         return assignment.Id;
     }
 
-    public bool UpdateAssignment(Assignment assignment) {
-        _db.Entry(assignment).State = EntityState.Modified;
+    public bool UpdateAssignment(AssignmentBLL assignment) {
+        _db.Entry(Mapper.Map<AssignmentDAL>(assignment)).State = EntityState.Modified;
         var rowsChanged = _db.SaveChanges();
         return rowsChanged > 0;
     }
 
-    public bool UpdateAssignments(IEnumerable<Assignment> assignments) { 
-        _db.Entry(assignments).State = EntityState.Modified;
+    public bool UpdateAssignments(IEnumerable<AssignmentBLL> assignments) {
+        _db.Entry(Mapper.Map<AssignmentDAL[]>(assignments)).State = EntityState.Modified;
         var rowsChanged = _db.SaveChanges();
         return rowsChanged > 0;
     }
@@ -106,21 +121,21 @@ public class AssignmentRepository : IAssignmentRepository {
         foreach (var assignment in assignments) {
             assignment.ProjectId = newProjectId;
         }
-        _db.Entry(assignments).State = EntityState.Modified;
+        _db.Entry(Mapper.Map<AssignmentDAL[]>(assignments)).State = EntityState.Modified;
         var rowsChanged = _db.SaveChanges();
         return rowsChanged > 0;
     }
 
 
 
-    public IEnumerable<Assignment> GetAllUsersAssignments(long[] userIds) {
-        var allAssignments = _db.Assignment.Where(x => userIds.Contains(x.UserId));
-        return allAssignments;
+    public IEnumerable<AssignmentBLL> GetAllUsersAssignments(long[] userIds) {
+        var allAssignments = _db.Assignment?.Where(x => userIds.Contains(x.UserId));
+        return allAssignments == null ? Enumerable.Empty<AssignmentBLL>() : Mapper.Map<AssignmentBLL[]>(allAssignments);
     }
 
 
-    public bool DeleteAssignment(Assignment assignment) {
-        _db.Assignment.Remove(assignment);
+    public bool DeleteAssignment(AssignmentBLL assignment) {
+        _db.Assignment?.Remove(Mapper.Map<AssignmentDAL>(assignment));
         var rowsChanged = _db.SaveChanges();
 
         return rowsChanged > 0;
@@ -129,11 +144,11 @@ public class AssignmentRepository : IAssignmentRepository {
 
 
     public bool DeleteAssignment(long id) {
-        var dbAssignment = GetAssignmentById(id);
+        var dbAssignment = _db.Assignment?.Find(id);
         if (dbAssignment == null) {
             return false;
         }
-        _db.Assignment.Remove(dbAssignment);
+        _db.Assignment?.Remove(dbAssignment);
         var rowsChanged = _db.SaveChanges();
         return rowsChanged > 0;
     }

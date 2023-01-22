@@ -1,61 +1,64 @@
-﻿using ManagementTool.Server.Services;
-using ManagementTool.Shared.Models.Database;
-
+﻿using AutoMapper;
+using ManagementTool.Server.Models.Business;
+using ManagementTool.Server.Models.Database;
 namespace ManagementTool.Server.Repository.Projects;
 
 public class ProjectRepository : IProjectRepository {
     private readonly ManToolDbContext _db; 
-
-    public ProjectRepository(ManToolDbContext db) {
+    private IMapper Mapper { get; }
+    public ProjectRepository(ManToolDbContext db, IMapper mapper) {
         _db = db;
+        Mapper = mapper;
     }
 
-    public IEnumerable<Project> GetAllProjects() {
-        return _db.Project.ToList();
+    public IEnumerable<ProjectBLL> GetAllProjects() {
+        var result = _db.Project?.ToList();
+        return result == null ? Enumerable.Empty<ProjectBLL>() : Mapper.Map<ProjectBLL[]>(result);
     }
 
-    public Project? GetProjectByName(string name) {
-        return _db.Project.SingleOrDefault(project => string.Equals(project.ProjectName, name));
+    public ProjectBLL? GetProjectByName(string name) {
+        var result = _db.Project?.SingleOrDefault(project => string.Equals(project.ProjectName, name));
+        return result == null ? null : Mapper.Map<ProjectBLL>(result);
     }
 
-    public Project? GetProjectById(long projectId) {
-        return _db.Project.Find(projectId);
+    public ProjectBLL? GetProjectById(long projectId) {
+        var result = _db.Project?.Find(projectId);
+        return result == null ? null : Mapper.Map<ProjectBLL>(result);
     }
 
-    public IEnumerable<Project> GetProjectsByIds(IEnumerable<long> projectIds) {
-        return _db.Project.Where(x => projectIds.Contains(x.Id)).ToList();
+    public IEnumerable<ProjectBLL> GetProjectsByIds(IEnumerable<long> projectIds) {
+        var result = _db.Project?.Where(x => projectIds.Contains(x.Id));
+        return result == null ? Enumerable.Empty<ProjectBLL>() : Mapper.Map<IEnumerable<ProjectBLL>>(result);
     }
 
 
-    public long AddProject(Project project) {
-        _db.Project.Add(project);
+    public long AddProject(ProjectBLL project) {
+        var dbProject = Mapper.Map<ProjectDAL>(project);
+
+        _db.Project?.Add(dbProject);
         var rowsChanged = _db.SaveChanges();
         if (rowsChanged <= 0) {
             return -1;
         }
-
-        return project.Id;
+        // new id is part of the db object now
+        return dbProject.Id;
     }
 
     public bool DeleteProject(long id) {
-        var dbProject = GetProjectById(id);
+
+        var dbProject = _db.Project?.Find(id);
         if (dbProject == null) {
             return false;
         }
-        _db.Project.Remove(dbProject);
-        var rowsChanged = _db.SaveChanges();
-
-        return rowsChanged > 0;
-    }
-    public bool DeleteProject(Project project) {
-        _db.Project.Remove(project);
+        _db.Project?.Remove(dbProject);
         var rowsChanged = _db.SaveChanges();
 
         return rowsChanged > 0;
     }
 
-    public bool UpdateProject(Project project) {
-        _db.Project.Update(project);
+    public bool UpdateProject(ProjectBLL project) {
+        var dbProject = Mapper.Map<ProjectDAL>(project);
+        _db.Project?.Update(dbProject);
         var rowsChanged = _db.SaveChanges();
 
         return rowsChanged > 0;
@@ -63,16 +66,16 @@ public class ProjectRepository : IProjectRepository {
 
 
     public bool AreUsersUnderProjects(long[] usersIds, long[] projectIds) {
-        var count = _db.UserProjectXRefs.Where(x => usersIds.Contains(x.IdUser) && projectIds.Contains(x.IdProject))
+        var count = _db.UserProjectXRefs?.Where(x => usersIds.Contains(x.IdUser) && projectIds.Contains(x.IdProject))
             .DistinctBy(x => x.IdUser).Count();
-        return count == usersIds.Length;
+        return count != null && count == usersIds.Length;
     }
 
 
     public bool DeleteProjectUserAssignments(long projectId) {
 
-        var userAssignments = _db.UserProjectXRefs.Where(o => o.IdProject == projectId);
-        if (!userAssignments.Any()) {
+        var userAssignments = _db.UserProjectXRefs?.Where(o => o.IdProject == projectId);
+        if (userAssignments == null || !userAssignments.Any()) {
             //project can be without assignments
             return true;
         }
@@ -83,8 +86,8 @@ public class ProjectRepository : IProjectRepository {
 
     public bool DeleteAllProjectAssignments(long projectId) {
 
-        var assignments = _db.Assignment.Where(o => o.ProjectId == projectId);
-        if (!assignments.Any()) {
+        var assignments = _db.Assignment?.Where(o => o.ProjectId == projectId);
+        if (assignments == null || !assignments.Any()) {
             //project can be without assignments
             return true;
         }

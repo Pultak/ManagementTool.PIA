@@ -1,17 +1,17 @@
-﻿using ManagementTool.Shared.Models.Database;
+﻿using ManagementTool.Server.Models.Business;
 
 namespace ManagementTool.Server.Repository.Projects;
 
 public interface IProjectRepository {
 
-    public IEnumerable<Project> GetAllProjects();
-    public Project? GetProjectByName(string name);
-    public Project? GetProjectById(long projectId);
-    public IEnumerable<Project> GetProjectsByIds(IEnumerable<long> projectId);
+    public IEnumerable<ProjectBLL> GetAllProjects();
+    public ProjectBLL? GetProjectByName(string name);
+    public ProjectBLL? GetProjectById(long projectId);
+    public IEnumerable<ProjectBLL> GetProjectsByIds(IEnumerable<long> projectId);
 
-    public long AddProject(Project project);
+    public long AddProject(ProjectBLL project);
     public bool DeleteProject(long id);
-    public bool UpdateProject(Project project);
+    public bool UpdateProject(ProjectBLL project);
 
     public bool AreUsersUnderProjects(long[] usersIds, long[] projectIds);
 

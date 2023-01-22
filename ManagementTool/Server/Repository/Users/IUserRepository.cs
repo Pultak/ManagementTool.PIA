@@ -1,32 +1,29 @@
-﻿using ManagementTool.Shared.Models.Database;
-using System.Collections.Generic;
-using ManagementTool.Shared.Models.Api.Payloads;
-
-namespace ManagementTool.Server.Services.Users;
+﻿using ManagementTool.Server.Models.Business;
+namespace ManagementTool.Server.Repository.Users;
 
 public interface IUserRepository {
 
-    public IEnumerable<UserBase> GetAllUsers();
+    public IEnumerable<UserBaseBLL> GetAllUsers();
 
-    public long AddUser(User user);
-    public bool DeleteUser(User user);
+    public long AddUser(UserBaseBLL user, string pwd, string salt);
+    public bool DeleteUser(long userId);
 
-    public User? GetUserById(long id);
-    public IEnumerable<UserBase> GetUsersById(IEnumerable<long> userIds);
-    public User? GetUserByName(string username);
-    public bool UpdateUser(User user);
-    public bool UpdateUserPwd(User user);
+    public UserBaseBLL? GetUserById(long id);
+    public IEnumerable<UserBaseBLL> GetUsersById(IEnumerable<long> userIds);
+    public (long id, string pwd, string salt)? GetUserPassword(string username);
+    public bool UpdateUser(UserBaseBLL user);
+    public bool UpdateUserPwd(long userId, string newPwd);
 
-    public IEnumerable<UserBase> GetAllUsersByRole(Role role);
+    public IEnumerable<UserBaseBLL> GetAllUsersByRole(long roleId);
     public IEnumerable<long> GetAllUserSuperiorsIds(long userId);
-    public IEnumerable<DataModelAssignment<UserBase>> GetAllUsersAssignedToProject(long projectId);
-    public IEnumerable<UserBase> GetAllUsersUnderProject(long projectId);
+    public IEnumerable<DataModelAssignmentBLL<UserBaseBLL>> GetAllUsersAssignedToProject(long projectId);
+    public IEnumerable<UserBaseBLL> GetAllUsersUnderProject(long projectId);
 
-    public bool AssignUsersToProject(List<long> usersIds, Project project);
-    public bool UnassignUsersFromProject(List<long> usersIds, Project project);
+    public bool AssignUsersToProject(List<long> usersIds, long projectId);
+    public bool UnassignUsersFromProject(List<long> usersIds, long projectId);
     
-    public bool AssignSuperiorsToUser(List<long> superiorsIds, UserBase user);
-    public bool UnassignSuperiorsFromUser(List<long> superiorsIds, UserBase user);
+    public bool AssignSuperiorsToUser(List<long> superiorsIds, long superiorId);
+    public bool UnassignSuperiorsFromUser(List<long> superiorsIds, long superiorId);
 
-    public bool IsUserAssignedToProject(User user, Project project);
+    public bool IsUserAssignedToProject(long userId, long projectId);
 }

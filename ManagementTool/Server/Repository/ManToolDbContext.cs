@@ -1,21 +1,21 @@
-﻿using ManagementTool.Shared.Models.Database;
+﻿using ManagementTool.Server.Models.Database;
 using ManagementTool.Shared.Models.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
-namespace ManagementTool.Server.Services;
+namespace ManagementTool.Server.Repository;
 
 public class ManToolDbContext : DbContext {
     public ManToolDbContext(DbContextOptions<ManToolDbContext> options) : base(options) {
     }
 
-    public virtual DbSet<User> User { get; set; }
-    public virtual DbSet<Role> Role { get; set; }
-    public virtual DbSet<Assignment> Assignment { get; set; }
-    public virtual DbSet<Project> Project { get; set; }
-    public virtual DbSet<UserRoleXRefs> UserRoleXRefs { get; set; }
-    public virtual DbSet<UserProjectXRefs> UserProjectXRefs { get; set; }
-    public virtual DbSet<UserSuperiorXRefs> UserSuperiorXRefs { get; set; }
+    public virtual DbSet<UserDAL>? User { get; set; }
+    public virtual DbSet<RoleDAL>? Role { get; set; }
+    public virtual DbSet<AssignmentDAL>? Assignment { get; set; }
+    public virtual DbSet<ProjectDAL>? Project { get; set; }
+    public virtual DbSet<UserRoleXRefsDAL>? UserRoleXRefs { get; set; }
+    public virtual DbSet<UserProjectXRefsDAL>? UserProjectXRefs { get; set; }
+    public virtual DbSet<UserSuperiorXRefsDAL>? UserSuperiorXRefs { get; set; }
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
@@ -45,7 +45,7 @@ public class ManToolDbContext : DbContext {
 
 
     private void SetupUserEntity(ModelBuilder modelBuilder) {
-        modelBuilder.Entity<User>(entity => {
+        modelBuilder.Entity<UserDAL>(entity => {
             entity.ToTable("User");
             entity.Property(e => e.Id)
                 .IsRequired()
@@ -78,7 +78,7 @@ public class ManToolDbContext : DbContext {
 
 
     private void SetupRoleEntity(ModelBuilder modelBuilder) {
-        modelBuilder.Entity<Role>(entity => {
+        modelBuilder.Entity<RoleDAL>(entity => {
             entity.ToTable("Role");
             entity.Property(e => e.Id)
                 .IsRequired()
@@ -102,7 +102,7 @@ public class ManToolDbContext : DbContext {
 
 
     private void SetupAssignmentEntity(ModelBuilder modelBuilder) {
-        modelBuilder.Entity<Assignment>(entity => {
+        modelBuilder.Entity<AssignmentDAL>(entity => {
             entity.ToTable("Assignment");
             entity.Property(e => e.Id)
                 .IsRequired()
@@ -134,7 +134,7 @@ public class ManToolDbContext : DbContext {
 
 
     private void SetupProjectEntity(ModelBuilder modelBuilder) {
-        modelBuilder.Entity<Project>(entity => {
+        modelBuilder.Entity<ProjectDAL>(entity => {
             entity.ToTable("Project");
             entity.Property(e => e.Id)
                 .IsRequired()
@@ -157,7 +157,7 @@ public class ManToolDbContext : DbContext {
 
 
     private void SetupUserRoleXRefsEntity(ModelBuilder modelBuilder) {
-        modelBuilder.Entity<UserRoleXRefs>(entity => {
+        modelBuilder.Entity<UserRoleXRefsDAL>(entity => {
             entity.ToTable("UserRoleXRefs");
             entity.Property(e => e.Id)
                 .IsRequired()
@@ -177,7 +177,7 @@ public class ManToolDbContext : DbContext {
 
 
     private void SetupUserProjectXRefsEntity(ModelBuilder modelBuilder) {
-        modelBuilder.Entity<UserProjectXRefs>(entity => {
+        modelBuilder.Entity<UserProjectXRefsDAL>(entity => {
             entity.ToTable("UserProjectXRefs");
             entity.Property(e => e.Id)
                 .IsRequired()
@@ -196,7 +196,7 @@ public class ManToolDbContext : DbContext {
     }
 
     private void SetupUserSuperiorXRefsEntity(ModelBuilder modelBuilder) {
-        modelBuilder.Entity<UserSuperiorXRefs>(entity => {
+        modelBuilder.Entity<UserSuperiorXRefsDAL>(entity => {
             entity.ToTable("UserSuperiorXRefs");
             entity.Property(e => e.Id)
                 .IsRequired()
