@@ -1,8 +1,8 @@
 ﻿using ManagementTool.Shared.Models.Utils;
 
-namespace ManagementTool.Shared.Models.Database;
+namespace ManagementTool.Server.Models.Database;
 
-public class Role {
+public class RoleDAL {
 
     public long Id { get; set; }
 
@@ -12,9 +12,11 @@ public class Role {
 
     public long? ProjectId { get; set; }
 
-    public Role() { } 
+    public RoleDAL() {
+        Name = string.Empty;
+    } 
 
-    public Role(long id, string name, ERoleType type, long? projectId = null) {
+    public RoleDAL(long id, string name, ERoleType type, long? projectId = null) {
         Id = id;
         Name = name;
         Type = type;

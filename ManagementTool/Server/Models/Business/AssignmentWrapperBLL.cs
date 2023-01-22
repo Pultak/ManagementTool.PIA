@@ -1,17 +1,14 @@
-﻿using ManagementTool.Shared.Models.Database;
-
-namespace ManagementTool.Shared.Models.Api.Payloads;
+﻿namespace ManagementTool.Server.Models.Business;
 
 /// <summary>
 /// Wrapper for the assignment with project name and user name so it can be easily visualized in the view
 /// </summary>
-public class AssignmentWrapper
-{
+public class AssignmentWrapperBLL {
 
     /// <summary>
     /// Assignment and its variables to be visualized
     /// </summary>
-    public Assignment Assignment { get; set; }
+    public AssignmentBLL Assignment { get; set; }
     /// <summary>
     /// Name of the project that this assignment is assigned to
     /// </summary>
@@ -25,15 +22,13 @@ public class AssignmentWrapper
     /// <summary>
     /// Creates wrapper with default values
     /// </summary>
-    public AssignmentWrapper()
-    {
-        Assignment = new Assignment();
+    public AssignmentWrapperBLL() {
+        Assignment = new AssignmentBLL();
         ProjectName = "Unknown";
         UserName = "Unknown";
     }
 
-    public AssignmentWrapper(string projectName, string userName, Assignment assignment)
-    {
+    public AssignmentWrapperBLL(string projectName, string userName, AssignmentBLL assignment) {
         Assignment = assignment;
         ProjectName = projectName;
         UserName = userName;

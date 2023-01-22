@@ -1,10 +1,9 @@
-﻿using ManagementTool.Shared.Utils;
+﻿using System.ComponentModel.DataAnnotations;
+using ManagementTool.Shared.Utils;
 
-namespace ManagementTool.Shared.Models.Database;
+namespace ManagementTool.Server.Models.Database;
 
-using System.ComponentModel.DataAnnotations;
-
-public class Project{
+public class ProjectDAL{
 
     public long Id { get; set; }
     
@@ -25,11 +24,12 @@ public class Project{
     public string Description { get; set; }
 
 
-    public Project() {
-
+    public ProjectDAL() {
+        ProjectName = string.Empty;
+        Description = string.Empty;
     }
 
-    public Project(long id, string projectName, DateTime fromDate, DateTime? toDate, string description) {
+    public ProjectDAL(long id, string projectName, DateTime fromDate, DateTime? toDate, string description) {
         Id = id;
         ProjectName = projectName;
         FromDate = fromDate;

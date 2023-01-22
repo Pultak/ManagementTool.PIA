@@ -1,6 +1,6 @@
-﻿namespace ManagementTool.Shared.Models.Database; 
+﻿namespace ManagementTool.Server.Models.Database; 
 
-public class UserProjectXRefs {
+public class UserProjectXRefsDAL {
 
     public long Id { get; set; }
     public long IdUser { get; set; }

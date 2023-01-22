@@ -1,6 +1,6 @@
-﻿namespace ManagementTool.Shared.Models.Database;
+﻿namespace ManagementTool.Server.Models.Database;
 
-public class UserSuperiorXRefs {
+public class UserSuperiorXRefsDAL {
     public long Id { get; set; }
     public long IdUser { get; set; }
     public long IdSuperior { get; set; }
