@@ -3,18 +3,12 @@
 
 @using System.ComponentModel.DataAnnotations
 @using ManagementTool.Client.Utils
-@using ManagementTool.Shared.Models.AppState
-@using ManagementTool.Shared.Models.Login
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
 
+@inherits InteractivePageBase<ChangePwdPage>
 
-@implements IDisposable
-
-@inject NavigationManager UriHelper
 @inject HttpClient Http
-@inject ILogger<ChangePwdPage> Logger
-@inject StateContainer<LoggedUserPayload> LoggedUserContainer
 
 <h3>Změna hesla</h3>
 
@@ -44,7 +38,7 @@ else {
         <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Změnit heslo</button>
         
         @if (IsInitPwdChange == null) {
-            <button type="button" class="btn btn-light" @onclick="ReturnToHome">
+            <button type="button" class="btn btn-light" @onclick="Return">
                 Zrušit
             </button>
         }
@@ -84,7 +78,6 @@ else {
     [Parameter]
     public string? IsInitPwdChange { get; set; }
     
-    private const string SubmitBtnId = "submitButton";
     private string ModalClass { get; set; } = "";
     private string ModalDisplay { get; set; } = "none;";
 
@@ -96,38 +89,30 @@ else {
 
     private EditContext? EditContext { get; set; }
 
-
     private string? ModalMessage { get; set;}
-    private bool WaitingForApiResponse { get; set; } = true;
-    private bool PwdSuccessfullyChanged { get; set; } = false;
+    private bool PwdSuccessfullyChanged { get; set; }
 
     
+    protected override void OnInitialized() {
+        ModalMessage = null;
+        ModalDisplay = "none";
+        ModalClass = "";
+        EditContext = new EditContext(NewPwd);
+        base.OnInitialized();
+    }
+
     public void OkPressed() {
         ModalDisplay = "none";
         ModalClass = "";
         WaitingForApiResponse = false;
         ModalMessage = null;
-        //StateHasChanged();
         if (PwdSuccessfullyChanged) {
-            UriHelper.NavigateTo("/");
+            Return();
         }
         StateHasChanged();
     }
 
 
-    protected override void OnInitialized() {
-        LoggedUserContainer.OnStateChange += StateHasChanged;
-        WaitingForApiResponse = false;
-        ModalMessage = null;
-        ModalDisplay = "none";
-        ModalClass = "";
-        EditContext = new EditContext(NewPwd);
-        StateHasChanged();
-    }
-
-    private void ReturnToHome() {
-        UriHelper.NavigateTo("/");
-    }
 
     private void HandleValidSubmit() {
         var pwdValid = UserUtils.IsValidPassword(NewPwd);
@@ -137,7 +122,7 @@ else {
             ModalMessage = "Nejdříve vložte validní heslo!";
         }else{
             WaitingForApiResponse = true;
-            SendApiPatchRequest("api/Projects/update");
+            SendApiPatchRequest("auth/changePwd");
         }
         StateHasChanged();
     }
@@ -154,15 +139,11 @@ else {
         WaitingForApiResponse = false;
         if (apiResponse == EApiHttpResponse.Ok) {
             PwdSuccessfullyChanged = true;
+            ModalMessage = "Změna hesla proběhla v pořádku!";
         }
         else {
             ModalMessage = StringResolver.ResolveApiResponse(apiResponse);
         }
         StateHasChanged();
     }
-    
-    public void Dispose() {
-        LoggedUserContainer.OnStateChange -= StateHasChanged;
-    }
-
 }

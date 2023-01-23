@@ -1,0 +1,158 @@
+﻿@inject StateContainer<LoggedUserPayload> UserContainer
+@using ManagementTool.Shared.Models.Login
+@using ManagementTool.Shared.Models.Utils
+@using ManagementTool.Shared.Utils
+@using ManagementTool.Client.Utils
+@implements IDisposable
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">PiaManagement</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass">
+    <nav class="flex-column">
+        <!--todo remove these-->
+        <div class="nav-item px-3" @onclick="ToggleNavMenu">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Úvodní stránka
+            </NavLink>
+        </div>
+        
+        @if (UserContainer.Value != null) {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" @onclick="() => _expandUserNav = !_expandUserNav">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Uživatel
+                </NavLink>
+            </div>
+            @if (_expandUserNav) {
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink href="/assignments/my">
+                        <span>Přiřazené úkoly</span>
+                    </NavLink>
+                </div>
+            }
+        }
+        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new []{ERoleType.Superior})) {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" @onclick="() => _expandSuperiorNav = !_expandSuperiorNav">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Nadřízený
+                </NavLink>
+            </div>
+            @if (_expandSuperiorNav) {
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink class="" href="/assignments/superior">
+                        <span>Úkoly podřízených</span>
+                    </NavLink>
+                </div>
+            }
+        }
+
+        
+        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new[] { ERoleType.ProjectManager})) {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" @onclick="() => _expandProjectManagementNav = !_expandProjectManagementNav">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Projekt management
+                </NavLink>
+            </div>
+            @if (_expandProjectManagementNav) {
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink href="/assignments/project">
+                        <span>Revize úkolů</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink class="" href="projects/project">
+                        <span>Editace projektů</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink class="" href="/assignments/allocations">
+                        <span>Časové alokace</span>
+                    </NavLink>
+                </div>
+            }
+        }
+        
+        
+        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new []{ERoleType.DepartmentManager})) {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" @onclick="() => _expandDepartmentManagementNav = !_expandDepartmentManagementNav">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Management oddělení
+                </NavLink>
+            </div>
+            @if (_expandDepartmentManagementNav) {
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink href="/assignments/department">
+                        <span>Revize úkolů</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink class="" href="projects/department">
+                        <span>Editace projektů</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink class="" href="/assignments/allocations">
+                        <span>Časové alokace</span>
+                    </NavLink>
+                </div>
+            }
+        }
+        
+        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new[] { ERoleType.Superior})){
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" @onclick="() => _expandHrNav = !_expandHrNav">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Sekretariát
+                </NavLink>
+            </div>
+            @if (_expandHrNav) {
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink href="users">
+                        <span>Uživatelé</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-5" @onclick="ToggleNavMenu">
+                    <NavLink class="" href="projects/secretariat">
+                        <span>Projekty</span>
+                    </NavLink>
+                </div>
+            }
+        }
+    </nav>
+
+</div>
+@code {
+    private bool _expandUserNav = false;
+    private bool _expandSuperiorNav = false;
+    private bool _expandProjectManagementNav = false;
+    private bool _expandDepartmentManagementNav = false;
+    private bool _expandHrNav = false;
+
+    private bool _collapseNavMenu = true;
+
+    private string? NavMenuCssClass => _collapseNavMenu ? "collapse" : null;
+    
+
+
+    private void ToggleNavMenu() {
+        _collapseNavMenu = !_collapseNavMenu;
+    }
+
+    
+    protected override void OnInitialized() {
+        UserContainer.OnStateChange += StateHasChanged;
+    }
+    public void Dispose() {
+        UserContainer.OnStateChange -= StateHasChanged;
+    }
+    
+
+}

@@ -1,23 +1,20 @@
 ﻿@page "/assignments/edit/{ReturnEndpoint:int}"
-@using ManagementTool.Client.Utils
-@using ManagementTool.Shared.Models.ApiModels
-@using ManagementTool.Shared.Models.AppState
-@using ManagementTool.Shared.Models.Database
-@using ManagementTool.Shared.Models.Login
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
 @using System.ComponentModel.DataAnnotations
+@using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.Presentation
+@using ManagementTool.Shared.Models.Presentation.Api.Payloads
+@using Microsoft.AspNetCore.Components
 
+@inherits InteractivePageBase<AssignmentEdit>
 
 @inject HttpClient Http
-@inject NavigationManager UriHelper
-@inject StateContainer<AssignmentWrapper> AssignmentContainer
-@inject StateContainer<LoggedUserPayload> LoggedUserContainer
-@inject ILogger<AssignmentEdit> Logger
+@inject StateContainer<AssignmentWrapperPayload> AssignmentContainer
 @inject IJSRuntime JsRuntime
 
 
-<button @onclick="ReturnToAssignments">
+<button @onclick="Return">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
     </svg>
@@ -181,7 +178,7 @@ else {
                     </button>
                 }
                 <button type="button" class="btn btn-light"
-                        @onclick="@ReturnToAssignments">
+                        @onclick="@Return">
                     Zrušit
                 </button>
             </p>
@@ -195,22 +192,15 @@ else {
 
     [Parameter]
     public int ReturnEndpoint { get; set; }
-
-    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.ProjectManager) ||
-                                 UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.DepartmentManager);
-
-
-        private const string SubmitBtnId = "submitButton";
-
-    public AssignmentWrapper SelectedAssignment { get; set; } = new();
+    
+    public AssignmentWrapperPayload SelectedAssignment { get; set; } = new();
     private EditContext? EditContext { get; set; }
 
-    public Project[] AllProjects { get; set; } = { };
-    public UserBase[] PossibleAssignees { get; set; } = { };
+    public ProjectPL[] AllProjects { get; set; } = { };
+    public UserBasePL[] PossibleAssignees { get; set; } = { };
 
 
     private bool FteMode { get; set; }
-
 
     [Required(ErrorMessage = "Projekt musí být přiřazen k úkolu!")]
     private string? SelectedProject { get; set; }
@@ -219,15 +209,19 @@ else {
     private string? SelectedUser { get; set; }
 
     private bool NewAssignmentCreation { get; set; }
-    private bool WaitingForApiResponse { get; set; } = true;
 
-    private string? ExceptionMessage { get; set; }
+    protected override void OnInitialized() {
+        ReturnUri = $"/assignments/{(EAssignmentPage)ReturnEndpoint}".ToLower();
+        NeededRoles = new[] {
+            ERoleType.ProjectManager, ERoleType.DepartmentManager
+        };
+        base.OnInitialized();
+    }
 
 
     protected override async Task OnInitializedAsync() {
         if (AssignmentContainer.Value == null) {
             NewAssignmentCreation = true;
-            SelectedAssignment = new AssignmentWrapper("", "", new Assignment());
         }
         else {
             SelectedAssignment = AssignmentContainer.Value;
@@ -237,21 +231,18 @@ else {
         }
 
         EditContext = new EditContext(SelectedAssignment);
-        WaitingForApiResponse = false;
-        StateHasChanged();
+        await base.OnInitializedAsync();
     }
 
     private async Task GetData() {
-        var req = await Http.SendApiGetRequestAsync<Project[]?>(Logger, "api/Projects");
+        var req = await Http.SendApiGetRequestAsync<ProjectPL[]?>(Logger, "api/Projects");
 
 
         if (req.status != EApiHttpResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveApiResponse(req.status);
             StateHasChanged();
         }
-        if (req.response != null) {
-            AllProjects = req.response;
-        }
+        AllProjects = req.response ?? Array.Empty<ProjectPL>();
 
         if (!NewAssignmentCreation) {
             await GetPossibleAssigneesData(SelectedAssignment.Assignment.ProjectId);
@@ -265,14 +256,15 @@ else {
         }
         SelectedProject = selectedProjectId;
         SelectedUser = null;
-        PossibleAssignees = Array.Empty<UserBase>();
+        PossibleAssignees = Array.Empty<UserBasePL>();
 
-        if (long.TryParse(selectedProjectId, out var resultId)) {
-            SelectedAssignment.Assignment.ProjectId = resultId;
-            SelectedAssignment.Assignment.UserId = 0;
+        //is id valid? not changed by user manually
+        if (!long.TryParse(selectedProjectId, out var resultId)) return;
 
-            GetPossibleAssigneesData(resultId);
-        }
+        SelectedAssignment.Assignment.ProjectId = resultId;
+        SelectedAssignment.Assignment.UserId = 0;
+        //we dont need to wait
+        _ = GetPossibleAssigneesData(resultId);
     }
 
 
@@ -287,15 +279,9 @@ else {
         }
     }
 
-    private void ReturnToAssignments() {
-        var uri = $"/assignments/{(EAssignmentPage)ReturnEndpoint}".ToLower();
-        UriHelper.NavigateTo(uri);
-    }
-
-
     private async Task GetPossibleAssigneesData(long projectId) {
         if (projectId > 0) {
-            var req = await Http.SendApiGetRequestAsync<UserBase[]>(Logger, $"api/Projects/{projectId}/users");
+            var req = await Http.SendApiGetRequestAsync<UserBasePL[]>(Logger, $"api/Projects/{projectId}/users");
 
 
             if (req.status != EApiHttpResponse.Ok) {
@@ -313,7 +299,6 @@ else {
     private void HandleValidSubmit() {
         ExceptionMessage = null;
 
-
         var project = AllProjects.FirstOrDefault(x => x.Id == SelectedAssignment.Assignment.ProjectId);
         var user = PossibleAssignees.FirstOrDefault(x => x.Id == SelectedAssignment.Assignment.UserId);
         var valResult = AssignmentUtils.ValidateNewAssignment(SelectedAssignment.Assignment, project, user);
@@ -323,12 +308,12 @@ else {
         else {
             WaitingForApiResponse = true;
             if (FteMode) {
-    //FTE is 40 hours 
+                //FTE is 40 hours 
                 SelectedAssignment.Assignment.AllocationScope *= 40;
             }
             FteMode = false;
             if (NewAssignmentCreation) {
-                Http.SendApiPutRequestAsync(Logger, "api/Assignments", SelectedAssignment.Assignment, ResolveResponse);
+                Http.SendApiPostRequestAsync(Logger, "api/Assignments", SelectedAssignment.Assignment, ResolveResponse);
             }
             else if (EditContext?.IsModified() ?? false) {
                 Http.SendApiPatchRequestAsync(Logger, "api/Assignments", SelectedAssignment.Assignment, ResolveResponse);
@@ -349,24 +334,11 @@ else {
 
     private async void DeleteAssignment() {
         var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Doopravdy chcete odstranit tento úkol?");
-        if (confirmed) {
-            ExceptionMessage = null;
-            WaitingForApiResponse = true;
-            Http.SendApiDeleteRequestAsync(Logger, "api/Assignments/" + SelectedAssignment.Assignment.Id, ResolveResponse);
-            StateHasChanged();
-        }
+        if (!confirmed) return;
+
+        ExceptionMessage = null;
+        WaitingForApiResponse = true;
+        Http.SendApiDeleteRequestAsync(Logger, "api/Assignments/" + SelectedAssignment.Assignment.Id, ResolveResponse);
+        StateHasChanged();
     }
-
-
-    private void ResolveResponse(EApiHttpResponse apiResponse, bool changePage) {
-        WaitingForApiResponse = false;
-        if (apiResponse == EApiHttpResponse.Ok) {
-            ReturnToAssignments();
-        }
-        else {
-            ExceptionMessage = StringResolver.ResolveApiResponse(apiResponse);
-            StateHasChanged();
-        }
-    }
-
 }

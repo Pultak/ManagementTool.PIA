@@ -1,0 +1,95 @@
+﻿@inherits LayoutComponentBase
+@using ManagementTool.Shared.Models.Login
+@using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.Utils
+@implements IDisposable
+
+@inject HttpClient Http
+@inject NavigationManager UriHelper;
+@inject ILogger<MainLayout> Logger
+@inject StateContainer<LoggedUserPayload> UserContainer 
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+    <main>
+        <div class="top-row px-4">
+            @if (LoggedUserName != null) {
+                <span class="text-nowrap">
+                    Vítej @LoggedUserName!
+                </span>
+                <button @onclick="ChangePwdPressed">Změna hesla</button>
+                <button @onclick="LogoutPressed">Odhlásit se</button>
+
+            }
+        </div>
+        <article class="content px-4">
+            @if (UserContainer.Value == null) {
+                <LoginPrompt/>
+            }
+            else {
+                <CascadingValue Value="@LoggedUserName">
+                    @Body
+                </CascadingValue>
+
+            }
+        </article>
+    </main>
+</div>
+
+
+@code {
+    public string? LoggedUserName { get; set; }
+    
+
+    protected override void OnInitialized() {
+        UserContainer.SetValue(null);
+        UserContainer.OnStateChange += StateHasChanged;
+    }
+
+    protected override async Task OnInitializedAsync() {
+        Logger.LogDebug("OnInitializeAsync - HTTP GET logged in user");
+        //is there already someone logged in?
+        //todo change remove etc
+        var result = await Http.SendApiGetRequestAsync<LoggedUserPayload?>(Logger, "api/auth/info");
+        if (result.status != EApiHttpResponse.Ok) {
+            UserContainer.SetValue(null);
+            Logger.LogError("API didn't respond for request about actual logged user!");
+        }
+
+        if(result.response == null) {
+            //no one is logged in, lets get back to root
+            UriHelper.NavigateTo("/");
+
+        }
+        else {
+            if (result.response?.HasInitPwd ?? false) {
+                UriHelper.NavigateTo("/pwdChange/1");
+            }
+        }
+        
+        UserContainer.SetValue(result.response);
+        LoggedUserName = result.response?.UserName;
+        
+        StateHasChanged();
+    }
+    
+    public void LogoutPressed() {
+        _ = Http.SendApiGetRequestAsync<AuthResponse>(Logger, "api/auth");
+
+        LoggedUserName = null;
+        UriHelper.NavigateTo("/");
+        UserContainer.SetValue(null);
+        StateHasChanged();
+    }
+
+    public void ChangePwdPressed() {
+        UriHelper.NavigateTo("/pwdChange");
+    }
+
+
+    public void Dispose() {
+        UserContainer.OnStateChange -= StateHasChanged;
+    }
+}

@@ -1,0 +1,187 @@
+﻿@using ManagementTool.Shared
+@using ManagementTool.Shared.Models
+@using ManagementTool.Shared.Models.Login
+@using ManagementTool.Shared.Models.Utils
+@using Microsoft.AspNetCore.Mvc;
+@using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.Presentation.Api.Requests
+@using ManagementTool.Shared.Utils
+
+@inject HttpClient Http
+@inject ILogger<LoginPrompt> Logger
+@inject NavigationManager UriHelper;
+
+@if (string.IsNullOrEmpty(LoggedUserName)) {
+    <div class="alert alert-secondary mt-4">
+        <span class="oi oi-pencil me-2" aria-hidden="true"></span>
+            <span class="text-nowrap">
+                Vypadá to, že nejste přihlášený/á! Napravte to vyplněním přihlašovacího formuláře!
+            </span>
+        <EditForm id="@SubmitBtnId" EditContext="@EditContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+
+        <table>
+            <tr>
+                <td>Uživatelské jméno (orion)</td>
+                <td>
+                    <InputText id="txtName" type="text" required
+                               @bind-Value="@AuthRequest.Username"/>
+                    <ValidationMessage For="@(() => AuthRequest.Username)" />
+                </td>
+            </tr>
+            <tr>
+                <td>Heslo</td>
+                <td>
+                    <InputText id="txtName" type="text" required
+                               @bind-Value="@AuthRequest.Password"/>
+                    <ValidationMessage For="@(() => AuthRequest.Password)"/>
+
+                </td>
+            </tr>
+            <tr>
+                <td>&nbsp;</td>
+                <td><button type="submit" form="@SubmitBtnId"
+                            data-bs-toggle="modal" data-bs-target="#productModal" class="btn btn-primary">
+                        Přihlásit se
+                    </button>
+                </td>
+            </tr>
+        </table>
+        
+        
+        </EditForm>
+        <div class="modal fade @ModalClass" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productTitle" aria-hidden="true" style="display:@ModalDisplay">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="productTitle">@DialogSignature</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="card">
+                            <div class="card-body">
+                                <button type="button" data-bs-dismiss="modal" aria-label="Ok" @onclick="OkPressed">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+        <div class="modal @ModalClass" tabindex="-1" role="dialog" style="display:@ModalDisplay">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Přihlášení</h5>
+                        <button type="button" data-dismiss="modal" aria-label="Close" @onclick=" OkPressed">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p>@DialogSignature</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick=" OkPressed">Ok</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div> 
+}   
+
+@code {
+    public const string SubmitBtnId = "submitButton";
+    
+    public AuthRequest AuthRequest { get; set; } = new();
+
+    private EditContext? EditContext { get; set; }
+
+    [CascadingParameter]
+    public string? LoggedUserName { get; set; }
+
+    public string? DialogSignature { get; set; } = null;
+
+    public string ModalDisplay = "none;";
+    public string ModalClass = "";
+    public bool LoggedIn { get; set; } = false;
+
+
+    protected override void OnInitialized() {
+        EditContext = new EditContext(AuthRequest);
+        base.OnInitialized();
+    }
+
+
+    public void OkPressed() {
+        ChangeDialogSignature(null);
+        DialogSignature = null;
+
+        ModalDisplay = "none";
+        ModalClass = "";
+        InvokeAsync(StateHasChanged);    
+        if (LoggedIn) {
+            UriHelper.NavigateTo(UriHelper.Uri, forceLoad: true);
+        }
+    }
+
+    private void HandleValidSubmit() {
+        var task = Http.PostAsJsonAsync("auth", AuthRequest);
+        CallLoginApiAsync(task);
+    }
+
+    protected void HandleInvalidSubmit() {
+        ChangeDialogSignature(AuthResponse.BadRequest);
+        StateHasChanged();
+    }
+    
+
+    private void ChangeDialogSignature(AuthResponse? authResponse) {
+
+        if (authResponse == null) {
+            DialogSignature = null;
+        }
+        else {
+            DialogSignature = StringResolver.ResolveAuthenticationResponse(authResponse);
+        }
+
+        if (authResponse is AuthResponse.Success or AuthResponse.AlreadyLoggedIn) {
+            LoggedIn = true;
+        }
+        
+        ModalDisplay = "block;";
+        ModalClass = "Show";
+        StateHasChanged();
+    }
+
+    private async void CallLoginApiAsync(Task<HttpResponseMessage> authResponseTask) {
+        try {
+            var response = await authResponseTask;
+            response.EnsureSuccessStatusCode();
+            var responseBodyString = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrEmpty(responseBodyString)) {
+                ChangeDialogSignature(AuthResponse.UnknownResponse);
+            }
+            else {
+                var responseEnumVal = Enum.Parse<AuthResponse>(responseBodyString);
+                ChangeDialogSignature(responseEnumVal);
+            }
+            return;
+        }
+        catch (HttpRequestException e) {
+            Logger.LogError("LoginPressed -> Failure occurred during receiving data from the API! " + e.StatusCode);
+        }
+        catch (ArgumentException e) {
+            Logger.LogError("LoginPressed -> Received invalid data from the API!" + e.Message);
+        }
+        catch (Exception e) {
+            Logger.LogError("LoginPressed -> Unknown error occurred during authentication!" + e.Message);
+        }
+        ChangeDialogSignature(AuthResponse.UnknownResponse);
+        
+    }
+
+}

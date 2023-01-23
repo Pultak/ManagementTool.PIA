@@ -1,22 +1,16 @@
 ﻿@page "/projects/edit/{ReturnEndpoint:int}"
-@using ManagementTool.Shared.Models.AppState
-@using ManagementTool.Shared.Models.Database
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
 @using Microsoft.AspNetCore.Components
 @using ManagementTool.Client.Utils
-@using ManagementTool.Shared.Models.Login
-@implements IDisposable
+@using ManagementTool.Shared.Models.Presentation
 
+@inherits InteractivePageBase<ProjectEdit>
 
-@inject StateContainer<Project> ProjectContainer
-@inject StateContainer<LoggedUserPayload> LoggedUserContainer
-@inject NavigationManager UriHelper
+@inject StateContainer<ProjectPL> ProjectContainer
 @inject HttpClient Http
-@inject ILogger<ProjectEdit> Logger
 
-
-<button @onclick="ReturnToProjects">
+<button @onclick="Return">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
     </svg>
@@ -83,14 +77,9 @@ else {
 
                 </EditForm>
 
-                @if (ValidationMessage != null) {
+                if (ExceptionMessage != null) {
                     <div>
-                        <p>@ValidationMessage</p>
-                    </div>
-                }
-                else if (ApiException != null) {
-                    <div>
-                        <p>@ApiException</p>
+                        <p>@ExceptionMessage</p>
                     </div>
                 }
                 <p>
@@ -101,7 +90,7 @@ else {
                         <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Uložit změny</button>
                     }
                     <button type="button" class="btn btn-light"
-                            @onclick="@ReturnToProjects">
+                            @onclick="@Return">
                         Zrušit
                     </button>
                 </p>
@@ -117,46 +106,29 @@ else {
 
     [Parameter]
     public int ReturnEndpoint { get; set; }
-
-
-    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.Secretariat) ||
-                                 UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.ProjectManager) ||
-                                 UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.DepartmentManager);
-
-    private const string SubmitBtnId = "submitButton";
-
+    
     private EditContext? EditContext { get; set; }
-    public Project SelectedProject { get; set; } = new();
+    public ProjectPL SelectedProject { get; set; } = new();
     
     private bool NewProjectCreation { get; set; }
-    private bool WaitingForApiResponse { get; set; } = true;
-
-    private string? ValidationMessage { get; set; }
-    private string? ApiException { get; set; }
-
-
-    protected override Task OnInitializedAsync() {
-        WaitingForApiResponse = false;
+    
+    protected override void OnInitialized() {
+        ReturnUri = $"/projects/{(EProjectPage)ReturnEndpoint}".ToLower();
+        NeededRoles = new[] { ERoleType.DepartmentManager, ERoleType.ProjectManager, ERoleType.Secretariat };
         if (ProjectContainer.Value == null) {
             NewProjectCreation = true;
-            SelectedProject = new Project(default, "", DateTime.Now.Date, null, "");
+            SelectedProject = new ProjectPL(default, "", DateTime.Now.Date, null, "");
         }
         else {
             SelectedProject = ProjectContainer.Value;
         }
         EditContext = new EditContext(SelectedProject);
-        StateHasChanged();
-        return Task.CompletedTask;
     }
-
+    
     private void HandleValidSubmit() {
-        ValidationMessage = null;
-        ApiException = null;
-
-
         var valResult = ProjectUtils.ValidateNewProject(SelectedProject);
         if (valResult != EProjectCreationResponse.Ok) {
-            ValidationMessage = StringResolver.ResolveProjectValidation(valResult);
+            ExceptionMessage = StringResolver.ResolveProjectValidation(valResult);
         }
         else{
             WaitingForApiResponse = true;
@@ -168,14 +140,14 @@ else {
             }
             else {
                 WaitingForApiResponse = false;
-                ValidationMessage = "Nejdříve změnte nějaké hodnoty předtím než budete ukládat změny!";
+                ExceptionMessage = "Nejdříve změnte nějaké hodnoty předtím než budete ukládat změny!";
             }
         }
         StateHasChanged();
     }
 
     protected void HandleInvalidSubmit() {
-        ValidationMessage = "Můžete vkládat pouze validní data!";
+        ExceptionMessage = "Můžete vkládat pouze validní data!";
         StateHasChanged();
     }
 
@@ -193,30 +165,11 @@ else {
     private void ResolveResponse(EApiHttpResponse apiResponse) {
         WaitingForApiResponse = false;
         if (apiResponse == EApiHttpResponse.Ok) {
-            ReturnToProjects();
+            Return();
         }
         else {
-            ApiException = StringResolver.ResolveApiResponse(apiResponse);
+            ExceptionMessage = StringResolver.ResolveApiResponse(apiResponse);
             StateHasChanged();
         }
     }
-
-    private void ReturnToProjects() {
-        var uri = $"/projects/{(EProjectPage)ReturnEndpoint}".ToLower();
-        UriHelper.NavigateTo(uri);
-    }
-
-    protected override void OnInitialized() {
-        //register event handler for the change of the logged user
-        ProjectContainer.OnStateChange += StateHasChanged;
-    }
-
-    /// <summary>
-    /// Method from IDisposable that will be called once this component is disposed off
-    /// Preventing possible memory leaks
-    /// </summary>
-    public void Dispose() {
-        ProjectContainer.OnStateChange -= StateHasChanged;
-    }
-
 }

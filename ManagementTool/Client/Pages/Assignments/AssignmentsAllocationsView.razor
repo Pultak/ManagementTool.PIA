@@ -1,17 +1,14 @@
 ﻿@page "/assignments/allocations"
-@using ManagementTool.Shared.Models.ApiModels
-@using ManagementTool.Shared.Models.AppState
-@using ManagementTool.Shared.Models.Database
-@using ManagementTool.Shared.Models.Login
-@using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
-@using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.Utils
 @using System.ComponentModel.DataAnnotations
+@using ManagementTool.Shared.Models.Presentation.Api.Payloads
+@using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.Presentation
 
-@inject StateContainer<LoggedUserPayload> LoggedUserContainer
+@inherits InteractivePageBase<AssignmentsAllocationsView>
+
 @inject HttpClient Http
-@inject ILogger<AssignmentsAllocationsView> Logger
-
 
 @if (!IsAuthorized) {
     <div>Vypadá to, že nemáte dostatečné práva na zobrazení této stránky!</div>
@@ -22,7 +19,7 @@ else {
     <p>  Kde 0 je žádné vytížení a 1 je plné (8 pracovních hodin).</p>
 
     <p>Po zadání a zaslání parametrů na server, se zobrazí tabulka v jejíž hlavičce jsou zobrazeny zvolené datumy. </p>
-    <p>  Tělo pak pro každý sloupeček obsahuje nejdříve pracovní vytížení aktivních úkolů a druhý záznam je pro všechny (i neaktivni). </p>
+    <p>  Tělo pak pro každý sloupeček obsahuje nejdříve pracovní vytížení aktivních úkolů a druhý záznam je pro všechny (i neaktivní). </p>
 
     
     <table>
@@ -91,7 +88,6 @@ else {
                         }
                     </tr>
                 }
-            
                 </tbody>
             </table>
         </div>
@@ -101,12 +97,7 @@ else {
 }
 
 @code {
-    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.ProjectManager) ||
-                                 UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.DepartmentManager);
-
-
-    public UserBase[] AllUsers = Array.Empty<UserBase>();
-
+    public UserBasePL[] AllUsers = Array.Empty<UserBasePL>();
 
     public string[] SelectedUsers { get; set; } = Array.Empty<string>();
     [Required]
@@ -118,67 +109,43 @@ else {
     public UserWorkload[] Workloads { get; set; } = Array.Empty<UserWorkload>();
     public DateTime[] Days = Array.Empty<DateTime>();
 
-    public string? ExceptionMessage { get; set; }
-    private bool WaitingForApiResponse { get; set; } = true;
-
+    protected override void OnInitialized() {
+        NeededRoles = new []{ ERoleType.DepartmentManager, ERoleType.ProjectManager };
+        base.OnInitialized();
+    }
     
     protected override async Task OnInitializedAsync() {
         if (IsAuthorized) {
-            await GetUsersData();
+            var req = await Http.SendApiGetRequestAsync<UserBasePL[]>(Logger, "api/Users");
+
+            if (req.status != EApiHttpResponse.Ok) {
+                ExceptionMessage = StringResolver.ResolveApiResponse(req.status);
+                StateHasChanged();
+            }
+            if (req.response != null) {
+                AllUsers = req.response;
+            }
         }
-        
-        WaitingForApiResponse = false;
-        StateHasChanged();
+
+        await base.OnInitializedAsync();
     }
 
 
-    private async Task GetUsersData() {
-        var req = await Http.SendApiGetRequestAsync<UserBase[]>(Logger, "api/Users");
-
-        if (req.status != EApiHttpResponse.Ok) {
-            ExceptionMessage = StringResolver.ResolveApiResponse(req.status);
-            StateHasChanged();
-        }
-        if (req.response != null) {
-            AllUsers = req.response;
-        }
-        StateHasChanged();
-        
-    }
-
-
-    private string GetColumnColorForLoad(double load) {
-        if (load > 1) {
-            return "table-danger";
-        }
-        if (load > 0.75) {
-            return "table-warning";
-        }
-        if (load > 0.40) {
-            return "table-secondary";
-        }
-        return "table-success";
-    }
-
-
-
-    
     private void UsersSelectionChanged(ChangeEventArgs e) {
         var value = e.Value;
         if (value is string[]strings) {
             SelectedUsers = strings;
         }
-
     }
 
     
     private async void HandleSubmit() {
         ExceptionMessage = null;
-        WaitingForApiResponse = true;
 
         var valid = AssignmentUtils.ValidateWorkloadPayload(SelectedUsers, FromDate, ToDate);
         if (valid == EWorkloadValidation.Ok) {
 
+            WaitingForApiResponse = true;
             var selectedIds = "ids=" + string.Join("&ids=", SelectedUsers);
             var fromDate = FromDate!.Value.ToString("dd-MM-yyyy");
             var toDate = ToDate!.Value.ToString("dd-MM-yyyy");
@@ -189,8 +156,8 @@ else {
                 ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
             }
             else {
-                Days = userResult.response.Dates;
-                Workloads = userResult.response.Workloads;
+                Days = userResult.response?.Dates ?? Array.Empty<DateTime>();
+                Workloads = userResult.response?.Workloads ?? Array.Empty<UserWorkload>();
             }
         }
         else {
@@ -198,5 +165,14 @@ else {
         }
         WaitingForApiResponse = false;
         StateHasChanged();
+    }
+    
+    private static string GetColumnColorForLoad(double load) {
+        return load switch {
+            > 1 => "table-danger",
+            > 0.75 => "table-warning",
+            > 0.40 => "table-secondary",
+            _ => "table-success"
+            };
     }
 }

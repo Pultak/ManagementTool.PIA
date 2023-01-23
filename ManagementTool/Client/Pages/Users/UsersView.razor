@@ -1,19 +1,12 @@
 ﻿@page "/users"
-@using ManagementTool.Shared.Models.AppState
-@using ManagementTool.Shared.Models.Database
 @using ManagementTool.Shared.Models.Utils
-@using ManagementTool.Shared.Utils
 @using ManagementTool.Client.Utils
-@using ManagementTool.Shared.Models.Login
+@using ManagementTool.Shared.Models.Presentation
 
-
-@implements IDisposable
+@inherits InteractivePageBase<UsersView>
 
 @inject HttpClient Http
-@inject NavigationManager UriHelper
-@inject StateContainer<UserBase> UserContainer
-@inject ILogger<UsersView> Logger
-@inject StateContainer<LoggedUserPayload> LoggedUserContainer
+@inject StateContainer<UserBasePL> UserContainer
 
 <h3>Uživatelé</h3>
 
@@ -80,18 +73,19 @@ else {
     [CascadingParameter]
     public string? LoggedUserName { get; set; }
 
-    private UserBase[] _users = Array.Empty<UserBase>();
+    private UserBasePL[] _users = Array.Empty<UserBasePL>();
 
     private string? _exceptionMessage;
-
-    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.Secretariat);
     
-    private bool WaitingForApiResponse { get; set; } = true;
+    protected override void OnInitialized() {
+        NeededRoles = new[] { ERoleType.Secretariat };
+        UserContainer.OnStateChange += StateHasChanged;
+        base.OnInitialized();
+    }
 
     protected override async Task OnInitializedAsync() {
-        UserContainer.OnStateChange += StateHasChanged;
         if (IsAuthorized) {
-            var result = await Http.SendApiGetRequestAsync<UserBase[]>(Logger, "api/Users");
+            var result = await Http.SendApiGetRequestAsync<UserBasePL[]>(Logger, "api/Users");
             if (result.status != EApiHttpResponse.Ok) {
                 _exceptionMessage = StringResolver.ResolveApiResponse(result.status);
             }
@@ -99,8 +93,7 @@ else {
                 _users = result.response;
             }
         }
-        WaitingForApiResponse = false;
-        StateHasChanged();
+        await base.OnInitializedAsync();
     }
 
     private void CreateNewUser() {
@@ -108,13 +101,14 @@ else {
         NavigateToEditMode(null);
     }
 
-    private void NavigateToEditMode(UserBase? selectedUser) {
+    private void NavigateToEditMode(UserBasePL? selectedUser) {
         UserContainer.SetValue(selectedUser);
         UriHelper.NavigateTo("/users/edit");
     }
     
-    public void Dispose() {
+    public override void Dispose() {
         UserContainer.OnStateChange -= StateHasChanged;
+        base.Dispose();
     }
 
 }

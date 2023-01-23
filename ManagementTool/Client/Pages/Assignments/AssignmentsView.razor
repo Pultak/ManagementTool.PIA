@@ -2,20 +2,16 @@
 @page "/assignments/superior"
 @page "/assignments/project"
 @page "/assignments/department"
-@using ManagementTool.Client.Utils
-@using ManagementTool.Shared.Models.ApiModels
-@using ManagementTool.Shared.Models.AppState
-@using ManagementTool.Shared.Models.Database
-@using ManagementTool.Shared.Models.Login
+
 @using ManagementTool.Shared.Models.Utils
-@using ManagementTool.Shared.Utils
-@implements IDisposable
+@using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.Presentation
+@using ManagementTool.Shared.Models.Presentation.Api.Payloads
+
+@inherits InteractivePageBase<AssignmentsView>
 
 @inject HttpClient Http
-@inject NavigationManager UriHelper
-@inject StateContainer<AssignmentWrapper> AssignmentContainer
-@inject StateContainer<LoggedUserPayload> LoggedUserContainer
-@inject ILogger<AssignmentsView> Logger
+@inject StateContainer<AssignmentWrapperPayload> AssignmentContainer
 
 @if (!IsAuthorized) {
         <div>Vypadá to, že nemáte dostatečné práva na zobrazení tohoto listu!</div>
@@ -111,15 +107,10 @@ else {
 
 @code {
 
-    private AssignmentWrapper[] Assignments { get; set; } = Array.Empty<AssignmentWrapper>();
+    private AssignmentWrapperPayload[] Assignments { get; set; } = Array.Empty<AssignmentWrapperPayload>();
     private readonly DateTime _actualTime = DateTime.Now;
 
     private bool DataFetchFailed { get; set; }
-    private string? ExceptionMessage { get; set; }
-
-    private bool WaitingForApiResponse { get; set; }
-
-    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, NeededRole);
 
     private ERoleType? NeededRole { get; set; } = ERoleType.NoRole;
     private EAssignmentPage CurrentEndpoint { get; set; } = EAssignmentPage.My;
@@ -137,6 +128,7 @@ else {
     
     protected override async Task OnInitializedAsync() {
         await CheckForRoleChanger();
+        await base.OnInitializedAsync();
     }
     
     private async Task CheckForRoleChanger() {
@@ -170,11 +162,12 @@ else {
         }
         var roleChange = NeededRole != newRole;
         NeededRole = newRole;
+        NeededRoles = newRole == null ? null : new[] { newRole.Value };
 
         //user is authorized and role changed => different page probably
         if (roleChange) {
             if (IsAuthorized) {
-                var result = await Http.SendApiGetRequestAsync<AssignmentWrapper[]>(Logger, requestUri);
+                var result = await Http.SendApiGetRequestAsync<AssignmentWrapperPayload[]>(Logger, requestUri);
                 if (result.status != EApiHttpResponse.Ok)
                 {
                     DataFetchFailed = true;
@@ -192,7 +185,7 @@ else {
     }
 
 
-    private string AssignmentOverTime(Assignment assignment) {
+    private string AssignmentOverTime(AssignmentPL assignment) {
         if (DateTime.Compare(assignment.ToDate, _actualTime) < 0) {
             return "!vypršelý!";
         }
@@ -200,13 +193,13 @@ else {
     }
 
 
-    private void NavigateToEditMode(AssignmentWrapper? selectedAssignment) {
+    private void NavigateToEditMode(AssignmentWrapperPayload? selectedAssignment) {
         AssignmentContainer.SetValue(selectedAssignment);
         UriHelper.NavigateTo($"/assignments/edit/{(int)CurrentEndpoint}");
     }
 
 
-    private void NavigateToDetailMode(AssignmentWrapper? selectedAssignment) {
+    private void NavigateToDetailMode(AssignmentWrapperPayload? selectedAssignment) {
         AssignmentContainer.SetValue(selectedAssignment);
         UriHelper.NavigateTo($"/assignments/detail/{(int)CurrentEndpoint}");
     }
@@ -217,10 +210,9 @@ else {
     }
 
 
-    public void Dispose() {
-        LoggedUserContainer.OnStateChange -= StateHasChanged;
-
+    public override void Dispose() {
         UriHelper.LocationChanged -= LocationChanged;
+        base.Dispose();
     }
 
 }

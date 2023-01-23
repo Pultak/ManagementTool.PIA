@@ -1,25 +1,18 @@
 ﻿@page "/users/edit"
-
-@using ManagementTool.Shared.Models.AppState
-@using ManagementTool.Shared.Models.Database
+@using ManagementTool.Shared.Models.Presentation
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
-@using Microsoft.AspNetCore.Components
 @using ManagementTool.Client.Utils
-@using ManagementTool.Shared.Models.ApiModels
-@using ManagementTool.Shared.Models.Login
-@using System.Net
-@implements IDisposable
+@using ManagementTool.Shared.Models.Presentation.Api.Requests
 
-@inject NavigationManager UriHelper
+@inherits InteractivePageBase<UserEdit>
+
 @inject HttpClient Http
-@inject ILogger<UserEdit> Logger
-@inject StateContainer<UserBase> UserContainer
-@inject StateContainer<LoggedUserPayload> LoggedUserContainer
+@inject StateContainer<UserBasePL> UserContainer
 @inject IJSRuntime JsRuntime
 
 
-<button @onclick="ReturnToUsers">
+<button @onclick="Return">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
     </svg>
@@ -119,14 +112,9 @@ else {
     </div>
 
 
-    @if (ValidationMessage != null) {
+    @if (ExceptionMessage != null) {
         <div>
-            <p>@ValidationMessage</p>
-        </div>
-    }
-    else if (ApiException != null) {
-        <div>
-            <p>@ApiException</p>
+            <p>@ExceptionMessage</p>
         </div>
     }
     <p>
@@ -140,7 +128,7 @@ else {
             </button>
         }
         <button type="button" class="btn btn-light"
-                @onclick="@ReturnToUsers">
+                @onclick="@Return">
             Zrušit
         </button>
     </p>
@@ -174,10 +162,6 @@ else {
 
 
 @code {
-    private bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, ERoleType.Secretariat);
-
-
-    private const string SubmitBtnId = "submitButton";
     private string ModalClass { get; set; } = "";
     private string ModalDisplay { get; set; } = "none;";
 
@@ -185,26 +169,25 @@ else {
     private string[] _selectedSuperiorsIds = {};
 
 
-    public UserBase SelectedUser { get; set; } = new();
-    public UserBase[] AllSuperiors { get; set; } = Array.Empty<UserBase>();
-    public List<DataModelAssignment<Role>> RolesAssignments { get; set; } = new();
+    public UserBasePL SelectedUser { get; set; } = new();
+    public UserBasePL[] AllSuperiors { get; set; } = Array.Empty<UserBasePL>();
+    public List<DataModelAssignmentPL<RolePL>> RolesAssignments { get; set; } = new();
 
     public string? NewPwd { get; set; }
 
     private bool NewUserCreation { get; set; }
-    private bool WaitingForApiResponse { get; set; } = true;
 
-    private string? ValidationMessage { get; set; }
-    private string? ApiException { get; set; }
+    protected override void OnInitialized() {
+        UserContainer.OnStateChange += StateHasChanged;
+        ReturnUri = "/users";
+
+        base.OnInitialized();
+    }
+
 
     protected override async Task OnInitializedAsync() {
-        ValidationMessage = null;
-        ApiException = null;
         NewUserCreation = UserContainer.Value == null;
-        if (NewUserCreation) {
-            SelectedUser = new UserBase(default, "", "", "", "", true);
-        }
-        else {
+        if (!NewUserCreation) {
             SelectedUser = UserContainer.Value!;
         }
         EditContext = new EditContext(SelectedUser);
@@ -212,15 +195,14 @@ else {
             await GetData();
         }
         NewPwd = null;
-        WaitingForApiResponse = false;
-        StateHasChanged();
+        await base.OnInitializedAsync();
     }
 
 
     private async Task GetData() {
-        var userResult = await Http.SendApiGetRequestAsync<UserBase[]?>(Logger, "api/UserRoles/superiors");
+        var userResult = await Http.SendApiGetRequestAsync<UserBasePL[]?>(Logger, "api/UserRoles/superiors");
         if (userResult.status != EApiHttpResponse.Ok) {
-            ApiException = StringResolver.ResolveApiResponse(userResult.status);
+            ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
         }
         else {
             if (userResult.response != null) {
@@ -229,9 +211,9 @@ else {
             }
         }
 
-        var roleResult = await Http.SendApiGetRequestAsync<List<DataModelAssignment<Role>>?>(Logger, $@"api/UserRoles/allUserAssigned/{SelectedUser.Id}"); ;
+        var roleResult = await Http.SendApiGetRequestAsync<List<DataModelAssignmentPL<RolePL>>?>(Logger, $@"api/UserRoles/allUserAssigned/{SelectedUser.Id}");
         if (roleResult.status != EApiHttpResponse.Ok) {
-            ApiException = StringResolver.ResolveApiResponse(userResult.status);
+            ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
         }else{
             if (roleResult.response != null) {
                 RolesAssignments = roleResult.response;
@@ -243,7 +225,7 @@ else {
             var userSupsResult = await Http.SendApiGetRequestAsync<long[]>(Logger, $"api/UserRoles/superiors/{SelectedUser.Id}");
 
             if (userSupsResult.status != EApiHttpResponse.Ok) {
-                ApiException = StringResolver.ResolveApiResponse(userResult.status);
+                ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
             }
             else {
                 if (userSupsResult.response != null) {
@@ -260,10 +242,9 @@ else {
             return;
         }
         _selectedSuperiorsIds = strings;
-        AllSuperiors.Where(x => _selectedSuperiorsIds.Contains(x.Id.ToString())).Select(sup => sup.FullName);
     }
 
-    private void RoleAssignmentChanged(ChangeEventArgs e, DataModelAssignment<Role> roleAssign) {
+    private void RoleAssignmentChanged(ChangeEventArgs e, DataModelAssignmentPL<RolePL> roleAssign) {
         // get the checkbox state
         if (e.Value is not bool check) {
             return;
@@ -272,31 +253,21 @@ else {
     }
 
     private void HandleValidSubmit() {
-        ValidationMessage = null;
-        ApiException = null;
-
-
+        ExceptionMessage = null;
         var valResult = UserUtils.ValidateUser(SelectedUser);
         if (valResult != EUserCreationResponse.Ok) {
-            ValidationMessage = StringResolver.ResolveUserValidation(valResult);
+            ExceptionMessage = StringResolver.ResolveUserValidation(valResult);
         }
         else{
             WaitingForApiResponse = true;
             var assigned = AllSuperiors.Where(x => _selectedSuperiorsIds.Contains(x.Id.ToString()));
             if (NewUserCreation) {
                 NewPwd = UserUtils.CreateRandomPassword(10);
-                User newUser = new(SelectedUser) {
-                    Pwd = NewPwd!,
-                    PwdInit = true,
-                    Salt = "TBD"
-                };
-
-                //todo 
-                UserUpdatePayload<User> payload = new(newUser, RolesAssignments, assigned.ToList());
-                Http.SendApiPutRequestAsync(Logger, "api/Users", payload, ResolveResponse);
+                UserCreationRequest newUserRequest = new(SelectedUser, RolesAssignments, assigned.ToList(), NewPwd);
+                Http.SendApiPutRequestAsync(Logger, "api/Users", newUserRequest, ResolveResponse);
             }
             else {
-                UserUpdatePayload<UserBase> payload = new(SelectedUser, RolesAssignments, assigned.ToList());
+                UserUpdateRequest payload = new(SelectedUser, RolesAssignments, assigned.ToList());
                 Http.SendApiPatchRequestAsync(Logger, "api/Users/update", payload, ResolveResponse);
             }
         }
@@ -304,20 +275,16 @@ else {
     }
 
     protected void HandleInvalidSubmit() {
-        ValidationMessage = "Můžete vkládat pouze validní data!";
+        ExceptionMessage = "Můžete vkládat pouze validní data!";
         StateHasChanged();
     }
 
-
-    private void ReturnToUsers() {
-        UriHelper.NavigateTo("users");
-    }
+    
 
     private async void DeleteUser() {
         var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Doopravdy chcete odstranit tento úkol?");
         if (confirmed) {
-            ValidationMessage = null;
-            ApiException = null;
+            ExceptionMessage = null;
             WaitingForApiResponse = true;
             Http.SendApiDeleteRequestAsync(Logger, "api/Users/" + SelectedUser.Id, ResolveResponse);
             StateHasChanged();
@@ -326,11 +293,11 @@ else {
 
 
 
-    private void ResolveResponse(EApiHttpResponse apiResponse, bool changePage) {
+    protected override void ResolveResponse(EApiHttpResponse apiResponse, bool changePage) {
         WaitingForApiResponse = false;
         if (apiResponse == EApiHttpResponse.Ok) {
             if (changePage) {
-                UriHelper.NavigateTo("/users");
+                Return();
             }
             else {
                 ModalDisplay = "block;";
@@ -338,7 +305,7 @@ else {
             }
         }
         else {
-            ApiException = StringResolver.ResolveApiResponse(apiResponse);
+            ExceptionMessage = StringResolver.ResolveApiResponse(apiResponse);
         }
         StateHasChanged();
     }
@@ -348,17 +315,14 @@ else {
         ModalDisplay = "none";
         ModalClass = "";
         WaitingForApiResponse = false;
-        ValidationMessage = null;
-        ApiException = null;
-        UriHelper.NavigateTo("/users");
+        ExceptionMessage = null;
+        Return();
     }
 
-    protected override void OnInitialized() {
-        UserContainer.OnStateChange += StateHasChanged;
-    }
 
-    public void Dispose() {
+    public override void Dispose() {
         UserContainer.OnStateChange -= StateHasChanged;
+        base.Dispose();
     }
 
 }
