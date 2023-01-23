@@ -1,15 +1,58 @@
-﻿version: '3.8'
+version: '3.4'
+
 services:
   db:
     image: postgres:14.1-alpine
     restart: always
+    networks:                       # specify the IP address of the database
+        kiv-pia-ott-network:
+            ipv4_address: 10.5.0.5
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=postgres
+#      - POSTGRES_DB=pia-ott         # database name
+#      - "TZ=Europe/Prague"          # timezone
     ports:
-      - '5432:5432'
-    volumes: 
-      - db:/var/lib/postgresql/data
-volumes:
-  db:
-    driver: local
+        - '5432:5432'
+    volumes:
+    #     - db:/var/lib/postgresql/data
+        - ./db_init.sql:/docker-entrypoint-initdb.d/init.sql
+  
+  managementtool.server:
+    image: ${DOCKER_REGISTRY-}managementtoolserver
+    networks:                       # specify the IP address of the database
+      kiv-pia-ott-network:
+        ipv4_address: 10.5.0.6
+    build:
+      context: .
+      dockerfile: Server.Dockerfile
+    depends_on:
+      - db
+    ports:
+        - 5180:80
+        - 6443:443
+    volumes:
+        - /c/temp-keys:/root/.aspnet/DataProtection-Keys
+      
+  managementtool.client:
+    image: ${DOCKER_REGISTRY-}managementtoolclient
+    networks:                       # specify the IP address of the database
+      kiv-pia-ott-network:
+        ipv4_address: 10.5.0.7
+    build:
+        context: .
+        dockerfile: Client.Dockerfile
+    ports:
+        - 5080:80
+        - 5443:443
+    depends_on:
+      - managementtool.server
+      - db
+
+
+networks:
+  kiv-pia-ott-network:
+    driver: bridge
+    ipam:
+        config:
+            - subnet: 10.5.0.0/16

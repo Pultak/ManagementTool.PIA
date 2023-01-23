@@ -12,6 +12,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8A50E989-7138-4DEF-9BD7-7D40B4A4A3C8}"
 	ProjectSection(SolutionItems) = preProject
 		docker-compose.yml = docker-compose.yml
+		ManagementTool\Client\Dockerfile = ManagementTool\Client\Dockerfile
 		readme.md = readme.md
 	EndProjectSection
 EndProject
@@ -21,6 +22,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "db", "db", "{16452DE5-63B5-
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ManagementTool.ServerTests", "ManagementTool.ServerTests\ManagementTool.ServerTests.csproj", "{93F55BF9-6BE9-4D1A-A13B-080E5539ADB8}"
+EndProject
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{9669D25D-FADE-4F55-8DE6-63F848F64BFD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -44,6 +47,10 @@ Global
 		{93F55BF9-6BE9-4D1A-A13B-080E5539ADB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{93F55BF9-6BE9-4D1A-A13B-080E5539ADB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{93F55BF9-6BE9-4D1A-A13B-080E5539ADB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9669D25D-FADE-4F55-8DE6-63F848F64BFD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9669D25D-FADE-4F55-8DE6-63F848F64BFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9669D25D-FADE-4F55-8DE6-63F848F64BFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9669D25D-FADE-4F55-8DE6-63F848F64BFD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
