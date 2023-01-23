@@ -1,4 +1,5 @@
-﻿using ManagementTool.Shared.Models.Utils;
+﻿using ManagementTool.Shared.Models.Login;
+using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Client.Utils; 
 
@@ -56,7 +57,7 @@ public class StringResolver {
 
     public static string ResolveAssignmentValidation(EAssignmentCreationResponse validation) {
         return validation switch {
-            EAssignmentCreationResponse.Empty => "Data úkolu nesmí být prazdná!",
+            EAssignmentCreationResponse.Empty => "Data úkolu nesmí být prázdná!",
             EAssignmentCreationResponse.InvalidProject => "Nevalidní projekt zvolen!",
             EAssignmentCreationResponse.InvalidUser => "Nevalidní uživatel zvolen!",
             EAssignmentCreationResponse.UserNotAssignedToProject => "Zvolený uživatel není součástí projektu!",
@@ -69,6 +70,32 @@ public class StringResolver {
             _ => throw new ArgumentOutOfRangeException(nameof(validation), validation, null)
         };
     }
+
+
+    
+    public static string ResolveAuthenticationResponse(AuthResponse? response) {
+        switch (response) {
+            case AuthResponse.EmptyUsername:
+            case AuthResponse.EmptyPassword:
+                return "Před stisknutím tlačítka pro přihlášení, prosím vyplňte potřebné údaje!";
+            case AuthResponse.UnknownUser:
+                return "Zadaný uživatel neexistuje!";
+            case AuthResponse.WrongPassword:
+                return "Bylo zadáno špatné heslo!";
+            case AuthResponse.Success:
+                return "Přihlášení proběhlo v pořádku!";
+            case AuthResponse.AlreadyLoggedIn:
+                return "Už jste v systému přihlášený!";
+            case AuthResponse.UnknownResponse:
+            case null:
+                return "Něco se nepodařilo! Zkuste přihlášení znovu!";
+            case AuthResponse.BadRequest:
+                return "Data jenž byli zaslány na server byly nevalidní. Zkuste přihlášení znovu!";
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
 
     public static string ResolveTimeScope(long scope, bool fte) {
         var finalScope = fte? scope * 40 : scope;

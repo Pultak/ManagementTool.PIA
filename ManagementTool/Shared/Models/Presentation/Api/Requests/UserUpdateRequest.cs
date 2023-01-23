@@ -3,7 +3,7 @@
 /// <summary>
 /// Payload for the update and creation of the users.
 /// </summary>
-public class UserUpdateRequest: UserBasePL {
+public class UserUpdateRequest {
 
     /// <summary>
     /// User of which the data were updated and are ready to be changed in the DB

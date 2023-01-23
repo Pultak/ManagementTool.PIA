@@ -51,8 +51,7 @@
     protected override async Task OnInitializedAsync() {
         Logger.LogDebug("OnInitializeAsync - HTTP GET logged in user");
         //is there already someone logged in?
-        //todo change remove etc
-        var result = await Http.SendApiGetRequestAsync<LoggedUserPayload?>(Logger, "api/auth/info");
+        var result = await Http.SendApiGetRequestAsync<LoggedUserPayload>(Logger, "api/auth/info");
         if (result.status != EApiHttpResponse.Ok) {
             UserContainer.SetValue(null);
             Logger.LogError("API didn't respond for request about actual logged user!");
@@ -68,8 +67,9 @@
                 UriHelper.NavigateTo("/pwdChange/1");
             }
         }
-        
-        UserContainer.SetValue(result.response);
+        if (result.response?.UserName != null) {
+            UserContainer.SetValue(result.response);
+        }
         LoggedUserName = result.response?.UserName;
         
         StateHasChanged();

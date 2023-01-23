@@ -1,8 +1,8 @@
 using ManagementTool.Client;
-using ManagementTool.Shared.Models.ApiModels;
-using ManagementTool.Shared.Models.AppState;
-using ManagementTool.Shared.Models.Database;
+using ManagementTool.Client.Utils;
 using ManagementTool.Shared.Models.Login;
+using ManagementTool.Shared.Models.Presentation;
+using ManagementTool.Shared.Models.Presentation.Api.Payloads;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
@@ -11,10 +11,15 @@ builder.RootComponents.Add<App>("#app");
 
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
-builder.Services.AddSingleton<StateContainer<UserBase>>();
-builder.Services.AddSingleton<StateContainer<Project>>();
+var apiAddress = builder.Configuration.GetValue<string>("ApiBaseUrl");
+builder.Services.AddScoped(sp => new HttpClient {
+    BaseAddress = new Uri(apiAddress)
+});
+builder.Services.AddSingleton<StateContainer<UserBasePL>>();
+builder.Services.AddSingleton<StateContainer<ProjectPL>>();
 builder.Services.AddSingleton<StateContainer<LoggedUserPayload>>();
-builder.Services.AddSingleton<StateContainer<AssignmentWrapper>>();
+builder.Services.AddSingleton<StateContainer<AssignmentWrapperPayload>>();
 
-await builder.Build().RunAsync();
+var app = builder.Build();
+
+await app.RunAsync();

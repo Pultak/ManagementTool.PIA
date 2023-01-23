@@ -1,6 +1,7 @@
-﻿using System.Text.RegularExpressions;
-using ManagementTool.Shared.Models.Database;
+﻿using System.Data;
+using System.Text.RegularExpressions;
 using ManagementTool.Shared.Models.Login;
+using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Shared.Utils;
@@ -74,7 +75,7 @@ public static class UserUtils {
     /// </summary>
     /// <param name="user">user base to check</param>
     /// <returns>Ok if valid, otherwise EUserCreationResponse with error</returns>
-    public static EUserCreationResponse ValidateUser(UserBase? user) {
+    public static EUserCreationResponse ValidateUser(UserBasePL? user) {
         if (user == null) {
             return EUserCreationResponse.EmptyUser;
         }
@@ -121,25 +122,30 @@ public static class UserUtils {
     /// Method check if the passed user is authorized with desired Role
     /// </summary>
     /// <param name="loggedUser">user of which you want to check his roles</param>
-    /// <param name="role">Role you want to check</param>
+    /// <param name="possibleRoles">Role you want to check</param>
     /// <returns>true if user is authorized</returns>
-    public static bool IsUserAuthorized(LoggedUserPayload? loggedUser, ERoleType? role) {
+    public static bool IsUserAuthorized(LoggedUserPayload? loggedUser, ERoleType[]? possibleRoles) {
 
         if (loggedUser == null) {
             return false;
         }
 
-        if (role == ERoleType.NoRole) {
+        //if wanted role is null then everything is possible
+        if (possibleRoles == null) {
+            return true;
+        }
+        //are there any unwanted roles?
+        if (possibleRoles.Any(r => r == ERoleType.NoRole)) {
             return false;
         }
 
-        if (role == null ) {
-            return true;
-        }
-
-        var result = loggedUser.Roles != null
-                     && loggedUser.Roles.Any(userRole => userRole.Type == role);
-        return result;
+        //is the user logged with desired role?
+        var isAuthorized = loggedUser.Roles != null && possibleRoles.Any(
+            roleType => loggedUser.Roles.Any(
+                userRole => userRole.Type == roleType
+            )
+        );
+        return isAuthorized;
     }
     
 }

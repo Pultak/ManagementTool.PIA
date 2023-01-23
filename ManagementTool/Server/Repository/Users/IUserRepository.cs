@@ -9,8 +9,11 @@ public interface IUserRepository {
     public bool DeleteUser(long userId);
 
     public UserBaseBLL? GetUserById(long id);
+    public UserBaseBLL? GetUserByName(string username);
+
     public IEnumerable<UserBaseBLL> GetUsersById(IEnumerable<long> userIds);
-    public (long id, string pwd, string salt)? GetUserPassword(string username);
+    public (long id, string pwd, string salt)? GetUserCredentials(string username);
+    public (long id, string pwd, string salt)? GetUserCredentials(long id);
     public bool UpdateUser(UserBaseBLL user);
     public bool UpdateUserPwd(long userId, string newPwd);
 

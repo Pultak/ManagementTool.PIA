@@ -64,25 +64,6 @@ public class ProjectsController : ControllerBase {
         return resultUsers;
     }
 
-    
-    [HttpGet("{idProject:long}/users")]
-    public IEnumerable<DataModelAssignmentPL<UserBasePL>>? GetAllUsersForProject(long idProject) {
-        if (!AuthService.IsAuthorizedToManageProjects(idProject)) {
-            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            return null;
-        }
-
-        if (idProject < 1) {
-            Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            return null;
-        }
-        //todo move to service
-        var result = UsersService.GetAllUsersUnderProject(idProject);
-        Response.StatusCode = (int)HttpStatusCode.OK;
-        return result;
-    }
-
-    //todo changed 
     [HttpPost]
     public void CreateProject([FromBody] ProjectPL project) {
         if (!AuthService.IsUserAuthorized(ERoleType.Secretariat)) {
@@ -107,7 +88,7 @@ public class ProjectsController : ControllerBase {
     }
 
 
-    [HttpPatch("update")]
+    [HttpPatch]
     public void UpdateProject([FromBody] ProjectPL project) {
         if (!AuthService.IsAuthorizedToManageProjects(project.Id)) {
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
@@ -140,8 +121,7 @@ public class ProjectsController : ControllerBase {
             Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
         }
     }
-
-    //todo moved and changed uri
+    
     [HttpPatch("users")]
     public void AssignUsersToProject([FromBody]ProjectAssignRequest projectAssignRequest) {
         if (!AuthService.IsUserAuthorized(ERoleType.Secretariat)) {

@@ -19,7 +19,6 @@ public class UserRepository : IUserRepository{
         return result == null ? Enumerable.Empty<UserBaseBLL>() : Mapper.Map<UserBaseBLL[]>(_db.User);
     }
 
-
     public long AddUser(UserBaseBLL user, string pwd, string salt) {
         var newUser = Mapper.Map<UserDAL>(user);
         newUser.Pwd = pwd;
@@ -48,18 +47,28 @@ public class UserRepository : IUserRepository{
         return result == null ? null : Mapper.Map<UserBaseBLL>(result);
     }
 
+    public UserBaseBLL? GetUserByName(string username) {
+        var result = _db.User?.SingleOrDefault(x => x.Username.Equals(username));
+        return Mapper.Map<UserBaseBLL>(result);
+    }
+
     public IEnumerable<UserBaseBLL> GetUsersById(IEnumerable<long> userIds) {
         var result = _db.User?.Where(x => userIds.Contains(x.Id)).
             Select(x => new UserBaseBLL(x.Id, x.Username, x.FullName, x.PrimaryWorkplace, x.EmailAddress, x.PwdInit));
         return result ?? Enumerable.Empty<UserBaseBLL>();
     }
 
-    public (long id, string pwd, string salt)? GetUserPassword(string username) {
+    public (long id, string pwd, string salt)? GetUserCredentials(string username) {
         var result = _db.User?.SingleOrDefault(user => string.Equals(user.Username, username));
 
         return result == null ? null : (result.Id, result.Pwd, result.Salt);
     }
-    
+
+    public (long id, string pwd, string salt)? GetUserCredentials(long id) {
+        var result = _db.User?.Find(id);
+        return result == null ? null : (result.Id, result.Pwd, result.Salt);
+    }
+
     public bool UpdateUser(UserBaseBLL user) {
         var dbUser = Mapper.Map<UserDAL>(user);
         _db.Entry(dbUser).State = EntityState.Modified;

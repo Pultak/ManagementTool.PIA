@@ -41,8 +41,7 @@ public class UsersController : ControllerBase {
         return resultUsers;
     }
 
-
-    //todo changed
+    
     [HttpPost]
     public void CreateUser([FromBody] UserCreationRequest userRequest) {
         if (!AuthService.IsUserAuthorized(ERoleType.Secretariat)) {
@@ -68,8 +67,7 @@ public class UsersController : ControllerBase {
 
         Response.StatusCode = (int)HttpStatusCode.OK;
     }
-
-    //todo changed
+    
     [HttpPatch]
     public void UpdateUser([FromBody] UserUpdateRequest userRequest) {
         if (!AuthService.IsUserAuthorized(ERoleType.Secretariat)) {
@@ -107,8 +105,6 @@ public class UsersController : ControllerBase {
     }
 
 
-    
-    //todo changed from roles controller
     [HttpGet("{userId:long}/roles")]
     public IEnumerable<DataModelAssignmentPL<RolePL>>? GetAllUserRoles(long userId) {
         if (!AuthService.IsUserAuthorized(null)) {
@@ -128,8 +124,7 @@ public class UsersController : ControllerBase {
         
         return userRoles;
     }
-
-    //todo changed from roles controller
+    
     [HttpGet("superiors")]
     public IEnumerable<UserBasePL>? GetAllSuperiors() {
         if (!AuthService.IsUserAuthorized(null)) {
@@ -147,8 +142,7 @@ public class UsersController : ControllerBase {
         }
         return users.ToArray();
     }
-
-    //todo changed from roles controller
+    
     [HttpGet("{userId:long}/superiors")]
      public IEnumerable<long>? GetAllUserSuperiors(long userId) {
         if (!AuthService.IsUserAuthorized(null)) {

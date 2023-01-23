@@ -200,7 +200,7 @@ else {
 
 
     private async Task GetData() {
-        var userResult = await Http.SendApiGetRequestAsync<UserBasePL[]?>(Logger, "api/UserRoles/superiors");
+        var userResult = await Http.SendApiGetRequestAsync<UserBasePL[]?>(Logger, "api/Users/superiors");
         if (userResult.status != EApiHttpResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
         }
@@ -211,7 +211,7 @@ else {
             }
         }
 
-        var roleResult = await Http.SendApiGetRequestAsync<List<DataModelAssignmentPL<RolePL>>?>(Logger, $@"api/UserRoles/allUserAssigned/{SelectedUser.Id}");
+        var roleResult = await Http.SendApiGetRequestAsync<List<DataModelAssignmentPL<RolePL>>?>(Logger, $@"api/Users/{SelectedUser.Id}/roles");
         if (roleResult.status != EApiHttpResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
         }else{
@@ -222,7 +222,7 @@ else {
 
         if (!NewUserCreation) {
             //get also all new user assigned superiors
-            var userSupsResult = await Http.SendApiGetRequestAsync<long[]>(Logger, $"api/UserRoles/superiors/{SelectedUser.Id}");
+            var userSupsResult = await Http.SendApiGetRequestAsync<long[]>(Logger, $"api/Users/{SelectedUser.Id}/superiors");
 
             if (userSupsResult.status != EApiHttpResponse.Ok) {
                 ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
@@ -264,11 +264,11 @@ else {
             if (NewUserCreation) {
                 NewPwd = UserUtils.CreateRandomPassword(10);
                 UserCreationRequest newUserRequest = new(SelectedUser, RolesAssignments, assigned.ToList(), NewPwd);
-                Http.SendApiPutRequestAsync(Logger, "api/Users", newUserRequest, ResolveResponse);
+                Http.SendApiPostRequestAsync(Logger, "api/Users", newUserRequest, ResolveResponse);
             }
             else {
                 UserUpdateRequest payload = new(SelectedUser, RolesAssignments, assigned.ToList());
-                Http.SendApiPatchRequestAsync(Logger, "api/Users/update", payload, ResolveResponse);
+                Http.SendApiPatchRequestAsync(Logger, "api/Users", payload, ResolveResponse);
             }
         }
         StateHasChanged();

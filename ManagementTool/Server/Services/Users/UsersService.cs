@@ -15,7 +15,8 @@ public class UsersService : IUsersService {
     private IRolesService RolesService { get; }
     private IMapper Mapper { get; }
 
-    public UsersService(IUserRepository userRepository, IAuthService authService, IRolesService rolesService, IMapper mapper) {
+    public UsersService(IUserRepository userRepository, IAuthService authService,
+        IRolesService rolesService, IMapper mapper) {
         UserRepository = userRepository;
         AuthService = authService;
         RolesService = rolesService;
@@ -62,7 +63,9 @@ public class UsersService : IUsersService {
         }
 
         var result = UserRepository.GetAllUsersAssignedToProject(projectId);
-        return Mapper.Map<IEnumerable<DataModelAssignmentPL<UserBasePL>>>(result);
+        var plResult = result.Select(x => x.MapToPL<UserBasePL>(Mapper));
+
+        return plResult;
     }
     
 

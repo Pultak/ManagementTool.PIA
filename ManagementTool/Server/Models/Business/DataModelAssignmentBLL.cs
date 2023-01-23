@@ -1,4 +1,7 @@
-﻿namespace ManagementTool.Server.Models.Business;
+﻿using AutoMapper;
+using ManagementTool.Shared.Models.Presentation;
+
+namespace ManagementTool.Server.Models.Business;
 
 /// <summary>
 /// DataModelAssignment is used to indicate if the model is already assigned to some property.
@@ -27,5 +30,20 @@ public class DataModelAssignmentBLL<T> {
     public DataModelAssignmentBLL(bool assigned, T model) {
         IsAssigned = assigned;
         DataModel = model;
+    }
+
+
+    public DataModelAssignmentPL<O> MapToPL<O>(IMapper mapper) {
+        var output = mapper.Map<O>(DataModel);
+
+        return new DataModelAssignmentPL<O>(IsAssigned, output);
+
+    }
+
+    public DataModelAssignmentPL<T> MapFromPL<O>(DataModelAssignmentBLL<O> input, IMapper mapper) {
+        var output = mapper.Map<T>(input.DataModel);
+
+        return new DataModelAssignmentPL<T>(input.IsAssigned, output);
+
     }
 }

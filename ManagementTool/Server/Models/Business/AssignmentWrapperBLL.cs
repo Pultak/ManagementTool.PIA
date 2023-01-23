@@ -1,4 +1,8 @@
-﻿namespace ManagementTool.Server.Models.Business;
+﻿using AutoMapper;
+using ManagementTool.Shared.Models.Presentation;
+using ManagementTool.Shared.Models.Presentation.Api.Payloads;
+
+namespace ManagementTool.Server.Models.Business;
 
 /// <summary>
 /// Wrapper for the assignment with project name and user name so it can be easily visualized in the view
@@ -32,5 +36,16 @@ public class AssignmentWrapperBLL {
         Assignment = assignment;
         ProjectName = projectName;
         UserName = userName;
+    }
+
+    public AssignmentWrapperPayload MapToPL(IMapper mapper) {
+        var obj = mapper.Map<AssignmentPL>(Assignment);
+
+        return new AssignmentWrapperPayload(ProjectName, UserName, obj);
+    }
+    public AssignmentWrapperBLL MapToBLL(AssignmentWrapperPayload wrapper, IMapper mapper) {
+        var obj = mapper.Map<AssignmentBLL>(wrapper.Assignment);
+
+        return new AssignmentWrapperBLL(wrapper.ProjectName, wrapper.UserName, obj);
     }
 }

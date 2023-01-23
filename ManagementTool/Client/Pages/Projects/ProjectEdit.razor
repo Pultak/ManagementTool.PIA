@@ -133,10 +133,10 @@ else {
         else{
             WaitingForApiResponse = true;
             if (NewProjectCreation) {
-                SendApiPutRequest("api/Projects");
+                SendApiPostRequest("api/Projects");
             }
             else if (EditContext?.IsModified() ?? false){
-                SendApiPatchRequest("api/Projects/update");
+                SendApiPatchRequest("api/Projects");
             }
             else {
                 WaitingForApiResponse = false;
@@ -152,8 +152,8 @@ else {
     }
 
 
-    private async void SendApiPutRequest(string endpoint) {
-        var apiResponse = await Http.SendApiPutRequest(Logger, endpoint, SelectedProject);
+    private async void SendApiPostRequest(string endpoint) {
+        var apiResponse = await Http.SendApiPostRequest(Logger, endpoint, SelectedProject);
         ResolveResponse(apiResponse);
     }
 

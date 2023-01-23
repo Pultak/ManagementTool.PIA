@@ -1,11 +1,8 @@
+using ManagementTool.Server.Repository;
 using ManagementTool.Server.Repository.Projects;
 using ManagementTool.Server.Repository.Users;
-using ManagementTool.Server.Services;
 using ManagementTool.Server.Services.Projects;
 using ManagementTool.Server.Services.Users;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption;
-using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel;
 using Microsoft.EntityFrameworkCore;
 using ManagementTool.Server.Services.Assignments;
 using ManagementTool.Server.Services.Roles;
@@ -75,15 +72,15 @@ internal class Program {
 
     private static void Configure(IServiceCollection services, IConfiguration configuration) {
 
-        //services.AddAutoMapper(typeof(Program));
+        services.AddAutoMapper(typeof(Program));
         services.AddControllersWithViews();
         services.AddRazorPages();
-        var keysDirectory = configuration.GetValue<string>("KeysFolder");
+        /*var keysDirectory = configuration.GetValue<string>("KeysFolder");
         services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keysDirectory))
             .UseCryptographicAlgorithms(new AuthenticatedEncryptorConfiguration{
                 EncryptionAlgorithm = EncryptionAlgorithm.AES_256_CBC,
                 ValidationAlgorithm = ValidationAlgorithm.HMACSHA256
-            });
+            });*/
         services.AddHttpContextAccessor();
         services.AddDistributedMemoryCache();
         services.AddSession(options => {

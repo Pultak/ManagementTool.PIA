@@ -1,4 +1,4 @@
-﻿using ManagementTool.Shared.Models.Database;
+﻿using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Shared.Utils; 
@@ -21,7 +21,7 @@ public static class ProjectUtils {
     /// </summary>
     /// <param name="project">project you want check</param>
     /// <returns>Ok if valid, otherwise EProjectCreationResponse with error</returns>
-    public static EProjectCreationResponse ValidateNewProject(Project? project) {
+    public static EProjectCreationResponse ValidateNewProject(ProjectPL? project) {
         if(project == null) {
             return EProjectCreationResponse.EmptyProject;
         }

@@ -5,8 +5,7 @@ namespace ManagementTool.Shared.Models.Presentation.Api.Requests;
 /// <summary>
 /// Payload for the change of assigned users of desired project
 /// </summary>
-public class ProjectAssignRequest
-{
+public class ProjectAssignRequest {
     /// <summary>
     /// List of all assigned users to the selected project
     /// </summary>
@@ -18,13 +17,11 @@ public class ProjectAssignRequest
     public long ProjectId { get; set; }
 
 
-    public ProjectAssignRequest()
-    {
+    public ProjectAssignRequest() {
 
     }
 
-    public ProjectAssignRequest(List<UserBasePL> assigned, long projectId)
-    {
+    public ProjectAssignRequest(List<UserBasePL> assigned, long projectId) {
         AssignedUsers = assigned;
         ProjectId = projectId;
     }

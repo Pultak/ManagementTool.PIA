@@ -12,12 +12,12 @@ public interface IAuthService {
     public const string UserRolesKey = "_Roles";
     public const string UserHasInitPwdKey = "_InitPwd";
 
-    public (AuthResponse authResponse, HttpStatusCode statusCode) Login(AuthPayload authPayload);
+    public (AuthResponse authResponse, HttpStatusCode statusCode) Login(AuthRequest authRequest);
 
     public AuthResponse Logout();
 
 
-    public LoggedUserPayload? GetLoggedInUser();
+    public LoggedUserPayload GetLoggedInUser();
     public HttpStatusCode LoggedInUserChangePwd(string newPwd);
 
     public bool IsUserAuthorized(ERoleType? neededRole);

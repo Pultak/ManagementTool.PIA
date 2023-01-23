@@ -122,7 +122,7 @@ else {
             ModalMessage = "Nejdříve vložte validní heslo!";
         }else{
             WaitingForApiResponse = true;
-            SendApiPatchRequest("auth/changePwd");
+            SendApiPatchRequest("api/auth");
         }
         StateHasChanged();
     }

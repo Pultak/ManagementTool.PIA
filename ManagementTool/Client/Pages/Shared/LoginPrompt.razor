@@ -31,7 +31,7 @@
             <tr>
                 <td>Heslo</td>
                 <td>
-                    <InputText id="txtName" type="text" required
+                        <InputText id="txtName" type="password" required
                                @bind-Value="@AuthRequest.Password"/>
                     <ValidationMessage For="@(() => AuthRequest.Password)"/>
 
@@ -129,7 +129,7 @@
     }
 
     private void HandleValidSubmit() {
-        var task = Http.PostAsJsonAsync("auth", AuthRequest);
+        var task = Http.PostAsJsonAsync("api/auth", AuthRequest);
         CallLoginApiAsync(task);
     }
 

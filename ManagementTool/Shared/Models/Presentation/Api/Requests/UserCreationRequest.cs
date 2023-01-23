@@ -5,7 +5,7 @@
 /// </summary>
 public class UserCreationRequest : UserUpdateRequest {
     
-    public string Pwd { get; }
+    public string Pwd { get; set; }
     
     public UserCreationRequest(UserBasePL newUser) : base(newUser) {
         Pwd = string.Empty;

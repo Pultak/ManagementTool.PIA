@@ -1,4 +1,4 @@
-﻿using ManagementTool.Shared.Models.Database;
+﻿using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Shared.Utils; 
@@ -30,7 +30,7 @@ public static class AssignmentUtils {
     /// <param name="project">Project that this assignment is part of</param>
     /// <param name="user">User that this assignment is assigned to</param>
     /// <returns>Ok if valid, otherwise EAssignmentCreationResponse with error</returns>
-    public static EAssignmentCreationResponse ValidateNewAssignment(Assignment assignment, Project? project, UserBase? user) {
+    public static EAssignmentCreationResponse ValidateNewAssignment(AssignmentPL assignment, ProjectPL? project, UserBasePL? user) {
 
         if (project == null || assignment.ProjectId != project.Id) {
             return EAssignmentCreationResponse.InvalidProject;
@@ -73,7 +73,7 @@ public static class AssignmentUtils {
     /// <param name="fromDate">from date for the assignment start</param>
     /// <param name="toDate">to date for the assignment end</param>
     /// <returns>Ok if valid, otherwise EWorkloadValidation with error</returns>
-    public static EWorkloadValidation ValidateWorkloadPayload(long[] ids, DateTime? fromDate, DateTime? toDate) {
+    public static EWorkloadValidation ValidateWorkloadRequest(long[] ids, DateTime? fromDate, DateTime? toDate) {
         if (ids.Length == 0) {
             return EWorkloadValidation.EmptyUsers;
         }
@@ -128,7 +128,7 @@ public static class AssignmentUtils {
         }
 
         var scope = toDate - fromDate;
-        if (scope?.Days > MaxTimeSpaceBetweenDates) {
+        if (scope.Value.Days > MaxTimeSpaceBetweenDates) {
             return EWorkloadValidation.TooLongScope;
         }
 
@@ -157,7 +157,6 @@ public static class AssignmentUtils {
     /// </summary>
     /// <param name="firstDay">First day in the time interval</param>
     /// <param name="lastDay">Last day in the time interval</param>
-    /// <param name="bankHolidays">List of bank holidays excluding weekends</param>
     /// <returns>Number of business days during the 'span'</returns>
     public static int BusinessDaysUntil(this DateTime firstDay, DateTime lastDay) {
         firstDay = firstDay.Date;

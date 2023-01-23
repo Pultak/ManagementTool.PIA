@@ -138,22 +138,22 @@ else {
         ERoleType? newRole;
         switch (pagePath) {
             case "/assignments/department":
-                requestUri = "api/assignments/";
+                requestUri = "api/Assignments/";
                 newRole = ERoleType.DepartmentManager;
                 CurrentEndpoint = EAssignmentPage.Department;
                 break;
             case "/assignments/my":
-                requestUri = "api/assignments/my";
+                requestUri = "api/Assignments/my";
                 newRole = null;
                 CurrentEndpoint = EAssignmentPage.My;
                 break;
             case "/assignments/superior":
-                requestUri = "api/assignments/Subordinates";
+                requestUri = "api/Assignments/superior";
                 newRole = ERoleType.Superior;
                 CurrentEndpoint = EAssignmentPage.Superior;
                 break;
             case "/assignments/project":
-                requestUri = "api/assignments/ProjectSubordinates";
+                requestUri = "api/Assignments/project";
                 newRole = ERoleType.ProjectManager;
                 CurrentEndpoint = EAssignmentPage.Project;
                 break;

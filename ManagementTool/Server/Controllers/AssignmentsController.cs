@@ -21,8 +21,7 @@ public class AssignmentsController : ControllerBase {
         AssignmentService = assignmentService;
         WorkloadService = workloadService;
     }
-
-    //todo changed
+    
     [HttpGet("superior")]
     public IEnumerable<AssignmentWrapperPayload>? GetSuperiorsSubordinateAssignments() {
         if (!AuthService.IsUserAuthorized(ERoleType.Superior)) {
@@ -46,8 +45,7 @@ public class AssignmentsController : ControllerBase {
         }
         return result;
     }
-
-    //todo changed uri
+    
     [HttpGet("project")]
     public IEnumerable<AssignmentWrapperPayload>? GetProjectSubordinateAssignments() {
         if (!AuthService.IsUserAuthorized(ERoleType.ProjectManager)) {
@@ -140,8 +138,7 @@ public class AssignmentsController : ControllerBase {
         }
         return resultWorkloads;
     }
-
-    //todo changed
+    
     [HttpPost]
     public void CreateAssignment([FromBody] AssignmentPL assignment) {
         if (!AuthService.IsAuthorizedToManageAssignments(assignment.ProjectId)) {

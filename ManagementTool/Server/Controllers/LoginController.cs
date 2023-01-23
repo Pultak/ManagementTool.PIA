@@ -3,9 +3,6 @@ using ManagementTool.Server.Services.Users;
 using ManagementTool.Shared.Models.Login;
 using Microsoft.AspNetCore.Mvc;
 
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-
 namespace ManagementTool.Server.Controllers;
 //todo changed
 [Route("api/auth")]
@@ -18,8 +15,8 @@ public class LoginController : ControllerBase {
     }
     
     [HttpPost]
-    public AuthResponse Login([FromBody] AuthPayload authPayload) {
-        var result = AuthService.Login(authPayload);
+    public AuthResponse Login([FromBody] AuthRequest authRequest) {
+        var result = AuthService.Login(authRequest);
         Response.StatusCode = (int)result.statusCode;
         return result.authResponse;
     }
@@ -31,11 +28,10 @@ public class LoginController : ControllerBase {
     }
 
     [HttpGet("info")]
-    public LoggedUserPayload? GetLoggedInUser() {
+    public LoggedUserPayload GetLoggedInUser() {
         return AuthService.GetLoggedInUser();
     }
-
-    //todo
+    
     [HttpPatch]
     public void LoggedInUserChangePwd([FromBody] string newPwd) {
         Response.StatusCode = (int)AuthService.LoggedInUserChangePwd(newPwd);

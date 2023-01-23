@@ -37,8 +37,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\Database\" />
-    <Folder Include="Models\Business\" />
     <Folder Include="test\" />
   </ItemGroup>
 

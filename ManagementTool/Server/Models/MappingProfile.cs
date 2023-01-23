@@ -19,6 +19,9 @@ internal class MappingProfile : Profile {
 
         CreateMap<RoleDAL, RoleBLL>();
         CreateMap<RoleBLL, RoleDAL>();
+
+        CreateMap<RolePL, RoleBLL>();
+        CreateMap<RoleBLL, RolePL>();
     }
 
 

@@ -150,7 +150,7 @@ else {
             var fromDate = FromDate!.Value.ToString("dd-MM-yyyy");
             var toDate = ToDate!.Value.ToString("dd-MM-yyyy");
 
-            var uri = $"api/Assignments/workload/{fromDate}/{toDate}?{selectedIds}";
+            var uri = $"api/Assignments/workloads/{fromDate}/{toDate}?{selectedIds}";
             var userResult = await Http.SendApiGetRequestAsync <UserWorkloadPayload> (Logger, uri);
             if (userResult.status != EApiHttpResponse.Ok) {
                 ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);

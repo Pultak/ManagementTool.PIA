@@ -25,8 +25,8 @@ public class AuthService : IAuthService {
         Mapper = mapper;
     }
 
-     public (AuthResponse authResponse, HttpStatusCode statusCode) Login(AuthPayload authPayload) {
-        if (string.IsNullOrEmpty(authPayload.Password) || string.IsNullOrEmpty(authPayload.Username)) {
+     public (AuthResponse authResponse, HttpStatusCode statusCode) Login(AuthRequest authRequest) {
+        if (string.IsNullOrEmpty(authRequest.Password) || string.IsNullOrEmpty(authRequest.Username)) {
             return (AuthResponse.BadRequest, HttpStatusCode.BadRequest);
         }
         if (IsUserAuthorized(null)) {
@@ -34,12 +34,12 @@ public class AuthService : IAuthService {
             return (AuthResponse.AlreadyLoggedIn, HttpStatusCode.OK);
         }
 
-        var userCredentials = UserRepository.GetUserCredentials(authPayload.Username);
+        var userCredentials = UserRepository.GetUserCredentials(authRequest.Username);
         if (userCredentials == null) {
             return (AuthResponse.UnknownUser, HttpStatusCode.Unauthorized);
         }
 
-        var hashedPwd = HashPwd(authPayload.Password, Convert.FromBase64String(userCredentials.Value.salt));
+        var hashedPwd = HashPwd(authRequest.Password, Convert.FromBase64String(userCredentials.Value.salt));
 
         if (!userCredentials.Value.pwd.Equals(hashedPwd)) {
             return (AuthResponse.WrongPassword, HttpStatusCode.Unauthorized);
@@ -73,10 +73,10 @@ public class AuthService : IAuthService {
         return AuthResponse.Success;
      }
 
-     public LoggedUserPayload? GetLoggedInUser(){
+     public LoggedUserPayload GetLoggedInUser(){
          var name = Accessor.HttpContext?.Session.GetString(IAuthService.UsernameKey);
          if (name == null) {
-             return null;
+             return new LoggedUserPayload();
          }
 
          var blRoles = Accessor.HttpContext?.Session.GetObject<RoleBLL[]>(IAuthService.UserRolesKey);
