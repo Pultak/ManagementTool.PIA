@@ -1,7 +1,6 @@
-﻿using System.Text;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 
-namespace ManagementTool.ServerTests.MoqModels; 
+namespace ManagementTool.ServerTests.MoqModels;
 
 public class MockHttpSession : ISession {
     private readonly Dictionary<string, object> sessionStorage = new();
@@ -18,10 +17,6 @@ public class MockHttpSession : ISession {
     IEnumerable<string> ISession.Keys => sessionStorage.Keys;
 
     void ISession.Clear() {
-        sessionStorage.Clear();
-    }
-
-    public void ClearStorage() {
         sessionStorage.Clear();
     }
 
@@ -45,5 +40,9 @@ public class MockHttpSession : ISession {
 
         value = null;
         return false;
+    }
+
+    public void ClearStorage() {
+        sessionStorage.Clear();
     }
 }
