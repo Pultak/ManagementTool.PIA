@@ -1,13 +1,13 @@
 ﻿@page "/projects/edit/{ReturnEndpoint:int}"
-@using ManagementTool.Shared.Models.Utils
-@using ManagementTool.Shared.Utils
-@using Microsoft.AspNetCore.Components
+
 @using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.Presentation
-
+@using ManagementTool.Shared.Models.Presentation.Api.Payloads
+@using ManagementTool.Shared.Models.Utils
+@using ManagementTool.Shared.Utils
 @inherits InteractivePageBase<ProjectEdit>
 
-@inject StateContainer<ProjectPL> ProjectContainer
+@inject StateContainer<ProjectInfoPayload> ProjectContainer
 @inject HttpClient Http
 
 <button @onclick="Return">
@@ -42,7 +42,7 @@ else {
                                 Název projektu
                             </label>
                             <InputText id="txtName" type="text" required @bind-Value="SelectedProject.ProjectName"/>
-                            <ValidationMessage For="@(() => SelectedProject.ProjectName)"/>
+                            <ValidationMessage For="@(() => SelectedProject.Project.ProjectName)"/>
                         </p>
                     </div>
 
@@ -51,8 +51,8 @@ else {
                             <label>
                                 Datum od
                             </label>
-                            <input id="txtDate" type="date" @bind-value="SelectedProject.FromDate" min="01/01/1970" placeholder="dd/MM/yyyy" required />
-                            <ValidationMessage For="@(() => SelectedProject.FromDate)"/>
+                            <input id="txtDate" type="date" @bind-value="SelectedProject.Project.FromDate" min="01/01/1970" placeholder="dd/MM/yyyy" required/>
+                            <ValidationMessage For="@(() => SelectedProject.Project.FromDate)" />
                         </p>
                     </div>
                     <div>
@@ -60,8 +60,8 @@ else {
                             <label>
                                 Datum do
                             </label>
-                            <input id="txtDate" type="date" @bind-value="SelectedProject.ToDate" min="1970-01-01" placeholder="dd/MM/yyyy" />
-                            <ValidationMessage For="@(() => SelectedProject.ToDate)"/>
+                            <input id="txtDate" type="date" @bind-value="SelectedProject.Project.ToDate" min="1970-01-01" placeholder="dd/MM/yyyy" />
+                            <ValidationMessage For="@(() => SelectedProject.Project.ToDate)" />
                         </p>
                     </div>
 
@@ -71,13 +71,40 @@ else {
                                 Popisek projektu
                             </label>
                             <InputText id="txtName" type="text" required @bind-Value="SelectedProject.Description"/>
-                            <ValidationMessage For="@(() => SelectedProject.Description)"/>
+                            <ValidationMessage For="@(() => SelectedProject.Project.Description)" />
                         </p>
                     </div>
 
+
+                    <div>
+                        <p>
+                            <label>
+                                Přiřazený projektový manažer
+                            </label>
+                            <select @onchange="@OnSelectedProjectManagerChange">
+                                <option value=0 disabled selected hidden>
+                                    @if (NewProjectCreation) {
+                                        <b>[uživatel zatím nezvolen]</b>
+                                    }
+                                    else {
+                                        @SelectedProject.ManagerName
+                                    }
+
+                                </option>
+                                @foreach (var assignee in AllUsers) {
+                                    <option value="@assignee.Id">
+                                        @assignee.FullName
+                                    </option>
+                                }
+                            </select>
+                            <ValidationMessage For="@(() => SelectedProject.ManagerName)"/>
+                        </p>
+                    </div>
+                    
+
                 </EditForm>
 
-                if (ExceptionMessage != null) {
+                @if (ExceptionMessage != null) {
                     <div>
                         <p>@ExceptionMessage</p>
                     </div>
@@ -98,7 +125,6 @@ else {
             </section>
         </div>
     }
-
 }
 
 
@@ -106,36 +132,65 @@ else {
 
     [Parameter]
     public int ReturnEndpoint { get; set; }
-    
+
     private EditContext? EditContext { get; set; }
-    public ProjectPL SelectedProject { get; set; } = new();
-    
+    public ProjectInfoPayload SelectedProject { get; set; } = new();
+
+    private UserBasePL[] AllUsers = Array.Empty<UserBasePL>();
+
+    private string? SelectedManagerId { get; set; }
+
+
     private bool NewProjectCreation { get; set; }
-    
+
     protected override void OnInitialized() {
-        ReturnUri = $"/projects/{(EProjectPage)ReturnEndpoint}".ToLower();
-        NeededRoles = new[] { ERoleType.DepartmentManager, ERoleType.ProjectManager, ERoleType.Secretariat };
+        ReturnUri = $"/projects/{(ProjectPage)ReturnEndpoint}".ToLower();
+        NeededRoles = new[] { RoleType.DepartmentManager, RoleType.ProjectManager, RoleType.Secretariat };
         if (ProjectContainer.Value == null) {
             NewProjectCreation = true;
-            SelectedProject = new ProjectPL(default, "", DateTime.Now.Date, null, "");
+            SelectedProject = new ProjectInfoPayload {
+                Project = new ProjectPL {
+                        FromDate = DateTime.Now.Date
+                }
+            };
         }
         else {
             SelectedProject = ProjectContainer.Value;
         }
         EditContext = new EditContext(SelectedProject);
     }
+
+    protected override async Task OnInitializedAsync() {
+        if (IsAuthorized) {
+            var result = await Http.SendApiGetRequestAsync<UserBasePL[]>(Logger, "api/Users");
+            if (result.status != ApiHttpResponse.Ok) {
+                ExceptionMessage = StringResolver.ResolveApiResponse(result.status);
+            }
+            else if (result.response != null) {
+                AllUsers = result.response;
+            }
+        }
+        await base.OnInitializedAsync();
+    }
     
+    private void OnSelectedProjectManagerChange(ChangeEventArgs evt) {
+        if (evt.Value is not string idString) {
+            return;
+        }
+        SelectedManagerId = idString;
+    }
+
     private void HandleValidSubmit() {
-        var valResult = ProjectUtils.ValidateNewProject(SelectedProject);
-        if (valResult != EProjectCreationResponse.Ok) {
+        var valResult = ProjectUtils.ValidateNewProject(SelectedProject.Project);
+        if (valResult != ProjectCreationResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveProjectValidation(valResult);
         }
-        else{
+        else {
             WaitingForApiResponse = true;
             if (NewProjectCreation) {
                 SendApiPostRequest("api/Projects");
             }
-            else if (EditContext?.IsModified() ?? false){
+            else if (EditContext?.IsModified() ?? false) {
                 SendApiPatchRequest("api/Projects");
             }
             else {
@@ -162,9 +217,9 @@ else {
         ResolveResponse(apiResponse);
     }
 
-    private void ResolveResponse(EApiHttpResponse apiResponse) {
+    private void ResolveResponse(ApiHttpResponse apiResponse) {
         WaitingForApiResponse = false;
-        if (apiResponse == EApiHttpResponse.Ok) {
+        if (apiResponse == ApiHttpResponse.Ok) {
             Return();
         }
         else {
@@ -172,4 +227,5 @@ else {
             StateHasChanged();
         }
     }
+
 }

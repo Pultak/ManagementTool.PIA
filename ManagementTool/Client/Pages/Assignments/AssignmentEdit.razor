@@ -1,12 +1,11 @@
 ﻿@page "/assignments/edit/{ReturnEndpoint:int}"
-@using ManagementTool.Shared.Models.Utils
-@using ManagementTool.Shared.Utils
-@using System.ComponentModel.DataAnnotations
+
 @using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.Presentation
 @using ManagementTool.Shared.Models.Presentation.Api.Payloads
-@using Microsoft.AspNetCore.Components
-
+@using ManagementTool.Shared.Models.Utils
+@using ManagementTool.Shared.Utils
+@using System.ComponentModel.DataAnnotations
 @inherits InteractivePageBase<AssignmentEdit>
 
 @inject HttpClient Http
@@ -124,18 +123,18 @@ else {
                     <tr>
 
                         <td>
-                            Přiřazené časové kvantum
+                            Přiřazené časové kvantum (v hodinách)
                         </td>
                         <td>
                             <InputNumber id="txtNumber" required @bind-Value="@SelectedAssignment.Assignment.AllocationScope" ParsingErrorMessage=""/>
                             <ValidationMessage For="@(() => SelectedAssignment.Assignment.AllocationScope)"/>
                         </td>
-                        <td>
+                        <!--<td>
                             <p>FTE</p>
                         </td>
                         <td>
-                            <input class="form-check-input" type="checkbox" name="FTE" @bind="FteMode">
-                        </td>
+                            <input class="form-check-input" type="checkbox" name="FTE" bind="FteMode">
+                        </td>-->
                     </tr>
                     <tr>
                         <td>
@@ -153,7 +152,7 @@ else {
                         </td>
                         <td>
                             <InputSelect @bind-Value="SelectedAssignment.Assignment.State">
-                                @foreach (var state in Enum.GetValues(typeof(EAssignmentState))) {
+                                @foreach (var state in Enum.GetValues(typeof(AssignmentState))) {
                                     <option value="@state">@state</option>
                                 }
                             </InputSelect>
@@ -192,7 +191,7 @@ else {
 
     [Parameter]
     public int ReturnEndpoint { get; set; }
-    
+
     public AssignmentWrapperPayload SelectedAssignment { get; set; } = new();
     private EditContext? EditContext { get; set; }
 
@@ -211,9 +210,9 @@ else {
     private bool NewAssignmentCreation { get; set; }
 
     protected override void OnInitialized() {
-        ReturnUri = $"/assignments/{(EAssignmentPage)ReturnEndpoint}".ToLower();
+        ReturnUri = $"/assignments/{(AssignmentPage)ReturnEndpoint}".ToLower();
         NeededRoles = new[] {
-            ERoleType.ProjectManager, ERoleType.DepartmentManager
+            RoleType.ProjectManager, RoleType.DepartmentManager
         };
         base.OnInitialized();
     }
@@ -238,7 +237,7 @@ else {
         var req = await Http.SendApiGetRequestAsync<ProjectPL[]?>(Logger, "api/Projects");
 
 
-        if (req.status != EApiHttpResponse.Ok) {
+        if (req.status != ApiHttpResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveApiResponse(req.status);
             StateHasChanged();
         }
@@ -258,12 +257,12 @@ else {
         SelectedUser = null;
         PossibleAssignees = Array.Empty<UserBasePL>();
 
-        //is id valid? not changed by user manually
+    //is id valid? not changed by user manually
         if (!long.TryParse(selectedProjectId, out var resultId)) return;
 
         SelectedAssignment.Assignment.ProjectId = resultId;
         SelectedAssignment.Assignment.UserId = 0;
-        //we dont need to wait
+    //we dont need to wait
         _ = GetPossibleAssigneesData(resultId);
     }
 
@@ -284,7 +283,7 @@ else {
             var req = await Http.SendApiGetRequestAsync<UserBasePL[]>(Logger, $"api/Projects/{projectId}/users");
 
 
-            if (req.status != EApiHttpResponse.Ok) {
+            if (req.status != ApiHttpResponse.Ok) {
                 ExceptionMessage = StringResolver.ResolveApiResponse(req.status);
                 StateHasChanged();
             }
@@ -302,13 +301,13 @@ else {
         var project = AllProjects.FirstOrDefault(x => x.Id == SelectedAssignment.Assignment.ProjectId);
         var user = PossibleAssignees.FirstOrDefault(x => x.Id == SelectedAssignment.Assignment.UserId);
         var valResult = AssignmentUtils.ValidateNewAssignment(SelectedAssignment.Assignment, project, user);
-        if (valResult != EAssignmentCreationResponse.Ok) {
+        if (valResult != AssignmentCreationResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveAssignmentValidation(valResult);
         }
         else {
             WaitingForApiResponse = true;
             if (FteMode) {
-                //FTE is 40 hours 
+    //FTE is 40 hours 
                 SelectedAssignment.Assignment.AllocationScope *= 40;
             }
             FteMode = false;
@@ -341,4 +340,5 @@ else {
         Http.SendApiDeleteRequestAsync(Logger, "api/Assignments/" + SelectedAssignment.Assignment.Id, ResolveResponse);
         StateHasChanged();
     }
+
 }

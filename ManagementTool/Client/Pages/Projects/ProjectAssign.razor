@@ -1,18 +1,19 @@
 ﻿@page "/projects/userAssign/{ReturnEndpoint:int}"
+
+@using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.Presentation
+@using ManagementTool.Shared.Models.Presentation.Api.Payloads
 @using ManagementTool.Shared.Models.Presentation.Api.Requests
 @using ManagementTool.Shared.Models.Utils
-@using ManagementTool.Client.Utils
-
 @inherits InteractivePageBase<ProjectAssign>
 
 @inject HttpClient Http
-@inject StateContainer<ProjectPL> ProjectContainer
+@inject StateContainer<ProjectInfoPayload> ProjectContainer
 
 
 <button @onclick="Return">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" />
+        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
     </svg>
 </button>
 <h3>Přiřazování uživatelů ke zvolenému projektu</h3>
@@ -22,7 +23,6 @@
     <div>Vypadá to, že nemáte dostatečné práva na zobrazení tohoto listu!</div>
 }
 else {
-    
     @if (DataFetchFailed) {
         <p>Nebyli nalezeni žádní uživatelé, které by bylo možné přiřadit k projektu!</p>
     }
@@ -35,7 +35,7 @@ else {
             <div class="row">
                 <div class="col-sm">Jméno zvoleného projektu: </div>
                 <div class="col-sm">
-                        <b>@SelectedProject.ProjectName</b>
+                    <b>@SelectedProjectInfo.Project.ProjectName</b>
                 </div>
             </div>
 
@@ -62,7 +62,7 @@ else {
                 </select>
                 <button type="submit" @onclick="@AssignUsersToProject" class="btn btn-primary">Přidat zvolené do projektu</button>
             </div>
-            
+
             @if (ValidationMessage != null) {
                 <div class="row">
                     <p>@ValidationMessage</p>
@@ -74,18 +74,17 @@ else {
             Zpět
         </button>
     }
-
-
-
-
 }
+
 @code {
 
     [Parameter]
     public int ReturnEndpoint { get; set; }
-    
+
     public Dictionary<long, DataModelAssignmentPL<UserBasePL>> UsersDictionary = new();
-    public ProjectPL SelectedProject = new(){Id = 0, ProjectName = ""};
+    public ProjectInfoPayload SelectedProjectInfo = new() {
+        Project = new ProjectPL{Id = 0, ProjectName = "" }
+    };
 
     public string[] SelectedUsersFromAssigned { get; set; } = Array.Empty<string>();
     public string[] SelectedUsersFromUnassigned { get; set; } = Array.Empty<string>();
@@ -96,8 +95,8 @@ else {
     private bool DataFetchFailed { get; set; }
 
     protected override void OnInitialized() {
-        ReturnUri = $"/projects/{(EProjectPage)ReturnEndpoint}".ToLower();
-        NeededRoles = new[] { ERoleType.Secretariat };
+        ReturnUri = $"/projects/{(ProjectPage)ReturnEndpoint}".ToLower();
+        NeededRoles = new[] { RoleType.Secretariat };
         base.OnInitialized();
     }
 
@@ -108,18 +107,18 @@ else {
                                 "Zkuste znovu zvolit žádaný projekt, nebo restartovat stránku!";
         }
         else {
-            SelectedProject = ProjectContainer.Value;
+            SelectedProjectInfo = ProjectContainer.Value;
         }
-        if (IsAuthorized && SelectedProject.Id != 0) {
+        if (IsAuthorized && SelectedProjectInfo.Project.Id != 0) {
             var result = await Http.SendApiGetRequestAsync<List<DataModelAssignmentPL<UserBasePL>>?>(
-                Logger, $"api/Projects/{SelectedProject.Id}/users");
+                Logger, $"api/Projects/{SelectedProjectInfo.Project.Id}/users");
 
-            if (result is { status: EApiHttpResponse.Ok,response: { } }) {
+            if (result is { status: ApiHttpResponse.Ok,response: { } }) {
                 UsersDictionary = result.response.ToDictionary(x => x.DataModel.Id, x => x);
             }
             else {
                 DataFetchFailed = true;
-                if (result.status == EApiHttpResponse.Ok) {
+                if (result.status == ApiHttpResponse.Ok) {
                     ValidationMessage = "API server poslal prázdné data!";
                 }
                 else {
@@ -128,25 +127,25 @@ else {
             }
         }
         WaitingForApiResponse = false;
-        
+
         StateHasChanged();
     }
 
-    
+
     private void AssignedUsersSelectionChanged(ChangeEventArgs e) {
         var value = e.Value;
         if (value is string[]strings) {
             SelectedUsersFromAssigned = strings;
         }
-
     }
+
     private void UnassignedUsersSelectionChanged(ChangeEventArgs e) {
         var value = e.Value;
         if (value != null) {
             SelectedUsersFromUnassigned = (string[])value;
         }
     }
-    
+
     private void UnassignUsersFromProject() {
         WaitingForApiResponse = true;
         ValidationMessage = null;
@@ -156,10 +155,10 @@ else {
 
             UsersDictionary[id].IsAssigned = false;
         }
-        var payload = new ProjectAssignRequest{
+        var payload = new ProjectAssignRequest {
             AssignedUsers = UsersDictionary.Where(x => x.Value.IsAssigned).
                 Select(x => x.Value.DataModel).ToList(),
-            ProjectId = SelectedProject.Id
+            ProjectId = SelectedProjectInfo.Project.Id
         };
         Http.SendApiPatchRequestAsync(Logger, "api/Projects/users", payload, ResolveResponse);
         StateHasChanged();
@@ -175,20 +174,21 @@ else {
             UsersDictionary[id].IsAssigned = true;
         }
 
-        var payload = new ProjectAssignRequest{
+        var payload = new ProjectAssignRequest {
             AssignedUsers = UsersDictionary.Where(x => x.Value.IsAssigned).
                 Select(x => x.Value.DataModel).ToList(),
-            ProjectId = SelectedProject.Id
+            ProjectId = SelectedProjectInfo.Project.Id
         };
         Http.SendApiPostRequestAsync(Logger, "api/Projects/users", payload, ResolveResponse);
         StateHasChanged();
     }
 
-    
-    protected override void ResolveResponse(EApiHttpResponse apiResponse, bool changePage) {
+
+    protected override void ResolveResponse(ApiHttpResponse apiResponse, bool changePage) {
         WaitingForApiResponse = false;
         ValidationMessage = StringResolver.ResolveApiResponse(apiResponse);
-        
+
         StateHasChanged();
     }
+
 }

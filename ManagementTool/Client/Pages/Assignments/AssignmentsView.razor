@@ -3,18 +3,17 @@
 @page "/assignments/project"
 @page "/assignments/department"
 
-@using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.Presentation
 @using ManagementTool.Shared.Models.Presentation.Api.Payloads
-
+@using ManagementTool.Shared.Models.Utils
 @inherits InteractivePageBase<AssignmentsView>
 
 @inject HttpClient Http
 @inject StateContainer<AssignmentWrapperPayload> AssignmentContainer
 
 @if (!IsAuthorized) {
-        <div>Vypadá to, že nemáte dostatečné práva na zobrazení tohoto listu!</div>
+    <div>Vypadá to, že nemáte dostatečné práva na zobrazení tohoto listu!</div>
 }
 else if (WaitingForApiResponse) {
     <div class="spinner"></div>
@@ -25,26 +24,26 @@ else if (DataFetchFailed) {
 }
 else {
     @switch (CurrentEndpoint) {
-        case EAssignmentPage.My:
-                <h3>Moje úkoly</h3>
-                <p>Na následující stránce můžu vidět všechny úkoly, které mi byly přiřazeny.</p>
+        case AssignmentPage.My:
+            <h3>Moje úkoly</h3>
+            <p>Na následující stránce můžu vidět všechny úkoly, které mi byly přiřazeny.</p>
             break;
-        case EAssignmentPage.Superior:
-                <h3>Úkoly podřízených</h3>
-                <p>Na následující stránce můžu vidět všechny úkoly všech mých podřízených.</p>
+        case AssignmentPage.Superior:
+            <h3>Úkoly podřízených</h3>
+            <p>Na následující stránce můžu vidět všechny úkoly všech mých podřízených.</p>
             break;
-        case EAssignmentPage.Department:
-                <h3>Úkoly celého oddělení</h3>
-                <p>Na následující stránce můžu vidět všechny úkoly.</p>
+        case AssignmentPage.Department:
+            <h3>Úkoly celého oddělení</h3>
+            <p>Na následující stránce můžu vidět všechny úkoly.</p>
             break;
-        case EAssignmentPage.Project:
-                <h3>Úkoly projektů</h3>
-                <p>Na následující stránce můžu vidět všechny úkoly spadající pod mé projekty.</p>
+        case AssignmentPage.Project:
+            <h3>Úkoly projektů</h3>
+            <p>Na následující stránce můžu vidět všechny úkoly spadající pod mé projekty.</p>
             break;
         default:
             throw new ArgumentOutOfRangeException();
     }
-    @if (NeededRole != null && NeededRole != ERoleType.Superior) {
+    @if (NeededRole != null && NeededRole != RoleType.Superior) {
         <button @onclick="CreateNewAssignment">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
@@ -64,9 +63,9 @@ else {
                 <th>Datum do</th>
                 <th>Stav</th>
                 <th>Detail</th>
-            @if (NeededRole != null) {
-                <th>Editace</th>
-            }
+                @if (NeededRole != null) {
+                    <th>Editace</th>
+                }
             </tr>
             </thead>
             <tbody>
@@ -87,16 +86,16 @@ else {
                             </svg>
                         </button>
                     </td>
-                    
-            @if (NeededRole != null) {
-                <td>
-                    <button @onclick="_ => NavigateToEditMode(wrapper)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z"/>
-                        </svg>
-                    </button>
-                </td>
-            }
+
+                    @if (NeededRole != null) {
+                        <td>
+                            <button @onclick="_ => NavigateToEditMode(wrapper)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    }
                 </tr>
             }
             </tbody>
@@ -112,12 +111,12 @@ else {
 
     private bool DataFetchFailed { get; set; }
 
-    private ERoleType? NeededRole { get; set; } = ERoleType.NoRole;
-    private EAssignmentPage CurrentEndpoint { get; set; } = EAssignmentPage.My;
+    private RoleType? NeededRole { get; set; } = RoleType.NoRole;
+    private AssignmentPage CurrentEndpoint { get; set; } = AssignmentPage.My;
 
     protected override void OnInitialized() {
         LoggedUserContainer.OnStateChange += StateHasChanged;
-        // Subscribe to the event
+    // Subscribe to the event
         UriHelper.LocationChanged += LocationChanged;
         base.OnInitialized();
     }
@@ -125,37 +124,37 @@ else {
     async void LocationChanged(object? sender, LocationChangedEventArgs e) {
         await CheckForRoleChanger();
     }
-    
+
     protected override async Task OnInitializedAsync() {
         await CheckForRoleChanger();
         await base.OnInitializedAsync();
     }
-    
+
     private async Task CheckForRoleChanger() {
         var uri = UriHelper.ToAbsoluteUri(UriHelper.Uri);
         var pagePath = uri.LocalPath;
         string requestUri;
-        ERoleType? newRole;
+        RoleType? newRole;
         switch (pagePath) {
             case "/assignments/department":
                 requestUri = "api/Assignments/";
-                newRole = ERoleType.DepartmentManager;
-                CurrentEndpoint = EAssignmentPage.Department;
+                newRole = RoleType.DepartmentManager;
+                CurrentEndpoint = AssignmentPage.Department;
                 break;
             case "/assignments/my":
                 requestUri = "api/Assignments/my";
                 newRole = null;
-                CurrentEndpoint = EAssignmentPage.My;
+                CurrentEndpoint = AssignmentPage.My;
                 break;
             case "/assignments/superior":
                 requestUri = "api/Assignments/superior";
-                newRole = ERoleType.Superior;
-                CurrentEndpoint = EAssignmentPage.Superior;
+                newRole = RoleType.Superior;
+                CurrentEndpoint = AssignmentPage.Superior;
                 break;
             case "/assignments/project":
                 requestUri = "api/Assignments/project";
-                newRole = ERoleType.ProjectManager;
-                CurrentEndpoint = EAssignmentPage.Project;
+                newRole = RoleType.ProjectManager;
+                CurrentEndpoint = AssignmentPage.Project;
                 break;
             default:
                 return;
@@ -164,12 +163,11 @@ else {
         NeededRole = newRole;
         NeededRoles = newRole == null ? null : new[] { newRole.Value };
 
-        //user is authorized and role changed => different page probably
+    //user is authorized and role changed => different page probably
         if (roleChange) {
             if (IsAuthorized) {
                 var result = await Http.SendApiGetRequestAsync<AssignmentWrapperPayload[]>(Logger, requestUri);
-                if (result.status != EApiHttpResponse.Ok)
-                {
+                if (result.status != ApiHttpResponse.Ok) {
                     DataFetchFailed = true;
                     ExceptionMessage = StringResolver.ResolveApiResponse(result.status);
                 }

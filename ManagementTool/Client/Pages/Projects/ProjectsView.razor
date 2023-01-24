@@ -3,13 +3,12 @@
 @page "/projects/secretariat"
 
 @using ManagementTool.Client.Utils
-@using ManagementTool.Shared.Models.Presentation
+@using ManagementTool.Shared.Models.Presentation.Api.Payloads
 @using ManagementTool.Shared.Models.Utils
-
 @inherits InteractivePageBase<ProjectsView>
 
 @inject HttpClient Http
-@inject StateContainer<ProjectPL> ProjectContainer
+@inject StateContainer<ProjectInfoPayload> ProjectContainer
 
 @if (!IsAuthorized) {
     <div>Vypadá to, že nemáte dostatečné práva na zobrazení tohoto listu!</div>
@@ -22,8 +21,7 @@ else {
         <div>Nepovedlo se načíst data z API serveru: @ExceptionMessage</div>
     }
     else {
-
-        @if (CurrentRole == ERoleType.Secretariat) {
+        @if (CurrentRole == RoleType.Secretariat) {
             <button @onclick="CreateNewProject">
                 <!-- svg cross icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -31,7 +29,7 @@ else {
                 </svg>
             </button>
         }
-        
+
         <div class="table-responsive">
             <table class="table table-striped table-hover">
                 <thead class="table-primary">
@@ -40,32 +38,40 @@ else {
                     <th>Od</th>
                     <th>Do</th>
                     <th>Popis projektu</th>
+                    <th>Přiřazený manažer</th>
                     <th>Editace projektu</th>
+                    
+                    @if (CurrentRole == RoleType.Secretariat) {
                     <th>Přiřazení uživatelů</th>
+                    }
                 </tr>
                 </thead>
                 <tbody>
-                @foreach (var project in Projects) {
+                @foreach (var projectInfo in Projects) {
                     <tr>
-                        <td>@project.ProjectName</td>
-                        <td>@project.FromDate.ToString("dd/MM/yyyy")</td>
-                        <td>@project.ToDate?.ToString("dd/MM/yyyy")</td>
-                        <td>@project.Description</td>
+                            <td>@projectInfo.Project.ProjectName</td>
+                            <td>@projectInfo.Project.FromDate.ToString("dd/MM/yyyy")</td>
+                            <td>@projectInfo.Project.ToDate?.ToString("dd/MM/yyyy")</td>
+                            <td>@projectInfo.Project.Description</td>
+                            <td>@projectInfo.ManagerName</td>
                         <td>
                             <!-- edit icon -->
-                            <button @onclick="_ => NavigateToEditMode(project)">
+                                <button @onclick="_ => NavigateToEditMode(projectInfo)">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                                     <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z"/>
                                 </svg>
                             </button>
                         </td>
-                        <td>
-                            <button @onclick="_ => NavigateToUserAssignMode(project)">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-                                </svg>
-                            </button>
-                        </td>
+                        
+                    @if (CurrentRole == RoleType.Secretariat) {
+                    <td>
+                                    <button @onclick="_ => NavigateToUserAssignMode(projectInfo)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                            </svg>
+                        </button>
+                    </td>
+                    }
                     </tr>
                 }
                 </tbody>
@@ -75,16 +81,16 @@ else {
 }
 
 @code {
-    
-    private EProjectPage CurrentEndpoint { get; set; } = EProjectPage.Secretariat;
-    private ERoleType CurrentRole { get; set; } = ERoleType.NoRole;
+
+    private ProjectPage CurrentEndpoint { get; set; } = ProjectPage.Secretariat;
+    private RoleType CurrentRole { get; set; } = RoleType.NoRole;
 
     /// <summary>
     ///     Array of all selected projects from the API. The count of the elements can vary
     ///     because project managers can see only their project and department manager can see all
     /// </summary>
-    private ProjectPL[] Projects { get; set; } = Array.Empty<ProjectPL>();
-    
+    private ProjectInfoPayload[] Projects { get; set; } = Array.Empty<ProjectInfoPayload>();
+
     protected override void OnInitialized() {
         UriHelper.LocationChanged += LocationChanged;
         base.OnInitialized();
@@ -96,12 +102,11 @@ else {
     /// </summary>
     /// <returns>Async task to await for</returns>
     protected override async Task OnInitializedAsync() {
-
         await CheckForRoleChanger();
         await base.OnInitializedAsync();
     }
-    
-    
+
+
     async void LocationChanged(object? sender, LocationChangedEventArgs e) {
         await CheckForRoleChanger();
     }
@@ -109,19 +114,19 @@ else {
     private async Task CheckForRoleChanger() {
         var uri = UriHelper.ToAbsoluteUri(UriHelper.Uri);
         var pagePath = uri.LocalPath;
-        ERoleType newRole;
+        RoleType newRole;
         switch (pagePath) {
             case "/projects/project":
-                newRole = ERoleType.ProjectManager;
-                CurrentEndpoint = EProjectPage.Project;
+                newRole = RoleType.ProjectManager;
+                CurrentEndpoint = ProjectPage.Project;
                 break;
             case "/projects/department":
-                newRole = ERoleType.DepartmentManager;
-                CurrentEndpoint = EProjectPage.Department;
+                newRole = RoleType.DepartmentManager;
+                CurrentEndpoint = ProjectPage.Department;
                 break;
             case "/projects/secretariat":
-                newRole = ERoleType.Secretariat;
-                CurrentEndpoint = EProjectPage.Secretariat;
+                newRole = RoleType.Secretariat;
+                CurrentEndpoint = ProjectPage.Secretariat;
                 break;
             default:
                 return;
@@ -130,15 +135,15 @@ else {
         CurrentRole = newRole;
         NeededRoles = new[] { newRole };
 
-        //user is authorized and role changed => different sub page probably
+    //user is authorized and role changed => different sub page probably
         if (roleChange) {
             if (IsAuthorized) {
-                var result = await Http.SendApiGetRequestAsync<ProjectPL[]>(Logger, "api/Projects");
-                if (result.status != EApiHttpResponse.Ok) {
+                var result = await Http.SendApiGetRequestAsync<ProjectInfoPayload[]>(Logger, "api/Projects");
+                if (result.status != ApiHttpResponse.Ok) {
                     ExceptionMessage = StringResolver.ResolveApiResponse(result.status);
                 }
                 else {
-                    Projects = result.response ?? Array.Empty<ProjectPL>();
+                    Projects = result.response ?? Array.Empty<ProjectInfoPayload>();
                 }
                 WaitingForApiResponse = false;
             }
@@ -152,13 +157,14 @@ else {
         NavigateToEditMode(null);
     }
 
-    private void NavigateToEditMode(ProjectPL? selectedProject) {
+    private void NavigateToEditMode(ProjectInfoPayload? selectedProject) {
         ProjectContainer.SetValue(selectedProject);
         UriHelper.NavigateTo($"/projects/edit/{(int)CurrentEndpoint}");
     }
 
 
-    private void NavigateToUserAssignMode(ProjectPL selectedProject) {
+    private void NavigateToUserAssignMode(ProjectInfoPayload selectedProject)
+    {
     //select project for which you want to add new assignees
         ProjectContainer.SetValue(selectedProject);
         UriHelper.NavigateTo($"/projects/userAssign/{(int)CurrentEndpoint}");

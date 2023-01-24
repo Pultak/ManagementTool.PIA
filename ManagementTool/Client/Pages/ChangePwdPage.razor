@@ -1,11 +1,10 @@
 ﻿@page "/pwdChange"
 @page "/pwdChange/{IsInitPwdChange}"
 
-@using System.ComponentModel.DataAnnotations
 @using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
-
+@using System.ComponentModel.DataAnnotations
 @inherits InteractivePageBase<ChangePwdPage>
 
 @inject HttpClient Http
@@ -31,12 +30,12 @@ else {
                 <label>
                     Nové heslo
                 </label>
-                <InputText id="txtName" type="password" required @bind-Value="NewPwd" />
-                <ValidationMessage For="@(() => NewPwd)" />
+                <InputText id="txtName" type="password" required @bind-Value="NewPwd"/>
+                <ValidationMessage For="@(() => NewPwd)"/>
             </p>
         </div>
         <button type="submit" form="@SubmitBtnId" class="btn btn-primary">Změnit heslo</button>
-        
+
         @if (IsInitPwdChange == null) {
             <button type="button" class="btn btn-light" @onclick="Return">
                 Zrušit
@@ -72,27 +71,26 @@ else {
 </div>
 
 
-
 @code {
 
     [Parameter]
     public string? IsInitPwdChange { get; set; }
-    
+
     private string ModalClass { get; set; } = "";
     private string ModalDisplay { get; set; } = "none;";
 
     [Required]
-    [RegularExpression(UserUtils.PasswordRegexPattern, 
+    [RegularExpression(UserUtils.PasswordRegexPattern,
         ErrorMessage = "Nové heslo musí obsahovat alespoň 8 znaků. " +
                        "Mělo by také obsahovat velké i malá písmena a číslice.")]
     public string NewPwd { get; set; } = "";
 
     private EditContext? EditContext { get; set; }
 
-    private string? ModalMessage { get; set;}
+    private string? ModalMessage { get; set; }
     private bool PwdSuccessfullyChanged { get; set; }
 
-    
+
     protected override void OnInitialized() {
         ModalMessage = null;
         ModalDisplay = "none";
@@ -113,14 +111,14 @@ else {
     }
 
 
-
     private void HandleValidSubmit() {
         var pwdValid = UserUtils.IsValidPassword(NewPwd);
         ModalDisplay = "block;";
         ModalClass = "Show";
         if (!pwdValid) {
             ModalMessage = "Nejdříve vložte validní heslo!";
-        }else{
+        }
+        else {
             WaitingForApiResponse = true;
             SendApiPatchRequest("api/auth");
         }
@@ -133,11 +131,11 @@ else {
         ModalClass = "Show";
         StateHasChanged();
     }
-    
+
     private async void SendApiPatchRequest(string endpoint) {
         var apiResponse = await Http.SendApiPatchRequest(Logger, endpoint, NewPwd);
         WaitingForApiResponse = false;
-        if (apiResponse == EApiHttpResponse.Ok) {
+        if (apiResponse == ApiHttpResponse.Ok) {
             PwdSuccessfullyChanged = true;
             ModalMessage = "Změna hesla proběhla v pořádku!";
         }
@@ -146,4 +144,5 @@ else {
         }
         StateHasChanged();
     }
+
 }

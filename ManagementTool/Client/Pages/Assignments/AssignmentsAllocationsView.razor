@@ -1,11 +1,11 @@
 ﻿@page "/assignments/allocations"
-@using ManagementTool.Shared.Utils
-@using ManagementTool.Shared.Models.Utils
-@using System.ComponentModel.DataAnnotations
-@using ManagementTool.Shared.Models.Presentation.Api.Payloads
+
 @using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.Presentation
-
+@using ManagementTool.Shared.Models.Presentation.Api.Payloads
+@using ManagementTool.Shared.Models.Utils
+@using ManagementTool.Shared.Utils
+@using System.ComponentModel.DataAnnotations
 @inherits InteractivePageBase<AssignmentsAllocationsView>
 
 @inject HttpClient Http
@@ -16,12 +16,12 @@
 else {
     <h3>Zobrazení vytíženosti</h3>
     <p>Na následující stránce je možné pro zvolené uživatele zobrazit jejich pracovní vytížení v časovém rozmezí. </p>
-    <p>  Kde 0 je žádné vytížení a 1 je plné (8 pracovních hodin).</p>
+    <p> Kde 0 je žádné vytížení a 1 je plné (8 pracovních hodin).</p>
 
     <p>Po zadání a zaslání parametrů na server, se zobrazí tabulka v jejíž hlavičce jsou zobrazeny zvolené datumy. </p>
-    <p>  Tělo pak pro každý sloupeček obsahuje nejdříve pracovní vytížení aktivních úkolů a druhý záznam je pro všechny (i neaktivní). </p>
+    <p> Tělo pak pro každý sloupeček obsahuje nejdříve pracovní vytížení aktivních úkolů a druhý záznam je pro všechny (i neaktivní). </p>
 
-    
+
     <table>
         <tr>
             <td>Uživatelé</td>
@@ -59,7 +59,6 @@ else {
     }
     else {
         <button type="submit" class="btn btn-primary" @onclick="@HandleSubmit">Vytvořit uživatele</button>
-
     }
     @if (ExceptionMessage != null) {
         <div>@ExceptionMessage</div>
@@ -72,19 +71,19 @@ else {
                 <thead>
                 <tr>
                     <th class="text-center">Jméno pracovníka</th>
-                    @foreach(var day in @Days){
-                            <th colspan="2" class="text-center col">@day.ToString("dd.MM.")</th>
+                    @foreach (var day in Days) {
+                        <th colspan="2" class="text-center col">@day.ToString("dd.MM.")</th>
                     }
                 </tr>
                 </thead>
                 <tbody>
-            
-                @foreach (var userWorkload in @Workloads) {
+
+                @foreach (var userWorkload in Workloads) {
                     <tr>
                         <td>@userWorkload.UserFullName</td>
-                        @for (var i = 0; i < @userWorkload.AllWorkload.Length; ++i) {
-                                <td class="@GetColumnColorForLoad(userWorkload.ActiveWorkload[i])">@Math.Round(@userWorkload.ActiveWorkload[i], 2)</td>
-                                <td class="@GetColumnColorForLoad(userWorkload.AllWorkload[i])">@Math.Round(@userWorkload.AllWorkload[i], 2)</td>
+                        @for (var i = 0; i < userWorkload.AllWorkload.Length; ++i) {
+                            <td class="@GetColumnColorForLoad(userWorkload.ActiveWorkload[i])">@Math.Round(userWorkload.ActiveWorkload[i], 2)</td>
+                            <td class="@GetColumnColorForLoad(userWorkload.AllWorkload[i])">@Math.Round(userWorkload.AllWorkload[i], 2)</td>
                         }
                     </tr>
                 }
@@ -92,33 +91,33 @@ else {
             </table>
         </div>
     }
-    
-
 }
 
 @code {
     public UserBasePL[] AllUsers = Array.Empty<UserBasePL>();
 
     public string[] SelectedUsers { get; set; } = Array.Empty<string>();
+
     [Required]
     public DateTime? FromDate { get; set; } = DateTime.Now;
+
     [Required]
     public DateTime? ToDate { get; set; } = DateTime.Now.AddDays(1);
-    
-    
+
+
     public UserWorkload[] Workloads { get; set; } = Array.Empty<UserWorkload>();
     public DateTime[] Days = Array.Empty<DateTime>();
 
     protected override void OnInitialized() {
-        NeededRoles = new []{ ERoleType.DepartmentManager, ERoleType.ProjectManager };
+        NeededRoles = new[] { RoleType.DepartmentManager, RoleType.ProjectManager };
         base.OnInitialized();
     }
-    
+
     protected override async Task OnInitializedAsync() {
         if (IsAuthorized) {
             var req = await Http.SendApiGetRequestAsync<UserBasePL[]>(Logger, "api/Users");
 
-            if (req.status != EApiHttpResponse.Ok) {
+            if (req.status != ApiHttpResponse.Ok) {
                 ExceptionMessage = StringResolver.ResolveApiResponse(req.status);
                 StateHasChanged();
             }
@@ -138,21 +137,20 @@ else {
         }
     }
 
-    
+
     private async void HandleSubmit() {
         ExceptionMessage = null;
 
         var valid = AssignmentUtils.ValidateWorkloadPayload(SelectedUsers, FromDate, ToDate);
-        if (valid == EWorkloadValidation.Ok) {
-
+        if (valid == WorkloadValidation.Ok) {
             WaitingForApiResponse = true;
             var selectedIds = "ids=" + string.Join("&ids=", SelectedUsers);
             var fromDate = FromDate!.Value.ToString("dd-MM-yyyy");
             var toDate = ToDate!.Value.ToString("dd-MM-yyyy");
 
             var uri = $"api/Assignments/workloads/{fromDate}/{toDate}?{selectedIds}";
-            var userResult = await Http.SendApiGetRequestAsync <UserWorkloadPayload> (Logger, uri);
-            if (userResult.status != EApiHttpResponse.Ok) {
+            var userResult = await Http.SendApiGetRequestAsync<UserWorkloadPayload>(Logger, uri);
+            if (userResult.status != ApiHttpResponse.Ok) {
                 ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
             }
             else {
@@ -166,7 +164,7 @@ else {
         WaitingForApiResponse = false;
         StateHasChanged();
     }
-    
+
     private static string GetColumnColorForLoad(double load) {
         return load switch {
             > 1 => "table-danger",
@@ -175,4 +173,5 @@ else {
             _ => "table-success"
             };
     }
+
 }

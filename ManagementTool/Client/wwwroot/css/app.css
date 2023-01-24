@@ -1,38 +1,24 @@
 ﻿@import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
 
-html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-}
+html, body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
 
-h1:focus {
-    outline: none;
-}
+h1:focus { outline: none; }
 
-a, .btn-link {
-    color: #0071c1;
-}
+a, .btn-link { color: #0071c1; }
 
 .btn-primary {
-    color: #fff;
     background-color: #1b6ec2;
     border-color: #1861ac;
+    color: #fff;
 }
 
-.content {
-    padding-top: 1.1rem;
-}
+.content { padding-top: 1.1rem; }
 
-.valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
-}
+.valid.modified:not([type=checkbox]) { outline: 1px solid #26b050; }
 
-.invalid {
-    outline: 1px solid red;
-}
+.invalid { outline: 1px solid red; }
 
-.validation-message {
-    color: red;
-}
+.validation-message { color: red; }
 
 #blazor-error-ui {
     background: lightyellow;
@@ -46,104 +32,89 @@ a, .btn-link {
     z-index: 1000;
 }
 
-    #blazor-error-ui .dismiss {
-        cursor: pointer;
-        position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
-    }
-
-.checked {
-    color: orange;
-}
-
-.fa-star {
+#blazor-error-ui .dismiss {
     cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
 }
+
+.checked { color: orange; }
+
+.fa-star { cursor: pointer; }
 
 /* Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
 for details on configuring this project to bundle and minify static web assets. */
-.card-columns .card:hover .card-img {
-    opacity: 1;
-}
+
+.card-columns .card:hover .card-img { opacity: 1; }
 
 .card-columns .card-body {
-    height: 100px;
-    font-family: 'Nunito', sans-serif;
     background: #fbfafd;
+    font-family: 'Nunito', sans-serif;
+    height: 100px;
 }
 
 .card-columns .card-img {
-    height: 330px;
-    vertical-align: bottom;
     background-position: center; /* Center the image */
     background-repeat: no-repeat; /* Do not repeat the image */
     background-size: cover; /* Resize the background image to cover the entire container */
+    height: 330px;
     opacity: .8;
+    vertical-align: bottom;
 }
 
 .modal .card-img {
-    height: 500px;
-    vertical-align: bottom;
     background-position: center; /* Center the image */
     background-repeat: no-repeat; /* Do not repeat the image */
     background-size: cover; /* Resize the background image to cover the entire container */
+    height: 500px;
+    vertical-align: bottom;
 }
 
 .card-columns .card:hover {
+    box-shadow: 0 10px 20px rgba(37, 33, 82, .12), 0 4px 8px rgba(37, 33, 82, .06);
     transform: scale(1.05);
-    box-shadow: 0 10px 20px rgba(37,33,82,.12), 0 4px 8px rgba(37,33,82,.06);
 }
 
 
 a.navbar-brand {
-    white-space: normal;
     font-family: 'Yellowtail', cursive;
     font-size: xx-large;
     text-align: center;
+    white-space: normal;
     word-break: break-all;
 }
 
 /* Provide sufficient contrast against white background */
-a {
-    color: #0366d6;
-}
+
+a { color: #0366d6; }
 
 .btn-primary {
-    color: #fff;
     background-color: #1b6ec2;
     border-color: #1861ac;
+    color: #fff;
 }
 
 .nav-pills .nav-link.active, .nav-pills .show > .nav-link {
-    color: #fff;
     background-color: #1b6ec2;
     border-color: #1861ac;
+    color: #fff;
 }
 
 /* Sticky footer styles
 -------------------------------------------------- */
-html {
-    font-size: 14px;
-}
+
+html { font-size: 14px; }
 
 @media (min-width: 768px) {
-    html {
-        font-size: 16px;
-    }
+    html { font-size: 16px; }
 }
 
-.border-top {
-    border-top: 1px solid #e5e5e5;
-}
+.border-top { border-top: 1px solid #e5e5e5; }
 
-.border-bottom {
-    border-bottom: 1px solid #e5e5e5;
-}
+.border-bottom { border-bottom: 1px solid #e5e5e5; }
 
-.box-shadow {
-    box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
-}
+.box-shadow { box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05); }
 
 button.accept-policy {
     font-size: 1rem;
@@ -152,9 +123,10 @@ button.accept-policy {
 
 /* Sticky footer styles
 -------------------------------------------------- */
+
 html {
-    position: relative;
     min-height: 100%;
+    position: relative;
 }
 
 body {
@@ -162,27 +134,23 @@ body {
     margin-bottom: 60px;
 }
 
-p {
-    font-family: 'Nunito', sans-serif;
-}
+p { font-family: 'Nunito', sans-serif; }
 
-h1 {
-    font-family: 'Nunito', sans-serif;
-}
+h1 { font-family: 'Nunito', sans-serif; }
 
-ul {
-    font-family: 'Nunito', sans-serif;
-}
+ul { font-family: 'Nunito', sans-serif; }
 
 .footer {
-    position: absolute;
     bottom: 0;
-    width: 100%;
-    white-space: nowrap;
-    line-height: 60px; /* Vertically center the text there */
     font-family: 'Nunito', sans-serif;
+    line-height: 60px; /* Vertically center the text there */
+    position: absolute;
+    white-space: nowrap;
+    width: 100%;
 }
+
 /*Backgrounds*/
+
 .bg-navbar {
     background: -webkit-linear-gradient(110deg, #e9a8a6 60%, #252152 60%);
     background: -o-linear-gradient(110deg, #e9a8a6 60%, #252152 60%);
@@ -199,27 +167,21 @@ ul {
 
 
 .spinner {
-    border: 16px solid silver;
-    border-top: 16px solid #337AB7;
-    border-radius: 50%;
-    width: 80px;
-    height: 80px;
     animation: spin 700ms linear infinite;
-    top: 40%;
+    border: 16px solid silver;
+    border-radius: 50%;
+    border-top: 16px solid #337AB7;
+    height: 80px;
     left: 55%;
     position: absolute;
+    top: 40%;
+    width: 80px;
 }
 
 @keyframes spin {
-    0% {
-        transform: rotate(0deg)
-    }
+    0% { transform: rotate(0deg) }
 
-    100% {
-        transform: rotate(360deg)
-    }
+    100% { transform: rotate(360deg) }
 }
 
-.col {
-    border-left: 1px solid black;
-}
+.col { border-left: 1px solid black; }

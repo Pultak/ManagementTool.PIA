@@ -4,28 +4,26 @@ using ManagementTool.Shared.Models.Utils;
 using ManagementTool.Shared.Utils;
 using Microsoft.AspNetCore.Components;
 
-namespace ManagementTool.Client.Pages; 
+namespace ManagementTool.Client.Pages;
 
-public abstract class InteractivePageBase<T>: ComponentBase, IDisposable {
+public abstract class InteractivePageBase<T> : ComponentBase, IDisposable {
     public const string SubmitBtnId = "submitButton";
 
-    [Inject]
-    protected StateContainer<LoggedUserPayload> LoggedUserContainer { get; set; }
-    
-    [Inject]
-    protected ILogger<T> Logger { get; set; }
 
-    [Inject]
-    protected NavigationManager UriHelper { get; set; }
+    protected RoleType[]? NeededRoles = null;
 
+    [Inject] protected StateContainer<LoggedUserPayload> LoggedUserContainer { get; set; }
 
-    protected ERoleType[]? NeededRoles = null;
+    [Inject] protected ILogger<T> Logger { get; set; }
+
+    [Inject] protected NavigationManager UriHelper { get; set; }
+
     protected bool IsAuthorized => UserUtils.IsUserAuthorized(LoggedUserContainer.Value, NeededRoles);
 
     /// <summary>
     ///     Conditional message that will be showed in exceptional situations (API failure etc)
     /// </summary>
-    protected string? ExceptionMessage { get; set; } = null;
+    protected string? ExceptionMessage { get; set; }
 
     /// <summary>
     ///     Flag indicating loading of data from the API
@@ -35,12 +33,20 @@ public abstract class InteractivePageBase<T>: ComponentBase, IDisposable {
     protected string ReturnUri { get; set; } = "/";
 
 
+    /// <summary>
+    ///     Method from IDisposable that will be called once this component is disposed off
+    ///     Preventing possible memory leaks
+    /// </summary>
+    public virtual void Dispose() {
+        LoggedUserContainer.OnStateChange -= StateHasChanged;
+    }
+
+
     protected override void OnInitialized() {
         //register event handler for the change of the logged user
         LoggedUserContainer.OnStateChange += StateHasChanged;
         base.OnInitialized();
     }
-
 
 
     protected override async Task OnInitializedAsync() {
@@ -56,20 +62,10 @@ public abstract class InteractivePageBase<T>: ComponentBase, IDisposable {
         UriHelper.NavigateTo(ReturnUri);
     }
 
-    
 
-    /// <summary>
-    /// Method from IDisposable that will be called once this component is disposed off
-    /// Preventing possible memory leaks
-    /// </summary>
-    public virtual void Dispose() {
-        LoggedUserContainer.OnStateChange -= StateHasChanged;
-    }
-
-    
-    protected virtual void ResolveResponse(EApiHttpResponse apiResponse, bool changePage) {
+    protected virtual void ResolveResponse(ApiHttpResponse apiResponse, bool changePage) {
         WaitingForApiResponse = false;
-        if (apiResponse == EApiHttpResponse.Ok) {
+        if (apiResponse == ApiHttpResponse.Ok) {
             Return();
         }
         else {
@@ -77,5 +73,4 @@ public abstract class InteractivePageBase<T>: ComponentBase, IDisposable {
             StateHasChanged();
         }
     }
-
 }

@@ -1,8 +1,8 @@
 ﻿@page "/users"
-@using ManagementTool.Shared.Models.Utils
+
 @using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.Presentation
-
+@using ManagementTool.Shared.Models.Utils
 @inherits InteractivePageBase<UsersView>
 
 @inject HttpClient Http
@@ -10,27 +10,29 @@
 
 <h3>Uživatelé</h3>
 
-<p>Na následující stránce naleznete všechny zaregistrované uživatele.
-    S dostatečným oprávněním je zde také možné je libovolně přidávat a odebírat.</p>
+<p>
+    Na následující stránce naleznete všechny zaregistrované uživatele.
+    S dostatečným oprávněním je zde také možné je libovolně přidávat a odebírat.
+</p>
 
-@if(!IsAuthorized) {
+@if (!IsAuthorized) {
     <div>Vypadá to, že nemáte dostatečné práva na zobrazení tohoto listu!</div>
 }
 else {
     @if (WaitingForApiResponse) {
         <div class="spinner"></div>
-    }else if(_exceptionMessage != null){
+    }
+    else if (_exceptionMessage != null) {
         <div>Nepovedlo se načíst data z API serveru @_exceptionMessage</div>
     }
     else {
-
         <button @onclick="CreateNewUser">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
             </svg>
         </button>
 
-        
+
         <div class="table-responsive">
             <table class="table table-striped table-hover">
                 <thead class="table-primary">
@@ -54,7 +56,8 @@ else {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                                     <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z"/>
                                 </svg>
-                            </button></td>
+                            </button>
+                        </td>
                     </tr>
                 }
                 </tbody>
@@ -76,9 +79,9 @@ else {
     private UserBasePL[] _users = Array.Empty<UserBasePL>();
 
     private string? _exceptionMessage;
-    
+
     protected override void OnInitialized() {
-        NeededRoles = new[] { ERoleType.Secretariat };
+        NeededRoles = new[] { RoleType.Secretariat };
         UserContainer.OnStateChange += StateHasChanged;
         base.OnInitialized();
     }
@@ -86,7 +89,7 @@ else {
     protected override async Task OnInitializedAsync() {
         if (IsAuthorized) {
             var result = await Http.SendApiGetRequestAsync<UserBasePL[]>(Logger, "api/Users");
-            if (result.status != EApiHttpResponse.Ok) {
+            if (result.status != ApiHttpResponse.Ok) {
                 _exceptionMessage = StringResolver.ResolveApiResponse(result.status);
             }
             else if (result.response != null) {
@@ -105,7 +108,7 @@ else {
         UserContainer.SetValue(selectedUser);
         UriHelper.NavigateTo("/users/edit");
     }
-    
+
     public override void Dispose() {
         UserContainer.OnStateChange -= StateHasChanged;
         base.Dispose();

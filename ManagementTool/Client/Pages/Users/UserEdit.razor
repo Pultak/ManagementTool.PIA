@@ -1,10 +1,10 @@
 ﻿@page "/users/edit"
+
+@using ManagementTool.Client.Utils
 @using ManagementTool.Shared.Models.Presentation
+@using ManagementTool.Shared.Models.Presentation.Api.Requests
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
-@using ManagementTool.Client.Utils
-@using ManagementTool.Shared.Models.Presentation.Api.Requests
-
 @inherits InteractivePageBase<UserEdit>
 
 @inject HttpClient Http
@@ -18,7 +18,7 @@
     </svg>
 </button>
 
-@if(!IsAuthorized) {
+@if (!IsAuthorized) {
     <div>Vypadá to, že nemáte dostatečné práva na zobrazení tohoto listu!</div>
 }
 else if (WaitingForApiResponse) {
@@ -40,14 +40,14 @@ else {
                     <tr>
                         <td>Uživatelské jméno (orion)</td>
                         <td>
-                        @if (NewUserCreation) {
-                            <InputText id="txtName" type="text" required
-                                       @bind-Value="SelectedUser.Username"/>
-                            <ValidationMessage For="@(() => SelectedUser.Username)"/>
-                        }
-                        else {
+                            @if (NewUserCreation) {
+                                <InputText id="txtName" type="text" required
+                                           @bind-Value="SelectedUser.Username"/>
+                                <ValidationMessage For="@(() => SelectedUser.Username)"/>
+                            }
+                            else {
                                 <b>@SelectedUser.Username</b>
-                        }
+                            }
                         </td>
                     </tr>
                     <tr>
@@ -71,7 +71,7 @@ else {
                         <td>
                             <InputText id="txtWorkplace" type="text" required
                                        @bind-Value="@SelectedUser.EmailAddress"/>
-                            <ValidationMessage For="@(() => @SelectedUser.EmailAddress)"/>
+                            <ValidationMessage For="@(() => SelectedUser.EmailAddress)"/>
                         </td>
                     </tr>
                     <tr>
@@ -84,7 +84,8 @@ else {
                                 <select multiple @onchange="@OnSelectedSuperiorsChange">
                                     @foreach (var superior in AllSuperiors) {
                                         <option value="@superior.Id" selected=@_selectedSuperiorsIds.Contains(superior.Id.ToString())>
-                                            @superior.FullName</option>
+                                            @superior.FullName
+                                        </option>
                                     }
                                 </select>
                             }
@@ -95,13 +96,13 @@ else {
                         <td>
                             @foreach (var role in RolesAssignments) {
                                 <input class="form-check-input" type="checkbox" name="@role.DataModel.Name"
-                                       checked ="@role.IsAssigned" @oninput="(x) => RoleAssignmentChanged(x, role)">
+                                       checked="@role.IsAssigned" @oninput="x => RoleAssignmentChanged(x, role)">
                                 <label class="form-check-label">
                                     @role.DataModel.Name
                                 </label>
                                 <br>
                             }
-                            
+
                         </td>
                     </tr>
                 </table>
@@ -166,7 +167,7 @@ else {
     private string ModalDisplay { get; set; } = "none;";
 
     private EditContext? EditContext { get; set; }
-    private string[] _selectedSuperiorsIds = {};
+    private string[] _selectedSuperiorsIds = { };
 
 
     public UserBasePL SelectedUser { get; set; } = new();
@@ -201,30 +202,30 @@ else {
 
     private async Task GetData() {
         var userResult = await Http.SendApiGetRequestAsync<UserBasePL[]?>(Logger, "api/Users/superiors");
-        if (userResult.status != EApiHttpResponse.Ok) {
+        if (userResult.status != ApiHttpResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
         }
         else {
             if (userResult.response != null) {
                 AllSuperiors = userResult.response;
-
             }
         }
 
         var roleResult = await Http.SendApiGetRequestAsync<List<DataModelAssignmentPL<RolePL>>?>(Logger, $@"api/Users/{SelectedUser.Id}/roles");
-        if (roleResult.status != EApiHttpResponse.Ok) {
+        if (roleResult.status != ApiHttpResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
-        }else{
+        }
+        else {
             if (roleResult.response != null) {
                 RolesAssignments = roleResult.response;
             }
         }
 
         if (!NewUserCreation) {
-            //get also all new user assigned superiors
+        //get also all new user assigned superiors
             var userSupsResult = await Http.SendApiGetRequestAsync<long[]>(Logger, $"api/Users/{SelectedUser.Id}/superiors");
 
-            if (userSupsResult.status != EApiHttpResponse.Ok) {
+            if (userSupsResult.status != ApiHttpResponse.Ok) {
                 ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
             }
             else {
@@ -236,7 +237,7 @@ else {
             }
         }
     }
-    
+
     private void OnSelectedSuperiorsChange(ChangeEventArgs evt) {
         if (evt.Value is not string[]strings) {
             return;
@@ -245,7 +246,7 @@ else {
     }
 
     private void RoleAssignmentChanged(ChangeEventArgs e, DataModelAssignmentPL<RolePL> roleAssign) {
-        // get the checkbox state
+    // get the checkbox state
         if (e.Value is not bool check) {
             return;
         }
@@ -255,10 +256,10 @@ else {
     private void HandleValidSubmit() {
         ExceptionMessage = null;
         var valResult = UserUtils.ValidateUser(SelectedUser);
-        if (valResult != EUserCreationResponse.Ok) {
+        if (valResult != UserCreationResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveUserValidation(valResult);
         }
-        else{
+        else {
             WaitingForApiResponse = true;
             var assigned = AllSuperiors.Where(x => _selectedSuperiorsIds.Contains(x.Id.ToString()));
             if (NewUserCreation) {
@@ -279,7 +280,6 @@ else {
         StateHasChanged();
     }
 
-    
 
     private async void DeleteUser() {
         var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Doopravdy chcete odstranit tento úkol?");
@@ -292,10 +292,9 @@ else {
     }
 
 
-
-    protected override void ResolveResponse(EApiHttpResponse apiResponse, bool changePage) {
+    protected override void ResolveResponse(ApiHttpResponse apiResponse, bool changePage) {
         WaitingForApiResponse = false;
-        if (apiResponse == EApiHttpResponse.Ok) {
+        if (apiResponse == ApiHttpResponse.Ok) {
             if (changePage) {
                 Return();
             }

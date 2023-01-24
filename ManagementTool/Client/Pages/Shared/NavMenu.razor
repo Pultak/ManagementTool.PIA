@@ -22,7 +22,7 @@
                 <span class="oi oi-home" aria-hidden="true"></span> Úvodní stránka
             </NavLink>
         </div>
-        
+
         @if (UserContainer.Value != null) {
             <div class="nav-item px-3">
                 <NavLink class="nav-link" @onclick="() => _expandUserNav = !_expandUserNav">
@@ -37,7 +37,7 @@
                 </div>
             }
         }
-        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new []{ERoleType.Superior})) {
+        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new[] { RoleType.Superior })) {
             <div class="nav-item px-3">
                 <NavLink class="nav-link" @onclick="() => _expandSuperiorNav = !_expandSuperiorNav">
                     <span class="oi oi-list-rich" aria-hidden="true"></span>Nadřízený
@@ -52,8 +52,8 @@
             }
         }
 
-        
-        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new[] { ERoleType.ProjectManager})) {
+
+        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new[] { RoleType.ProjectManager })) {
             <div class="nav-item px-3">
                 <NavLink class="nav-link" @onclick="() => _expandProjectManagementNav = !_expandProjectManagementNav">
                     <span class="oi oi-list-rich" aria-hidden="true"></span>Projekt management
@@ -78,9 +78,9 @@
                 </div>
             }
         }
-        
-        
-        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new []{ERoleType.DepartmentManager})) {
+
+
+        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new[] { RoleType.DepartmentManager })) {
             <div class="nav-item px-3">
                 <NavLink class="nav-link" @onclick="() => _expandDepartmentManagementNav = !_expandDepartmentManagementNav">
                     <span class="oi oi-list-rich" aria-hidden="true"></span>Management oddělení
@@ -105,8 +105,8 @@
                 </div>
             }
         }
-        
-        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new[] { ERoleType.Superior})){
+
+        @if (UserUtils.IsUserAuthorized(UserContainer.Value, new[] { RoleType.Secretariat })) {
             <div class="nav-item px-3">
                 <NavLink class="nav-link" @onclick="() => _expandHrNav = !_expandHrNav">
                     <span class="oi oi-list-rich" aria-hidden="true"></span>Sekretariát
@@ -129,6 +129,7 @@
     </nav>
 
 </div>
+
 @code {
     private bool _expandUserNav = false;
     private bool _expandSuperiorNav = false;
@@ -139,20 +140,20 @@
     private bool _collapseNavMenu = true;
 
     private string? NavMenuCssClass => _collapseNavMenu ? "collapse" : null;
-    
 
 
     private void ToggleNavMenu() {
         _collapseNavMenu = !_collapseNavMenu;
     }
 
-    
+
     protected override void OnInitialized() {
         UserContainer.OnStateChange += StateHasChanged;
     }
+
     public void Dispose() {
         UserContainer.OnStateChange -= StateHasChanged;
     }
-    
+
 
 }
