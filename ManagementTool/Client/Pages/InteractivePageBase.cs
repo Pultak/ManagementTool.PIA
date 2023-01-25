@@ -12,9 +12,9 @@ public abstract class InteractivePageBase<T> : ComponentBase, IDisposable {
 
     protected RoleType[]? NeededRoles = null;
 
-    [Inject] protected StateContainer<LoggedUserPayload> LoggedUserContainer { get; set; }
+    [Inject] protected StateContainer<LoggedUserPayload> LoggedUserContainer { get; set; } = new();
 
-    [Inject] protected ILogger<T> Logger { get; set; }
+    [Inject] protected ILogger<T> Logger { get; set; } 
 
     [Inject] protected NavigationManager UriHelper { get; set; }
 
@@ -62,7 +62,11 @@ public abstract class InteractivePageBase<T> : ComponentBase, IDisposable {
         UriHelper.NavigateTo(ReturnUri);
     }
 
-
+    /// <summary>
+    /// Method used to resolve the asynchronous call of the httpClient
+    /// </summary>
+    /// <param name="apiResponse">response from the httpClient</param>
+    /// <param name="changePage">indicator to change page if requested</param>
     protected virtual void ResolveResponse(ApiHttpResponse apiResponse, bool changePage) {
         WaitingForApiResponse = false;
         if (apiResponse == ApiHttpResponse.Ok) {

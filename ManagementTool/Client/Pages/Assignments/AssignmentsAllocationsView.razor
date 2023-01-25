@@ -16,7 +16,7 @@
 else {
     <h3>Zobrazení vytíženosti</h3>
     <p>Na následující stránce je možné pro zvolené uživatele zobrazit jejich pracovní vytížení v časovém rozmezí. </p>
-    <p> Kde 0 je žádné vytížení a 1 je plné (8 pracovních hodin).</p>
+    <p> Kde 0 je žádné vytížení a 1 je plné (den má 8 pracovních hodin).</p>
 
     <p>Po zadání a zaslání parametrů na server, se zobrazí tabulka v jejíž hlavičce jsou zobrazeny zvolené datumy. </p>
     <p> Tělo pak pro každý sloupeček obsahuje nejdříve pracovní vytížení aktivních úkolů a druhý záznam je pro všechny (i neaktivní). </p>
@@ -58,7 +58,7 @@ else {
         <div class="spinner"></div>
     }
     else {
-        <button type="submit" class="btn btn-primary" @onclick="@HandleSubmit">Vytvořit uživatele</button>
+        <button type="submit" class="btn btn-primary" @onclick="@HandleSubmit">Zobrazit pracovní vytížení</button>
     }
     @if (ExceptionMessage != null) {
         <div>@ExceptionMessage</div>

@@ -3,7 +3,17 @@ using ManagementTool.Shared.Models.Utils;
 
 namespace ManagementTool.Client.Utils;
 
+/// <summary>
+/// Provides static methods to get the response string associated with the state of the given response object
+/// </summary>
 public class StringResolver {
+
+
+    /// <summary>
+    /// Resolve the API response status
+    /// </summary>
+    /// <param name="response">The API response status</param>
+    /// <returns>String representation of the response</returns>
     public static string ResolveApiResponse(ApiHttpResponse response) {
         return response switch {
             ApiHttpResponse.Ok => "Vše proběhlo v pořádku",
@@ -20,6 +30,11 @@ public class StringResolver {
         };
     }
 
+    /// <summary>
+    /// Resolve the user creation status
+    /// </summary>
+    /// <param name="response">The user creation status</param>
+    /// <returns>String representation of the response</returns>
     public static string ResolveUserValidation(UserCreationResponse response) {
         return response switch {
             UserCreationResponse.Ok => "Vše proběhlo v pořádku",
@@ -34,6 +49,11 @@ public class StringResolver {
         };
     }
 
+    /// <summary>
+    /// Resolve the project creation status
+    /// </summary>
+    /// <param name="response">The project creation status</param>
+    /// <returns>String representation of the response</returns>
     public static string ResolveProjectValidation(ProjectCreationResponse response) {
         return response switch {
             ProjectCreationResponse.EmptyProject => "Data projektu nesmí být prázdná!",
@@ -49,6 +69,11 @@ public class StringResolver {
     }
 
 
+    /// <summary>
+    /// Resolve the assignment current state
+    /// </summary>
+    /// <param name="state">The state of the assignment</param>
+    /// <returns>String representation of the state</returns>
     public static string ResolveAssignmentState(AssignmentState state) {
         return state switch {
             AssignmentState.Active => "Aktivní",
@@ -59,6 +84,12 @@ public class StringResolver {
         };
     }
 
+
+    /// <summary>
+    /// Resolve the assignment creation status
+    /// </summary>
+    /// <param name="validation">The assignment creation status</param>
+    /// <returns>String representation of the status</returns>
     public static string ResolveAssignmentValidation(AssignmentCreationResponse validation) {
         return validation switch {
             AssignmentCreationResponse.Empty => "Data úkolu nesmí být prázdná!",
@@ -76,6 +107,11 @@ public class StringResolver {
     }
 
 
+    /// <summary>
+    /// Resolve the authentication outcome
+    /// </summary>
+    /// <param name="response">The outcome</param>
+    /// <returns>String representation of the response</returns>
     public static string ResolveAuthenticationResponse(AuthResponse? response) {
         switch (response) {
             case AuthResponse.EmptyUsername:
@@ -100,11 +136,22 @@ public class StringResolver {
     }
 
 
+    /// <summary>
+    ///  Resolves the allocation scope to more human readable format 
+    /// </summary>
+    /// <param name="scope"> scope you want to modify </param>
+    /// <param name="fte"> flag indicating if fte should be used </param>
+    /// <returns> string representation of the time scope  </returns>
     public static string ResolveTimeScope(long scope, bool fte) {
         var finalScope = fte ? scope * 40 : scope;
         return ResolveTimeScope(finalScope);
     }
 
+    /// <summary>
+    ///  Resolves the allocation scope to more human readable format 
+    /// </summary>
+    /// <param name="scope"> scope you want to modify </param>
+    /// <returns> string representation of the time scope </returns>
     public static string ResolveTimeScope(long scope) {
         //40 work hours in a week
         var fte = scope / 40;
@@ -121,6 +168,11 @@ public class StringResolver {
         return $"{fteString}{dayString}{hoursString}";
     }
 
+    /// <summary>
+    /// Resolve the workload validation status
+    /// </summary>
+    /// <param name="valid">The validation status</param>
+    /// <returns>String representation of the status</returns>
     public static string ResolveWorkloadValidation(WorkloadValidation valid) {
         return valid switch {
             WorkloadValidation.Ok => "Validace vstupu proběhla v pořádku!",

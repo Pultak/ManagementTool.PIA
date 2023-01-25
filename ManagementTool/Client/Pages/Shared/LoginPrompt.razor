@@ -1,8 +1,11 @@
 ﻿@using ManagementTool.Shared.Models.Login
 @using ManagementTool.Client.Utils
+@using ManagementTool.Shared.Models.Presentation.Api.Payloads
+@using Newtonsoft.Json
 @inject HttpClient Http
 @inject ILogger<LoginPrompt> Logger
-@inject NavigationManager UriHelper;
+@inject NavigationManager UriHelper
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 
 @if (string.IsNullOrEmpty(LoggedUserName)) {
     <div class="alert alert-secondary mt-4">
@@ -88,7 +91,8 @@
 }
 
 @code {
-        public const string SubmitBtnId = "submitButton";
+        
+    public const string SubmitBtnId = "submitButton";
 
     public AuthRequest AuthRequest { get; set; } = new();
 
@@ -159,8 +163,12 @@
                 ChangeDialogSignature(AuthResponse.UnknownResponse);
             }
             else {
-                var responseEnumVal = Enum.Parse<AuthResponse>(responseBodyString);
-                ChangeDialogSignature(responseEnumVal);
+                var responsePayload = JsonConvert.DeserializeObject<AuthResponsePayload>(responseBodyString);
+                if (!string.IsNullOrEmpty(responsePayload.Token)) {
+                    //saving of JWT token
+                    await SessionStorage.SetItemAsStringAsync(MainLayout.TokenKey, responsePayload.Token);
+                }
+                ChangeDialogSignature(responsePayload.Response);
             }
             return;
         }

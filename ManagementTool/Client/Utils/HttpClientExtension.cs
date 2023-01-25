@@ -6,8 +6,20 @@ using ManagementTool.Shared.Models.Utils;
 namespace ManagementTool.Client.Utils;
 
 public static class HttpClientExtension {
+
+
+    /// <summary>
+    /// Multipurpose Internet Mail Extension of json
+    /// </summary>
     public const string MimeJson = "application/json";
 
+    /// <summary>
+    /// HTTP patch modifications to the resource, update the given content
+    /// </summary>
+    /// <param name="client">Client who requests the update</param>
+    /// <param name="requestUri">Resource identifier</param>
+    /// <param name="content">Content to update</param>
+    /// <returns> Asynchronous request task</returns>
     public static Task<HttpResponseMessage> PatchAsync(this HttpClient client, string requestUri, HttpContent content) {
         var request = new HttpRequestMessage {
             Method = new HttpMethod("PATCH"),
@@ -18,22 +30,56 @@ public static class HttpClientExtension {
         return client.SendAsync(request);
     }
 
+
+    /// <summary>
+    /// HTTP Post the given value object wrapped in a json type from the client
+    /// </summary>
+    /// <param name="client">Client who posts the json</param>
+    /// <param name="requestUri">Resource identifier</param>
+    /// <param name="type">Type of the object to be posted</param>
+    /// <param name="value">Value of the object to be posted</param>
+    /// <returns> </returns>
     public static Task<HttpResponseMessage> PostJsonAsync(this HttpClient client, string requestUri, Type type,
         object value) =>
         client.PostAsync(requestUri,
             new ObjectContent(type, value, new JsonMediaTypeFormatter(), MimeJson));
 
+
+    /// <summary>
+    /// Create a new resource or replace the target resource with the given value
+    /// </summary>
+    /// <param name="client">Client who requests to PUT</param>
+    /// <param name="requestUri">Resource identifier</param>
+    /// <param name="type">Type of the object to be PUT</param>
+    /// <param name="value">Value of the object to be PUT</param>
+    /// <returns> </returns>
     public static Task<HttpResponseMessage> PutJsonAsync(this HttpClient client, string requestUri, Type type,
         object value) =>
         client.PutAsync(requestUri,
             new ObjectContent(type, value, new JsonMediaTypeFormatter(), MimeJson));
 
+    /// <summary>
+    /// Apply partial modifications to the resource, update the given content as json
+    /// </summary>
+    /// <param name="client">Client who sends the patch request</param>
+    /// <param name="requestUri">Resource identifier</param>
+    /// <param name="type">Type of the object to be patched</param>
+    /// <param name="value">Value of the object to be patched</param>
+    /// <returns> </returns>
     public static Task<HttpResponseMessage> PatchJsonAsync(this HttpClient client, string requestUri, Type type,
         object value) =>
         client.PatchAsync(requestUri,
             new ObjectContent(type, value, new JsonMediaTypeFormatter(), MimeJson));
 
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <typeparam name="T">Nullable generic type of the response</typeparam>
+    /// <param name="client">  </param>
+    /// <param name="logger">Where to log</param>
+    /// <param name="requestUri">Resource identifier</param>
+    /// <returns>  </returns>
     public static async Task<(ApiHttpResponse status, T? response)> SendApiGetRequestAsync<T>(this HttpClient client,
         ILogger logger, string requestUri) {
         try {
@@ -59,6 +105,15 @@ public static class HttpClientExtension {
     }
 
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <typeparam name="T">Generic type of the put request payload</typeparam>
+    /// <param name="client">Http client sending put request</param>
+    /// <param name="logger">Where to log</param>
+    /// <param name="endpoint">Address of the resource</param>
+    /// <param name="payload">Data to put</param>
+    /// <param name="resolveResponse"> The return method called after api request </param>
     public static async void SendApiPutRequestAsync<T>(this HttpClient client, ILogger logger, string endpoint,
         T payload, Action<ApiHttpResponse, bool> resolveResponse) {
         var apiResponse = await SendApiPutRequest(client, logger, endpoint, payload);
@@ -66,25 +121,59 @@ public static class HttpClientExtension {
     }
 
 
+    /// <summary>
+    ///  
+    /// </summary>
+    /// <param name="client">Http client to request delete</param>
+    /// <param name="logger">Where to log</param>
+    /// <param name="endpoint">Address of the resource</param>
+    /// <param name="resolveResponse">  The return method called after api request </param>
     public static async void SendApiDeleteRequestAsync(this HttpClient client, ILogger logger, string endpoint,
         Action<ApiHttpResponse, bool> resolveResponse) {
         var apiResponse = await SendApiDeleteRequest(client, logger, endpoint);
         resolveResponse(apiResponse, true);
     }
 
+    /// <summary>
+    ///   
+    /// </summary>
+    /// <typeparam name="T">Generic type of the patch</typeparam>
+    /// <param name="client">Http client to request patch</param>
+    /// <param name="logger">Where to log</param>
+    /// <param name="endpoint">Address of the resource</param>
+    /// <param name="payload">Data to patch</param>
+    /// <param name="resolveResponse">  The return method called after api request </param>
     public static async void SendApiPatchRequestAsync<T>(this HttpClient client, ILogger logger, string endpoint,
         T payload, Action<ApiHttpResponse, bool> resolveResponse) {
         var apiResponse = await client.SendApiPatchRequest(logger, endpoint, payload);
         resolveResponse(apiResponse, true);
     }
 
-    public static async void SendApiPostRequestAsync<T>(this HttpClient client, ILogger logger, string endpoint,
+    /// <summary>
+    ///   
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="client">Http client to request post</param>
+    /// <param name="logger">Where to log</param>
+    /// <param name="endpoint">Address of the resource</param>
+    /// <param name="payload">Data to post</param>
+    /// <param name="resolveResponse">  The return method called after api request </param>
+    public static async Task SendApiPostRequestAsync<T>(this HttpClient client, ILogger logger, string endpoint,
         T payload, Action<ApiHttpResponse, bool> resolveResponse) {
         var apiResponse = await client.SendApiPostRequest(logger, endpoint, payload);
         resolveResponse(apiResponse, false);
     }
 
 
+    /// <summary>
+    ///   
+    /// </summary>
+    /// <typeparam name="T"> type of the serializable object </typeparam>
+    /// <param name="client">Http client to request put</param>
+    /// <param name="logger">Where to log</param>
+    /// <param name="endpoint">Address of the resource</param>
+    /// <param name="json">Data to put</param>
+    /// <returns>Success/fail status</returns>
     public static async Task<ApiHttpResponse> SendApiPutRequest<T>(this HttpClient client, ILogger logger,
         string endpoint, T? json) {
         if (json == null) {
@@ -112,6 +201,15 @@ public static class HttpClientExtension {
     }
 
 
+    /// <summary>
+    ///   
+    /// </summary>
+    /// <typeparam name="T"> type of the serializable object </typeparam>
+    /// <param name="client">Http client to request patch</param>
+    /// <param name="logger">Where to log</param>
+    /// <param name="endpoint">Address of the resource</param>
+    /// <param name="json">Data to patch</param>
+    /// <returns>Success/fail status</returns>
     public static async Task<ApiHttpResponse> SendApiPatchRequest<T>(this HttpClient client, ILogger logger,
         string endpoint, T? json) {
         if (json == null) {
@@ -139,6 +237,13 @@ public static class HttpClientExtension {
     }
 
 
+    /// <summary>
+    ///   
+    /// </summary>
+    /// <param name="client">Http client to request delete</param>
+    /// <param name="logger">Where to log</param>
+    /// <param name="endpoint">Address of the resource</param>
+    /// <returns>Success/fail status</returns>
     public static async Task<ApiHttpResponse> SendApiDeleteRequest(this HttpClient client, ILogger logger,
         string endpoint) {
         try {
@@ -161,6 +266,15 @@ public static class HttpClientExtension {
     }
 
 
+    /// <summary>
+    ///   
+    /// </summary>
+    /// <typeparam name="T"> type of the serializable object </typeparam>
+    /// <param name="client">Http client to request post</param>
+    /// <param name="logger">Where to log</param>
+    /// <param name="endpoint">Address of the resource</param>
+    /// <param name="json">Data to post</param>
+    /// <returns>Success/fail status</returns>
     public static async Task<ApiHttpResponse> SendApiPostRequest<T>(this HttpClient client, ILogger logger,
         string endpoint, T json) {
         try {
@@ -183,9 +297,16 @@ public static class HttpClientExtension {
     }
 
 
+    /// <summary>
+    /// Recognize the exception which occurred in the given function specified by functionName,
+    /// log the status and return the type of the error
+    /// </summary>
+    /// <param name="ex">Http request exception to be stratified</param>
+    /// <param name="functionName">Where the exception occurred</param>
+    /// <param name="logger">Logger for logging the error</param>
+    /// <returns>Exception type</returns>
     private static ApiHttpResponse HandleApiHttpRequestException(HttpRequestException ex, string functionName,
         ILogger logger) {
-        var aaa = ex.ToString();
         switch (ex.StatusCode) {
             case HttpStatusCode.Conflict:
                 logger.LogError(functionName + " -> Api responded that there is data conflict for following object! " +

@@ -52,7 +52,14 @@ else {
                             <td>@projectInfo.Project.ProjectName</td>
                             <td>@projectInfo.Project.FromDate.ToString("dd/MM/yyyy")</td>
                             <td>@projectInfo.Project.ToDate?.ToString("dd/MM/yyyy")</td>
-                            <td>@projectInfo.Project.Description</td>
+                            <td>@if (projectInfo.Project.Description.Length > 20) {
+                                    <p>@projectInfo.Project.Description[..20];</p> 
+                                }
+                                else {
+                                    <p> @projectInfo.Project.Description</p>
+
+                                }
+                            </td>
                             <td>@projectInfo.ManagerName</td>
                         <td>
                             <!-- edit icon -->
@@ -138,7 +145,7 @@ else {
     //user is authorized and role changed => different sub page probably
         if (roleChange) {
             if (IsAuthorized) {
-                var result = await Http.SendApiGetRequestAsync<ProjectInfoPayload[]>(Logger, "api/Projects");
+                var result = await Http.SendApiGetRequestAsync<ProjectInfoPayload[]>(Logger, "api/Projects/managers-wrapper");
                 if (result.status != ApiHttpResponse.Ok) {
                     ExceptionMessage = StringResolver.ResolveApiResponse(result.status);
                 }

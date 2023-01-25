@@ -39,8 +39,10 @@
 
 
 @code {
+    public const string TokenKey = "JWT-token";
+    
     public string? LoggedUserName { get; set; }
-
+    
 
     protected override void OnInitialized() {
         UserContainer.SetValue(null);
@@ -49,7 +51,12 @@
 
     protected override async Task OnInitializedAsync() {
         Logger.LogDebug("OnInitializeAsync - HTTP GET logged in user");
-    //is there already someone logged in?
+
+        /*var SavedToken = await SessionStorage.GetItemAsStringAsync(TokenKey);
+        if (SavedToken  != null) {
+            await Http.SendApiPostRequestAsync(Logger, "api/auth/token", SavedToken, ResolveResponse);
+        }*/
+        //is there already someone logged in?
         var result = await Http.SendApiGetRequestAsync<LoggedUserPayload>(Logger, "api/auth/info");
         if (result.status != ApiHttpResponse.Ok) {
             UserContainer.SetValue(null);
@@ -57,7 +64,7 @@
         }
 
         if (result.response == null) {
-    //no one is logged in, lets get back to root
+        //no one is logged in, lets get back to root
             UriHelper.NavigateTo("/");
         }
         else {
@@ -69,10 +76,9 @@
             UserContainer.SetValue(result.response);
         }
         LoggedUserName = result.response?.UserName;
-
         StateHasChanged();
     }
-
+    
     public void LogoutPressed() {
         _ = Http.SendApiGetRequestAsync<AuthResponse>(Logger, "api/auth");
 

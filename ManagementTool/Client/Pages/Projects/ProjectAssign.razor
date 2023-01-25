@@ -184,6 +184,11 @@ else {
     }
 
 
+    /// <summary>
+    /// Method used to resolve the asynchronous call of the httpClient
+    /// </summary>
+    /// <param name="apiResponse">response from the httpClient</param>
+    /// <param name="changePage">indicator to change page if requested</param>
     protected override void ResolveResponse(ApiHttpResponse apiResponse, bool changePage) {
         WaitingForApiResponse = false;
         ValidationMessage = StringResolver.ResolveApiResponse(apiResponse);

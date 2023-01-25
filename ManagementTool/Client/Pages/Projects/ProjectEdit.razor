@@ -5,6 +5,7 @@
 @using ManagementTool.Shared.Models.Presentation.Api.Payloads
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
+@using System.ComponentModel.DataAnnotations
 @inherits InteractivePageBase<ProjectEdit>
 
 @inject StateContainer<ProjectInfoPayload> ProjectContainer
@@ -41,7 +42,7 @@ else {
                             <label>
                                 Název projektu
                             </label>
-                            <InputText id="txtName" type="text" required @bind-Value="SelectedProject.ProjectName"/>
+                            <InputText id="txtName" type="text" required @bind-Value="@SelectedProject.Project.ProjectName"/>
                             <ValidationMessage For="@(() => SelectedProject.Project.ProjectName)"/>
                         </p>
                     </div>
@@ -51,7 +52,7 @@ else {
                             <label>
                                 Datum od
                             </label>
-                            <input id="txtDate" type="date" @bind-value="SelectedProject.Project.FromDate" min="01/01/1970" placeholder="dd/MM/yyyy" required/>
+                            <input id="txtDate" type="date" @bind-value="@SelectedProject.Project.FromDate" min="01/01/1970" placeholder="dd/MM/yyyy" required />
                             <ValidationMessage For="@(() => SelectedProject.Project.FromDate)" />
                         </p>
                     </div>
@@ -60,7 +61,7 @@ else {
                             <label>
                                 Datum do
                             </label>
-                            <input id="txtDate" type="date" @bind-value="SelectedProject.Project.ToDate" min="1970-01-01" placeholder="dd/MM/yyyy" />
+                            <input id="txtDate" type="date" @bind-value="@SelectedProject.Project.ToDate" min="1970-01-01" placeholder="dd/MM/yyyy" />
                             <ValidationMessage For="@(() => SelectedProject.Project.ToDate)" />
                         </p>
                     </div>
@@ -70,7 +71,8 @@ else {
                             <label>
                                 Popisek projektu
                             </label>
-                            <InputText id="txtName" type="text" required @bind-Value="SelectedProject.Description"/>
+                            <textarea id="txtName" type="text" required @bind="@SelectedProject.Project.Description" @bind:event="oninput">
+                            </textarea>
                             <ValidationMessage For="@(() => SelectedProject.Project.Description)" />
                         </p>
                     </div>
@@ -97,7 +99,7 @@ else {
                                     </option>
                                 }
                             </select>
-                            <ValidationMessage For="@(() => SelectedProject.ManagerName)"/>
+                            <ValidationMessage For="@(() => SelectedManagerId)"/>
                         </p>
                     </div>
                     
@@ -138,6 +140,7 @@ else {
 
     private UserBasePL[] AllUsers = Array.Empty<UserBasePL>();
 
+    [Required(ErrorMessage = "Manažer musí být vyplněný!")]
     private string? SelectedManagerId { get; set; }
 
 
@@ -156,6 +159,7 @@ else {
         }
         else {
             SelectedProject = ProjectContainer.Value;
+            SelectedManagerId = SelectedProject.ProjectManagerId.ToString();
         }
         EditContext = new EditContext(SelectedProject);
     }
@@ -178,6 +182,8 @@ else {
             return;
         }
         SelectedManagerId = idString;
+        var id = long.Parse(idString);
+        SelectedProject.ProjectManagerId = id;
     }
 
     private void HandleValidSubmit() {
@@ -185,8 +191,12 @@ else {
         if (valResult != ProjectCreationResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveProjectValidation(valResult);
         }
+        else if (SelectedManagerId == null) {
+            ExceptionMessage = "Musí být zvolen manažer!";
+        }
         else {
             WaitingForApiResponse = true;
+            
             if (NewProjectCreation) {
                 SendApiPostRequest("api/Projects");
             }
@@ -217,6 +227,11 @@ else {
         ResolveResponse(apiResponse);
     }
 
+    /// <summary>
+    /// Method used to resolve the asynchronous call of the httpClient
+    /// </summary>
+    /// <param name="apiResponse">response from the httpClient</param>
+    /// <param name="changePage">indicator to change page if requested</param>
     private void ResolveResponse(ApiHttpResponse apiResponse) {
         WaitingForApiResponse = false;
         if (apiResponse == ApiHttpResponse.Ok) {
