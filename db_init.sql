@@ -41,7 +41,7 @@ CREATE SEQUENCE "manTool"."Project_id_project_seq"
 	MAXVALUE 9223372036854775807
 	START 1
 	CACHE 1
-	NO CYCLE;
+	CYCLE;
 
 -- Permissions
 
@@ -54,9 +54,9 @@ CREATE SEQUENCE "manTool"."Role_id_role_seq"
 	INCREMENT BY 1
 	MINVALUE 1
 	MAXVALUE 9223372036854775807
-	START 1
-	CACHE 1
-	NO CYCLE;
+	START 10
+	CACHE 10
+	CYCLE;
 
 -- Permissions
 
@@ -84,9 +84,9 @@ CREATE SEQUENCE "manTool"."UserRoleXRefs_id_seq"
 	INCREMENT BY 1
 	MINVALUE 1
 	MAXVALUE 9223372036854775807
-	START 1
-	CACHE 1
-	NO CYCLE;
+	START 10
+	CACHE 10
+	CYCLE;
 
 -- Permissions
 
@@ -101,7 +101,7 @@ CREATE SEQUENCE "manTool"."UserSuperiorXRefs_id_seq"
 	MAXVALUE 2147483647
 	START 1
 	CACHE 1
-	NO CYCLE;
+	CYCLE;
 
 -- Permissions
 
@@ -114,9 +114,9 @@ CREATE SEQUENCE "manTool"."User_id_user_seq"
 	INCREMENT BY 1
 	MINVALUE 1
 	MAXVALUE 9223372036854775807
-	START 1
-	CACHE 1
-	NO CYCLE;
+	START 10
+	CACHE 10
+	CYCLE;
 
 -- Permissions
 
@@ -279,20 +279,20 @@ GRANT ALL ON TABLE "manTool"."UserSuperiorXRefs" TO postgres;
 GRANT ALL ON SCHEMA "manTool" TO postgres;
 
 INSERT INTO "manTool"."Role" (id_role,"name","type",id_project) VALUES
-	 (2,'Manažer oddělení','DepartmentManager',NULL),
-	 (3,'Vedoucí','Superior',NULL),
-	 (1,'Sekretariat','Secretariat',NULL);
+	 (100000,'Sekretariat','Secretariat',NULL),
+	 (200000,'Manažer oddělení','DepartmentManager',NULL),
+	 (300000,'Vedoucí','Superior',NULL);
 INSERT INTO "manTool"."User" (id_user,pwd,full_name,username,primary_workplace,email_address,pwd_changed,salt) VALUES
-	 (23,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Admin','admin','KIV','admin@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
-	 (24,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Josef Novák','depMan1','KIV','novas@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
-	 (25,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','David Němý','sup1','KIV','nemejc@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
-	 (26,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Ondřej Havlíček','sup2','KIV','havlicek@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
-	 (27,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Andrea Nováková','secrt','KIV','novakova@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ==');
+	 (100000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Admin','admin','KIV','admin@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
+	 (200000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Josef Novák','depMan1','KIV','novas@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
+	 (300000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','David Němý','sup1','KIV','nemejc@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
+	 (400000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Ondřej Havlíček','sup2','KIV','havlicek@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
+	 (500000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Andrea Nováková','secrt','KIV','novakova@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ==');
 INSERT INTO "manTool"."UserRoleXRefs" (id_user,id_role,assigned_date,id) VALUES
-	 (23,2,'2023-01-19',19),
-	 (23,3,'2023-01-19',20),
-	 (23,1,'2023-01-19',21),
-	 (24,2,'2023-01-19',22),
-	 (25,3,'2023-01-19',23),
-	 (26,3,'2023-01-19',24),
-	 (27,1,'2023-01-19',25);
+	 (100000,200000,'2023-01-19',10000),
+	 (100000,300000,'2023-01-19',200000),
+	 (100000,100000,'2023-01-19',300000),
+	 (200000,200000,'2023-01-19',400000),
+	 (300000,300000,'2023-01-19',500000),
+	 (400000,300000,'2023-01-19',600000),
+	 (500000,100000,'2023-01-19',700000);

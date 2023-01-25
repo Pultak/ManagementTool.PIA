@@ -10,12 +10,9 @@ services:
     environment:
         - POSTGRES_USER=postgres
         - POSTGRES_PASSWORD=postgres
-#      - POSTGRES_DB=pia-ott         # database name
-#      - "TZ=Europe/Prague"          # timezone
     ports:
         - '5432:5432'
     volumes:
-    #     - db:/var/lib/postgresql/data
         - ./db_init.sql:/docker-entrypoint-initdb.d/init.sql
   
   managementtool.server:

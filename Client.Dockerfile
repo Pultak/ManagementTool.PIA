@@ -3,6 +3,7 @@ WORKDIR /src
 
 COPY ManagementTool.sln ./
 COPY ManagementTool/Client/ManagementTool.Client.csproj ./ManagementTool/Client/
+COPY ManagementTool/Client/ ./ManagementTool/Client/
 COPY ManagementTool/Shared/ManagementTool.Shared.csproj ./ManagementTool/Shared/
 
 RUN dotnet restore ManagementTool/Shared/ManagementTool.Shared.csproj
@@ -18,7 +19,9 @@ RUN dotnet build -c Release -o /app
 FROM build AS publish
 RUN dotnet publish -c Release -o /app
 
+
+
 FROM nginx:alpine AS final
-WORKDIR /app
+WORKDIR /var/www/web
 COPY --from=publish /app/wwwroot .
 COPY ManagementTool/Client/nginx.conf /etc/nginx/nginx.conf
