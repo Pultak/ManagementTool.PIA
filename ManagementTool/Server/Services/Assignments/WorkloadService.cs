@@ -9,14 +9,8 @@ using ManagementTool.Shared.Utils;
 
 namespace ManagementTool.Server.Services.Assignments;
 
-public class WorkloadService: IWorkloadService {
-
-    private IProjectRepository ProjectRepository { get; }
-    private IAuthService AuthService { get; }
-    private IUserRepository UserRepository { get; }
-    private IAssignmentRepository AssignmentRepository { get; }
-
-    public WorkloadService(IProjectRepository projectRepository, IUserRepository userRepository, 
+public class WorkloadService : IWorkloadService {
+    public WorkloadService(IProjectRepository projectRepository, IUserRepository userRepository,
         IAssignmentRepository assignmentRepository, IAuthService authService) {
         ProjectRepository = projectRepository;
         AuthService = authService;
@@ -24,10 +18,24 @@ public class WorkloadService: IWorkloadService {
         AssignmentRepository = assignmentRepository;
     }
 
+    private IProjectRepository ProjectRepository { get; }
+    private IAuthService AuthService { get; }
+    private IUserRepository UserRepository { get; }
+    private IAssignmentRepository AssignmentRepository { get; }
 
-    public UserWorkloadPayload? GetUsersWorkloads(string fromDateString, string toDateString, long[] ids, 
+
+    /// <summary>
+    /// Method collects all assignments info from the data source
+    /// and creates intersection of them under specified time scope
+    /// </summary>
+    /// <param name="fromDateString">start time of the time scope</param>
+    /// <param name="toDateString">end time of the time scope</param>
+    /// <param name="ids">all users you want your intersection calculated for</param>
+    /// <param name="projectMan">flag indicating if it is project manager that is requesting it</param>
+    /// <param name="onlyBusinessDays">flag indicating if only business days should intersected</param>
+    /// <returns>resulting list of all dates and workloads for every user collected</returns>
+    public UserWorkloadPayload? GetUsersWorkloads(string fromDateString, string toDateString, long[] ids,
         bool projectMan, bool onlyBusinessDays) {
-
         DateTime fromDate;
         DateTime toDate;
         try {
@@ -42,18 +50,19 @@ public class WorkloadService: IWorkloadService {
             //non valid date format
             return null;
         }
-        
 
-        if (AssignmentUtils.ValidateWorkloadRequest(ids, fromDate, toDate) != EWorkloadValidation.Ok) {
+
+        if (AssignmentUtils.ValidateWorkloadRequest(ids, fromDate, toDate) != WorkloadValidation.Ok) {
             //request is not valid!
             return null;
         }
-        
+
         if (projectMan) {
             var managerRoles = AuthService.GetAllProjectManagerRoles();
             if (managerRoles == null) {
                 return null;
             }
+
             var projectIds = managerRoles.Select(x => x.ProjectId).OfType<long>().ToArray();
             if (!ProjectRepository.AreUsersUnderProjects(ids, projectIds)) {
                 return null;
@@ -62,7 +71,7 @@ public class WorkloadService: IWorkloadService {
 
         var users = UserRepository.GetUsersById(ids);
         var assignments = AssignmentRepository.GetAllUsersAssignments(ids);
-        
+
         var days = AssignmentUtils.Split(fromDate, toDate).ToArray();
         if (onlyBusinessDays) {
             //remove weekends if requested
@@ -71,19 +80,26 @@ public class WorkloadService: IWorkloadService {
         }
 
         return ParseDataIntoWorkload(assignments, days, onlyBusinessDays, users);
-
     }
 
-
+    /// <summary>
+    /// Calculates intersection for every assignment under specified users
+    /// the calculated workload means the usability in a day (8 hours) if the workload = 1 user is fully encumbered 
+    /// </summary>
+    /// <param name="assignments">assignment you want an intersection of</param>
+    /// <param name="days">days that should be inside the intersection</param>
+    /// <param name="onlyBusinessDays">flag indicating if only business days should be validated</param>
+    /// <param name="users"></param>
+    /// <returns></returns>
     private UserWorkloadPayload ParseDataIntoWorkload(IEnumerable<AssignmentBLL> assignments, DateTime[] days,
         bool onlyBusinessDays, IEnumerable<UserBaseBLL> users) {
-
         var firstDate = days.First();
         var lastDate = days.Last();
 
         var selectedDaysCount = days.Length;
 
-        var workloadDict = users.ToDictionary(user => user.Id, user => new UserWorkload(user.FullName, selectedDaysCount));
+        var workloadDict =
+            users.ToDictionary(user => user.Id, user => new UserWorkload(user.FullName, selectedDaysCount));
 
         foreach (var assignment in assignments) {
             var timeDiff = DateTime.Compare(firstDate, assignment.ToDate);
@@ -108,8 +124,9 @@ public class WorkloadService: IWorkloadService {
             else {
                 dayCount = (assignment.ToDate.Date - assignment.FromDate.Date).Days;
             }
+
             // divide by 8 to get daily workload (8 work hours)
-            var load = ((double)assignment.AllocationScope / dayCount) / 8.0;
+            var load = (double)assignment.AllocationScope / dayCount / 8.0;
 
             var firstDayMatchIndex = AssignmentUtils.GetDayIndex(days, assignment.FromDate);
             if (firstDayMatchIndex < 0) {
@@ -119,9 +136,10 @@ public class WorkloadService: IWorkloadService {
 
             for (var i = firstDayMatchIndex; i < selectedDaysCount; i++) {
                 currentUserWorkload.AllWorkload[i] += load;
-                if (assignment.State == EAssignmentState.Active) {
+                if (assignment.State == AssignmentState.Active) {
                     currentUserWorkload.ActiveWorkload[i] += load;
                 }
+
                 if (DateTime.Compare(days[i].Date, assignment.ToDate.Date) >= 0) {
                     //we reached the to date
                     break;
@@ -129,10 +147,9 @@ public class WorkloadService: IWorkloadService {
             }
         }
 
-        var result = new UserWorkloadPayload{
-                Workloads = workloadDict.Select(x => x.Value).ToArray(),
-                Dates = days
-
+        var result = new UserWorkloadPayload {
+            Workloads = workloadDict.Select(x => x.Value).ToArray(),
+            Dates = days
         };
         return result;
     }

@@ -1,14 +1,21 @@
 ﻿using ManagementTool.Server.Models.Database;
 using ManagementTool.Shared.Models.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace ManagementTool.Server.Repository;
 
+/// <summary>
+/// This class is used to specify the names of tables, entity columns and other needed information for the entity framework
+/// </summary>
 public class ManToolDbContext : DbContext {
     public ManToolDbContext(DbContextOptions<ManToolDbContext> options) : base(options) {
     }
 
+    
+    /// Database sets that are accessed via entity framework and mapped to specified object
+    
     public virtual DbSet<UserDAL>? User { get; set; }
     public virtual DbSet<RoleDAL>? Role { get; set; }
     public virtual DbSet<AssignmentDAL>? Assignment { get; set; }
@@ -19,13 +26,15 @@ public class ManToolDbContext : DbContext {
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json")
-            .Build();
+        if (!optionsBuilder.IsConfigured) {
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json")
+                .Build();
+            var dbConnectionString = configuration.GetValue<string>("DBPosgreSQL");
+            optionsBuilder.UseNpgsql(dbConnectionString);
+        }
 
-        var dbConnectionString = configuration.GetValue<string>("DBPosgreSQL");
-        optionsBuilder.UseNpgsql(dbConnectionString);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) {
@@ -46,11 +55,13 @@ public class ManToolDbContext : DbContext {
 
     private void SetupUserEntity(ModelBuilder modelBuilder) {
         modelBuilder.Entity<UserDAL>(entity => {
+            //the user model can found on User table
             entity.ToTable("User");
             entity.Property(e => e.Id)
-                .IsRequired()
+                //id value is always generated when adding new value
+                .IsRequired().ValueGeneratedOnAdd()
                 .HasColumnName("id_user")
-                .HasDefaultValueSql("nextval('account.item_id_seq'::regclass)");
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
             entity.Property(e => e.Username).HasColumnName("username");
             entity.Property(e => e.Pwd)
                 .IsRequired()
@@ -81,16 +92,16 @@ public class ManToolDbContext : DbContext {
         modelBuilder.Entity<RoleDAL>(entity => {
             entity.ToTable("Role");
             entity.Property(e => e.Id)
-                .IsRequired()
+                .IsRequired().ValueGeneratedOnAdd()
                 .HasColumnName("id_role")
-                .HasDefaultValueSql("nextval('id_seq'::regclass)");
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
             entity.Property(e => e.Name)
                 .IsRequired()
                 .HasColumnName("name");
 
-            var converter = new ValueConverter<ERoleType, string>(
+            var converter = new ValueConverter<RoleType, string>(
                 v => v.ToString(),
-                v => (ERoleType)Enum.Parse(typeof(ERoleType), v));
+                v => (RoleType)Enum.Parse(typeof(RoleType), v));
             entity.Property(e => e.Type)
                 .IsRequired()
                 .HasColumnName("type")
@@ -105,9 +116,9 @@ public class ManToolDbContext : DbContext {
         modelBuilder.Entity<AssignmentDAL>(entity => {
             entity.ToTable("Assignment");
             entity.Property(e => e.Id)
-                .IsRequired()
+                .IsRequired().ValueGeneratedOnAdd()
                 .HasColumnName("id_assignment")
-                .HasDefaultValueSql("nextval('account.item_id_seq'::regclass)");
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
             entity.Property(e => e.ProjectId)
                 .HasColumnName("id_project");
             entity.Property(e => e.UserId)
@@ -123,9 +134,9 @@ public class ManToolDbContext : DbContext {
             entity.Property(e => e.ToDate)
                 .HasColumnName("to_date");
 
-            var converter = new ValueConverter<EAssignmentState, string>(
+            var converter = new ValueConverter<AssignmentState, string>(
                 v => v.ToString(),
-                v => (EAssignmentState)Enum.Parse(typeof(EAssignmentState), v));
+                v => (AssignmentState)Enum.Parse(typeof(AssignmentState), v));
             entity.Property(e => e.State)
                 .HasColumnName("state")
                 .HasConversion(converter);
@@ -137,9 +148,9 @@ public class ManToolDbContext : DbContext {
         modelBuilder.Entity<ProjectDAL>(entity => {
             entity.ToTable("Project");
             entity.Property(e => e.Id)
-                .IsRequired()
+                .IsRequired().ValueGeneratedOnAdd()
                 .HasColumnName("id_project")
-                .HasDefaultValueSql("nextval('account.item_id_seq'::regclass)");
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
             entity.Property(e => e.ProjectName)
                 .IsRequired()
                 .HasColumnName("project_name");
@@ -160,8 +171,9 @@ public class ManToolDbContext : DbContext {
         modelBuilder.Entity<UserRoleXRefsDAL>(entity => {
             entity.ToTable("UserRoleXRefs");
             entity.Property(e => e.Id)
-                .IsRequired()
-                .HasColumnName("id");
+                .IsRequired().ValueGeneratedOnAdd()
+                .HasColumnName("id")
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
             entity.Property(e => e.IdUser)
                 .IsRequired()
                 .HasColumnName("id_user");
@@ -180,8 +192,9 @@ public class ManToolDbContext : DbContext {
         modelBuilder.Entity<UserProjectXRefsDAL>(entity => {
             entity.ToTable("UserProjectXRefs");
             entity.Property(e => e.Id)
-                .IsRequired()
-                .HasColumnName("id");
+                .IsRequired().ValueGeneratedOnAdd()
+                .HasColumnName("id")
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
             entity.Property(e => e.IdUser)
                 .IsRequired()
                 .HasColumnName("id_user");
@@ -199,8 +212,9 @@ public class ManToolDbContext : DbContext {
         modelBuilder.Entity<UserSuperiorXRefsDAL>(entity => {
             entity.ToTable("UserSuperiorXRefs");
             entity.Property(e => e.Id)
-                .IsRequired()
-                .HasColumnName("id");
+                .IsRequired().ValueGeneratedOnAdd()
+                .HasColumnName("id")
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
             entity.Property(e => e.IdUser)
                 .IsRequired()
                 .HasColumnName("id_user");
