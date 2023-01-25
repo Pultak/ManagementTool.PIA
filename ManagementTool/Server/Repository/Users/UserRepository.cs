@@ -187,6 +187,9 @@ public class UserRepository : IUserRepository {
     /// <param name="projectId">id of project the user should be assigned to</param>
     /// <returns>List of all users with flags</returns>
     public IEnumerable<DataModelAssignmentBLL<UserBaseBLL>> GetAllUsersAssignedToProject(long projectId) {
+        if (_db.User == null || _db.UserProjectXRefs == null) {
+            return Array.Empty<DataModelAssignmentBLL<UserBaseBLL>>();
+        }
         var query = (from user in _db.User
             from refs in _db.UserProjectXRefs.Where(x => x.IdProject == projectId).DefaultIfEmpty()
             select new DataModelAssignmentBLL<UserBaseBLL>(refs != null,
@@ -200,7 +203,7 @@ public class UserRepository : IUserRepository {
     /// Creates a user/superior assignation
     /// </summary>
     /// <param name="superiorsIds"></param>
-    /// <param name="superiorId"></param>
+    /// <param name="userId"></param>
     /// <returns>true on success</returns>
     public bool AssignSuperiorsToUser(List<long> superiorsIds, long userId) {
         List<UserSuperiorXRefsDAL> resultRange = new();

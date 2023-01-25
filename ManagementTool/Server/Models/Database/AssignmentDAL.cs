@@ -1,12 +1,12 @@
 ﻿using ManagementTool.Shared.Models.Utils;
 
-namespace ManagementTool.Server.Models.Business;
+namespace ManagementTool.Server.Models.Database;
 /// <summary>
-///  Assignment model from the business logic layer (BLL),
+///  Assignment model from the data access layer (DAL),
 /// containing all information our assignment need
 /// </summary>
-public class AssignmentBLL {
-    public AssignmentBLL() {
+public class AssignmentDAL {
+    public AssignmentDAL() {
         Id = default;
         ProjectId = default;
         Name = string.Empty;
@@ -18,7 +18,7 @@ public class AssignmentBLL {
         State = AssignmentState.Active;
     }
 
-    public AssignmentBLL(long id, long projectId, string name, string note, long userId,
+    public AssignmentDAL(long id, long projectId, string name, string note, long userId,
         long allocationScope, DateTime fromDate, DateTime toDate, AssignmentState state) {
         Id = id;
         ProjectId = projectId;
@@ -37,6 +37,7 @@ public class AssignmentBLL {
     /// Id of the project that this assignment is assigned to
     /// </summary>
     public long ProjectId { get; set; }
+
     /// <summary>
     /// Name of the assignment.
     /// Its content should be brief and detailed info should be inside note
@@ -48,7 +49,6 @@ public class AssignmentBLL {
     /// This could contain some description of the assignment
     /// </summary>
     public string Note { get; set; }
-
 
     /// <summary>
     /// Id of user this assignment is assigned to
@@ -69,7 +69,6 @@ public class AssignmentBLL {
     /// To date on which should this assignment be done
     /// </summary>
     public DateTime ToDate { get; set; }
-
     /// <summary>
     /// Current state of the assignment (active/inactive)
     /// </summary>

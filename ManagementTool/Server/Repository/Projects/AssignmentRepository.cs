@@ -148,7 +148,7 @@ public class AssignmentRepository : IAssignmentRepository {
     }
 
     private IEnumerable<AssignmentWrapperBLL> GetAssignmentWrappers(IQueryable<AssignmentDAL>? assignments) {
-        if (assignments == null) {
+        if (assignments == null || _db.User == null || _db.Project == null) {
             return Enumerable.Empty<AssignmentWrapperBLL>();
         }
 
