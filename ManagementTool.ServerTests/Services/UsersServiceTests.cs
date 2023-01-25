@@ -161,7 +161,8 @@ public class UsersServiceTests {
         dummyPayload.UpdatedUser.Username = username;
 
         var creationResponse = _instance.CreateUser(dummyPayload.UpdatedUser, dummyPayload.Pwd);
-        Assert.That(creationResponse, Is.EqualTo(UserCreationResponse.InvalidUsername));
+        Assert.That(creationResponse.response, Is.EqualTo(UserCreationResponse.InvalidUsername));
+        Assert.That(creationResponse.newId, Is.EqualTo(0));
     }
 
     [Test]
@@ -176,7 +177,8 @@ public class UsersServiceTests {
         dummyPayload.UpdatedUser.FullName = fullname;
 
         var creationResponse = _instance.CreateUser(dummyPayload.UpdatedUser, dummyPayload.Pwd);
-        Assert.That(creationResponse, Is.EqualTo(UserCreationResponse.InvalidFullName));
+        Assert.That(creationResponse.response, Is.EqualTo(UserCreationResponse.InvalidFullName));
+        Assert.That(creationResponse.newId, Is.EqualTo(0));
     }
 
 
@@ -191,7 +193,8 @@ public class UsersServiceTests {
         dummyPayload.UpdatedUser.PrimaryWorkplace = workplace;
 
         var creationResponse = _instance.CreateUser(dummyPayload.UpdatedUser, dummyPayload.Pwd);
-        Assert.That(creationResponse, Is.EqualTo(UserCreationResponse.InvalidWorkplace));
+        Assert.That(creationResponse.response, Is.EqualTo(UserCreationResponse.InvalidWorkplace));
+        Assert.That(creationResponse.newId, Is.EqualTo(0));
     }
 
 
@@ -205,7 +208,8 @@ public class UsersServiceTests {
         dummyPayload.UpdatedUser.EmailAddress = emailAddress;
 
         var creationResponse = _instance.CreateUser(dummyPayload.UpdatedUser, dummyPayload.Pwd);
-        Assert.That(creationResponse, Is.EqualTo(UserCreationResponse.InvalidEmail));
+        Assert.That(creationResponse.response, Is.EqualTo(UserCreationResponse.InvalidEmail));
+        Assert.That(creationResponse.newId, Is.EqualTo(0));
     }
 
     [Test]
@@ -214,7 +218,8 @@ public class UsersServiceTests {
         dummyPayload.UpdatedUser.Username = _dummyUser1.Username;
 
         var creationResponse = _instance.CreateUser(dummyPayload.UpdatedUser, dummyPayload.Pwd);
-        Assert.That(creationResponse, Is.EqualTo(UserCreationResponse.UsernameTaken));
+        Assert.That(creationResponse.response, Is.EqualTo(UserCreationResponse.UsernameTaken));
+        Assert.That(creationResponse.newId, Is.EqualTo(0));
     }
 
 
@@ -230,7 +235,8 @@ public class UsersServiceTests {
 
         var creationResponse = _instance.CreateUser(dummyPayload.UpdatedUser, dummyPayload.Pwd);
 
-        Assert.That(creationResponse, Is.EqualTo(UserCreationResponse.Ok));
+        Assert.That(creationResponse.response, Is.EqualTo(UserCreationResponse.Ok));
+        Assert.That(creationResponse.newId, Is.EqualTo(1));
 
         _mockUserRepository.Verify(x => x.AddUser(It.IsAny<UserBaseBLL>(),
             AuthServiceTests.GeneratedUserPwd, AuthServiceTests.GeneratedUserSalt), Times.Once);

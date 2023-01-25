@@ -8,9 +8,9 @@ public class MoqHttpResponse : HttpResponse {
     public override IHeaderDictionary Headers { get; }
     public override Stream Body { get; set; }
     public override long? ContentLength { get; set; }
-    public override string ContentType { get; set; }
-    public override IResponseCookies Cookies { get; }
-    public override bool HasStarted { get; }
+    public override string ContentType { get; set; } = string.Empty;
+    public override IResponseCookies Cookies { get; } 
+    public override bool HasStarted { get; } = false;
 
     public override void OnStarting(Func<object, Task> callback, object state) {
         throw new NotImplementedException();

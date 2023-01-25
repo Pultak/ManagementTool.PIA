@@ -38,7 +38,7 @@ public class MockHttpSession : ISession {
             return true;
         }
 
-        value = null;
+        value = Array.Empty<byte>();
         return false;
     }
 

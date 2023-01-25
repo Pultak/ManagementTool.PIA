@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using AutoMapper;
+using ManagementTool.Server.Models;
 using ManagementTool.Server.Models.Business;
 using ManagementTool.Server.Repository.Users;
 using ManagementTool.Server.Services;
@@ -9,6 +10,7 @@ using ManagementTool.Shared.Models.Login;
 using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Utils;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 
 namespace ManagementTool.ServerTests.Services;
 
@@ -57,6 +59,8 @@ public class AuthServiceTests {
     private Mock<IUserRoleRepository> _mockRoleRepository = new();
 
     private Mock<IUserRepository> _mockUserRepository = new();
+    private Mock<IConfiguration> _mockConfiguration = new();
+
 
     private UserBaseBLL _user1 = new();
     private UserBaseBLL _user2 = new();
@@ -85,8 +89,10 @@ public class AuthServiceTests {
         _mockUserRepository = new Mock<IUserRepository>();
         _mockRoleRepository = new Mock<IUserRoleRepository>();
 
+        _mockConfiguration = new Mock<IConfiguration>();
+
         _instance = new AuthService(_mockHttpContextAccessor.Object, _mockUserRepository.Object,
-            _mockRoleRepository.Object, _mockMapper);
+            _mockRoleRepository.Object, _mockMapper, _mockConfiguration.Object, new TokenMap());
 
         _user1 = new UserBaseBLL {
             Id = 1,
