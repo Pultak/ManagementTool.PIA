@@ -278,16 +278,38 @@ GRANT ALL ON TABLE "manTool"."UserSuperiorXRefs" TO postgres;
 
 GRANT ALL ON SCHEMA "manTool" TO postgres;
 
+INSERT INTO "manTool"."Assignment" (id_assignment,id_project,id_user,allocation_scope,from_date,to_date,state,"name",note) VALUES
+	 (200000,100000,500000,10,'2023-01-26','2023-01-27','Active','Otestuj výrobek','Otestuj výrobek podle protokolu'),
+	 (300000,100000,500000,7,'2023-01-28','2023-01-30','Draft','Schůzka se zákazníkem','Bude potřeba se spojit se zákazníkem ohledně dalšího postupu'),
+	 (400000,100000,500000,5,'2023-01-26','2023-01-29','Draft','Konzultace s týmem','Tým by se měl sejít a prodiskutovat další postup'),
+	 (500000,200000,200000,30,'2023-01-26','2023-01-30','Cancelled','Design loga','Bude potřeba navrhnout dokonalé logo');
+
+INSERT INTO "manTool"."Project" (id_project,project_name,from_date,to_date,description) VALUES
+(100000,'LDL','2023-01-26','2023-01-31','Projekt pro společnost Lidl '),
+(200000,'MDG','2023-01-26',NULL,'Projekt pro vytváření válečných pum');
+
 INSERT INTO "manTool"."Role" (id_role,"name","type",id_project) VALUES
 	 (100000,'Sekretariat','Secretariat',NULL),
 	 (200000,'Manažer oddělení','DepartmentManager',NULL),
-	 (300000,'Vedoucí','Superior',NULL);
+	 (300000,'Vedoucí','Superior',NULL),
+	 (100001,'LDL Manažer','ProjectManager',100000),
+	 (200001,'MDG Manažer','ProjectManager',200000);
+
 INSERT INTO "manTool"."User" (id_user,pwd,full_name,username,primary_workplace,email_address,pwd_changed,salt) VALUES
 	 (100000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Admin','admin','KIV','admin@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
-	 (200000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Josef Novák','depMan1','KIV','novas@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
-	 (300000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','David Němý','sup1','KIV','nemejc@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
 	 (400000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Ondřej Havlíček','sup2','KIV','havlicek@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
-	 (500000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Andrea Nováková','secrt','KIV','novakova@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ==');
+	 (500000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Andrea Nováková','secrt','KIV','novakova@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
+	 (300000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','David Němý','sup1','KIV','nemejc@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ=='),
+	 (200000,'G1Ii0Y26NGzjiC1eoMVpuCuPW1xTTlf65c0jq9SJkf0=','Josef Novák','depMan1','KIV','novas@kiv.cz',false,'MdAWirg+6/S4U1HDgPBLnQ==');
+
+
+INSERT INTO "manTool"."UserProjectXRefs" (id_project,assigned_date,id_user) VALUES
+(100000,'2023-01-26',500000),
+(100000,'2023-01-26',300000),
+(100000,'2023-01-26',400000),
+(200000,'2023-01-26',400000),
+(200000,'2023-01-26',200000);
+
 INSERT INTO "manTool"."UserRoleXRefs" (id_user,id_role,assigned_date,id) VALUES
 	 (100000,200000,'2023-01-19',10000),
 	 (100000,300000,'2023-01-19',200000),
@@ -295,4 +317,12 @@ INSERT INTO "manTool"."UserRoleXRefs" (id_user,id_role,assigned_date,id) VALUES
 	 (200000,200000,'2023-01-19',400000),
 	 (300000,300000,'2023-01-19',500000),
 	 (400000,300000,'2023-01-19',600000),
-	 (500000,100000,'2023-01-19',700000);
+	 (500000,100000,'2023-01-19',700000),
+	 (400000,100001,'2023-01-26',100000),
+	 (300000,200001,'2023-01-26',200001);
+
+INSERT INTO "manTool"."UserSuperiorXRefs" (id,id_user,id_superior_user,assigned_date) VALUES
+(100000,500000,400000,'2023-01-26'),
+(200000,300000,400000,'2023-01-26'),
+(300000,200000,400000,'2023-01-26');
+
