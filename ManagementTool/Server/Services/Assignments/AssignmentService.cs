@@ -33,8 +33,8 @@ public class AssignmentService : IAssignmentService {
             return Array.Empty<AssignmentWrapperPayload>();
         }
 
-        var result = AssignmentsRepository.GetAssignmentsByProjectIds(projectIds);
-        return Mapper.Map<IEnumerable<AssignmentWrapperPayload>>(result);
+        var result = AssignmentsRepository.GetAssignmentsByProjectIds(projectIds).Select(x => x.MapToPL(Mapper));
+        return result;
     }
 
     /// <summary>
@@ -63,16 +63,20 @@ public class AssignmentService : IAssignmentService {
             return Array.Empty<AssignmentWrapperPayload>();
         }
 
-        var result = AssignmentsRepository.GetAssignmentsByUserId(userId);
-        return Mapper.Map<IEnumerable<AssignmentWrapperPayload>>(result);
+        var result = AssignmentsRepository.GetAssignmentsByUserId(userId)
+            .Select(x => x.MapToPL(Mapper));
+
+
+        return result;
     }
     /// <summary>
     /// Method returns all assignments you can find inside of data source
     /// </summary>
     /// <returns>all assignments with wrapped  project and user names</returns>
     public IEnumerable<AssignmentWrapperPayload> GetAllAssignments() {
-        var result = AssignmentsRepository.GetAllAssignments();
-        return Mapper.Map<IEnumerable<AssignmentWrapperPayload>>(result);
+        var result = AssignmentsRepository.GetAllAssignments()
+            .Select(x => x.MapToPL(Mapper));
+        return result;
     }
     /// <summary>
     /// Method deletes the assignment but it needs to be present in the data store
@@ -111,8 +115,9 @@ public class AssignmentService : IAssignmentService {
             return null;
         }
 
-        var result = AssignmentsRepository.GetAssignmentsUnderSuperior(superiorId);
-        return Mapper.Map<IEnumerable<AssignmentWrapperPayload>>(result);
+        var result = AssignmentsRepository.GetAssignmentsUnderSuperior(superiorId)
+            .Select(x => x.MapToPL(Mapper));
+        return result;
     }
 
     /* this method could be used if project deletion was present in the system

@@ -18,7 +18,16 @@ public interface IUsersService {
     /// </summary>
     /// <param name="projectId">id of the project for desired users</param>
     /// <returns>null if invalid project, project users otherwise</returns>
-    public IEnumerable<DataModelAssignmentPL<UserBasePL>>? GetAllUsersUnderProject(long projectId);
+    public IEnumerable<DataModelAssignmentPL<UserBasePL>>? GetAllUsersAssignationsUnderProject(long projectId);
+
+
+    /// <summary>
+    /// Returns all users from project that are assigned to project
+    /// </summary>
+    /// <param name="projectId">id of the project for desired users</param>
+    /// <returns>null if invalid project, project users otherwise</returns>
+    public IEnumerable<UserBasePL>? GetAllUsersUnderProject(long projectId);
+    
 
     /// <summary>
     /// Method for creation of new user. It also contains validation and hashing of pwd

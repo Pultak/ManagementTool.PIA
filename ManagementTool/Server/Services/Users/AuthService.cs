@@ -50,12 +50,6 @@ public class AuthService : IAuthService {
         if (string.IsNullOrEmpty(authRequest.Password) || string.IsNullOrEmpty(authRequest.Username)) {
             return (AuthResponse.BadRequest, HttpStatusCode.BadRequest);
         }
-
-        if (IsUserAuthorized(null)) {
-            //already logged in
-            return (AuthResponse.AlreadyLoggedIn, HttpStatusCode.OK);
-        }
-
         var userCredentials = UserRepository.GetUserCredentials(authRequest.Username);
         if (userCredentials == null) {
             return (AuthResponse.UnknownUser, HttpStatusCode.Unauthorized);
@@ -122,7 +116,6 @@ public class AuthService : IAuthService {
             new Claim(IAuthService.UserRolesKey, JsonConvert.SerializeObject(userInfo.Roles)),
             new Claim(IAuthService.UserHasInitPwdKey, userInfo.User.PwdInit ? "1" : "0"),
         };
-
 
 
         var credentials = new SigningCredentials(TokenKey, SecurityAlgorithms.HmacSha512Signature);

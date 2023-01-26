@@ -186,18 +186,48 @@ public class UserRepository : IUserRepository {
     /// </summary>
     /// <param name="projectId">id of project the user should be assigned to</param>
     /// <returns>List of all users with flags</returns>
-    public IEnumerable<DataModelAssignmentBLL<UserBaseBLL>> GetAllUsersAssignedToProject(long projectId) {
+    public IEnumerable<DataModelAssignmentBLL<UserBaseBLL>> GetAllUsersAssignedToProjectWrappers(long projectId) {
         if (_db.User == null || _db.UserProjectXRefs == null) {
             return Array.Empty<DataModelAssignmentBLL<UserBaseBLL>>();
         }
         var query = (from user in _db.User
-            from refs in _db.UserProjectXRefs.Where(x => x.IdProject == projectId).DefaultIfEmpty()
+            from refs in _db.UserProjectXRefs.Where(x => x.IdProject == projectId)
             select new DataModelAssignmentBLL<UserBaseBLL>(refs != null,
                 new UserBaseBLL(user.Id, user.Username, user.FullName,
                     user.PrimaryWorkplace, user.EmailAddress, user.PwdInit))).Distinct().ToList();
 
         return query;
     }
+
+
+    /// <summary>
+    /// Method retrieves all users and add a flag if they are assigned to it or not
+    /// </summary>
+    /// <param name="projectId">id of project the user should be assigned to</param>
+    /// <returns>List of all users with flags</returns>
+    public IEnumerable<UserBaseBLL> GetAllUsersAssignedToProject(long projectId) {
+        if (_db.User == null || _db.UserProjectXRefs == null) {
+            return Array.Empty<UserBaseBLL>();
+        }
+
+        var query = _db.User.Join(_db.UserProjectXRefs,
+                user => user.Id,
+                refs => refs.IdUser,
+                (user, refs) => new {
+                    idUser = user.Id,
+                    username = user.Username,
+                    fullName = user.FullName,
+                    primaryWorklplace = user.PrimaryWorkplace,
+                    emailAddress = user.EmailAddress,
+                    pwdInit = user.PwdInit,
+                    projectId = refs.IdProject
+                }).Where(x => x.projectId == projectId)
+            .Select(x =>
+                new UserBaseBLL(x.idUser, x.username, x.fullName, x.primaryWorklplace, x.emailAddress, x.pwdInit));
+
+        return query;
+    }
+
 
     /// <summary>
     /// Creates a user/superior assignation

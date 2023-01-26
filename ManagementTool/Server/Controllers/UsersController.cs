@@ -138,11 +138,6 @@ public class UsersController : ControllerBase {
     /// <returns></returns>
     [HttpGet("{userId:long}/roles")]
     public IEnumerable<DataModelAssignmentPL<RolePL>>? GetAllUserRoles(long userId) {
-        if (!AuthService.IsUserAuthorized(null)) {
-            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            return null;
-        }
-
         var userRoles = RolesService.GetAllRolesAssigned(userId);
         if (userRoles == null) {
             Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
@@ -161,11 +156,6 @@ public class UsersController : ControllerBase {
     /// <returns>List of all superiors</returns>
     [HttpGet("superiors")]
     public IEnumerable<UserBasePL>? GetAllSuperiors() {
-        if (!AuthService.IsUserAuthorized(null)) {
-            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            return null;
-        }
-
         var users = UsersService.GetAllUsersWithRole(RoleType.Superior);
         Response.StatusCode = (int)HttpStatusCode.OK;
 
@@ -181,11 +171,6 @@ public class UsersController : ControllerBase {
     /// <returns></returns>
     [HttpGet("{userId:long}/superiors")]
     public IEnumerable<long>? GetAllUserSuperiors(long userId) {
-        if (!AuthService.IsUserAuthorized(null)) {
-            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            return null;
-        }
-
         var superiors = UsersService.GetAllUserSuperiorsIds(userId);
         if (superiors == null) {
             Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;

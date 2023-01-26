@@ -35,7 +35,7 @@ public class UsersService : IUsersService {
     /// <summary>
     /// Method for creation of new user. It also contains validation and hashing of pwd
     /// </summary>
-    /// <param name="user">new user you want to create</param>
+    /// <param name="newUser">new user you want to create</param>
     /// <param name="pwd">password for new user</param>
     /// <returns>enum of all possible creation states + new user id on success</returns>
     public (UserCreationResponse response, long newId) CreateUser(UserBasePL newUser, string pwd) {
@@ -72,22 +72,38 @@ public class UsersService : IUsersService {
     /// </summary>
     /// <param name="projectId">id of the project for desired users</param>
     /// <returns>null if invalid project, project users otherwise</returns>
-    public IEnumerable<DataModelAssignmentPL<UserBasePL>>? GetAllUsersUnderProject(long projectId) {
+    public IEnumerable<DataModelAssignmentPL<UserBasePL>>? GetAllUsersAssignationsUnderProject(long projectId) {
+        if (projectId < 1) {
+            return null;
+        }
+
+        var result = UserRepository.GetAllUsersAssignedToProjectWrappers(projectId);
+        var plResult = result.Select(x => x.MapToPL<UserBasePL>(Mapper));
+
+        return plResult;
+    }
+
+    
+
+    /// <summary>
+    /// Returns all users from project that are assigned to project
+    /// </summary>
+    /// <param name="projectId">id of the project for desired users</param>
+    /// <returns>null if invalid project, project users otherwise</returns>
+    public IEnumerable<UserBasePL>? GetAllUsersUnderProject(long projectId) {
         if (projectId < 1) {
             return null;
         }
 
         var result = UserRepository.GetAllUsersAssignedToProject(projectId);
-        var plResult = result.Select(x => x.MapToPL<UserBasePL>(Mapper));
-
-        return plResult;
+        return Mapper.Map<IEnumerable<UserBasePL>>(result);
     }
 
 
     /// <summary>
     /// Method for updating of existing user. It checks his presence in data source and validates the new data
     /// </summary>
-    /// <param name="dbUser">User you want to update</param>
+    /// <param name="user">User you want to update</param>
     /// <returns>enum of all possible creation states + new user id on success</returns>
     public UserCreationResponse UpdateUser(UserBasePL user) {
         var valResult = UserUtils.ValidateUser(user);

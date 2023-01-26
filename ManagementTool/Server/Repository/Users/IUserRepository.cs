@@ -76,8 +76,14 @@ public interface IUserRepository {
     /// </summary>
     /// <param name="projectId">id of project the user should be assigned to</param>
     /// <returns>List of all users with flags</returns>
-    public IEnumerable<DataModelAssignmentBLL<UserBaseBLL>> GetAllUsersAssignedToProject(long projectId);
-    //public IEnumerable<UserBaseBLL> GetAllUsersUnderProject(long projectId);
+    public IEnumerable<DataModelAssignmentBLL<UserBaseBLL>> GetAllUsersAssignedToProjectWrappers(long projectId);
+
+    /// <summary>
+    /// Method retrieves all users
+    /// </summary>
+    /// <param name="projectId">id of project the user should be assigned to</param>
+    /// <returns>List of all users with flags</returns>
+    public IEnumerable<UserBaseBLL> GetAllUsersAssignedToProject(long projectId);
 
     /// <summary>
     /// Creates a user/project assignation

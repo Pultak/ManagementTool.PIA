@@ -92,13 +92,27 @@ public class ProjectsController : ControllerBase {
     /// </summary>
     /// <param name="projectId">valid id of the project</param>
     /// <returns>List of all users that are under desired project</returns>
-    [HttpGet("{projectId:long}/users")]
-    public IEnumerable<DataModelAssignmentPL<UserBasePL>>? GetAllUsersUnderProject(long projectId) {
-        if (!AuthService.IsUserAuthorized(null)) {
-            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+    [HttpGet("{projectId:long}/users/assignations")]
+    public IEnumerable<DataModelAssignmentPL<UserBasePL>>? GetAllUsersAssignationUnderProject(long projectId) {
+        if (projectId < 1) {
+            Response.StatusCode = (int)HttpStatusCode.BadRequest;
             return null;
         }
 
+        var resultUsers = UsersService.GetAllUsersAssignationsUnderProject(projectId);
+        Response.StatusCode = (int)HttpStatusCode.OK;
+        return resultUsers;
+    }
+
+    
+    /// <summary>
+    /// Endpoint for getting all users assigned to specified project
+    /// This endpoint can be access by anyone
+    /// </summary>
+    /// <param name="projectId">valid id of the project</param>
+    /// <returns>List of all users that are under desired project</returns>
+    [HttpGet("{projectId:long}/users")]
+    public IEnumerable<UserBasePL>? GetAllUsersUnderProject(long projectId) {
         if (projectId < 1) {
             Response.StatusCode = (int)HttpStatusCode.BadRequest;
             return null;

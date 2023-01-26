@@ -41,8 +41,8 @@ internal class Program {
         //app.UseBlazorFrameworkFiles();
         //app.UseStaticFiles();
 
-        app.UseRouting();
         app.UseCors();
+        app.UseRouting();
 
         app.UseSwagger();
         app.UseSwaggerUI();

@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ManagementTool.Server.Controllers;
 
 [Route("api/auth")]
-[ApiController]
+[ApiController, Authorize]
 public class LoginController : ControllerBase {
     public LoginController(IAuthService authService) => AuthService = authService;
 
@@ -19,7 +19,7 @@ public class LoginController : ControllerBase {
     /// </summary>
     /// <param name="authRequest">user credentials</param>
     /// <returns>payload with auth response and auth token</returns>
-    [HttpPost]
+    [HttpPost, AllowAnonymous]
     public AuthResponsePayload Login([FromBody] AuthRequest authRequest) {
         var result = AuthService.Login(authRequest);
         Response.StatusCode = (int)result.statusCode;
@@ -49,7 +49,6 @@ public class LoginController : ControllerBase {
     /// </summary>
     /// <returns>authResponse enum </returns>
     [HttpGet]
-    [Authorize]
     public AuthResponse Logout() {
         Response.StatusCode = (int)HttpStatusCode.OK;
         return AuthService.Logout();
@@ -60,7 +59,6 @@ public class LoginController : ControllerBase {
     /// </summary>
     /// <returns></returns>
     [HttpGet("info")]
-    [Authorize]
     public LoggedUserPayload GetLoggedInUser() => AuthService.GetLoggedInUser();
 
 
@@ -70,7 +68,6 @@ public class LoginController : ControllerBase {
     /// </summary>
     /// <param name="newPwd">valid new password for user</param>
     [HttpPatch]
-    [Authorize]
     public void LoggedInUserChangePwd([FromBody] string newPwd) {
         Response.StatusCode = (int)AuthService.LoggedInUserChangePwd(newPwd);
     }

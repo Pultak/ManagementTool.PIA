@@ -195,7 +195,7 @@ public class ProjectsService : IProjectsService {
 
 
     private bool UpdateUserProjectAssignments(IEnumerable<UserBaseBLL> assignedUsers, ProjectBLL project) {
-        var dbProjectAssignees = UserRepository.GetAllUsersAssignedToProject(project.Id).ToArray();
+        var dbProjectAssignees = UserRepository.GetAllUsersAssignedToProjectWrappers(project.Id).ToArray();
 
         List<long> unassignList = new();
         List<long> assignList = new();
