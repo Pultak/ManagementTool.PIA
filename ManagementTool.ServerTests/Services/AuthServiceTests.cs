@@ -91,17 +91,18 @@ public class AuthServiceTests {
 
     [OneTimeSetUp]
     public void OneTimeSetUp() {
+        //init http context
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _mockHttpContext = new Mock<HttpContext>();
         _mockHttpSession = new MockHttpSession();
 
+        //create mapper and needed mapper config
         var configuration = new MapperConfiguration(cfg =>
             cfg.CreateMap<RoleBLL, RolePL>());
-
         configuration.AssertConfigurationIsValid();
-
         _mockMapper = new Mapper(configuration);
 
+        //setup context variables
         _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(_mockHttpContext.Object);
         _mockHttpContext.Setup(s => s.Session).Returns(_mockHttpSession);
 
@@ -109,15 +110,15 @@ public class AuthServiceTests {
         _mockUserRepository = new Mock<IUserRepository>();
         _mockRoleRepository = new Mock<IUserRoleRepository>();
 
+        //init config sections
         _mockConfiguration = new Mock<IConfiguration>();
-
         var configSection = new Mock<IConfigurationSection>();
         configSection.Setup(x => x["JWTTokenKey"]).Returns("SuperSecretKeyYouCantEvenImagine");
         configSection.Setup(x => x["JWTTimeoutDays"]).Returns("1");
         _mockConfiguration.Setup(x => x.GetSection(It.IsAny<string>())).Returns(configSection.Object);
         
 
-
+        //init tested instance
         _instance = new AuthService(_mockHttpContextAccessor.Object, _mockUserRepository.Object,
             _mockRoleRepository.Object, _mockMapper, _mockConfiguration.Object);
         
@@ -136,7 +137,9 @@ public class AuthServiceTests {
 
     [SetUp]
     public void Setup() {
+        //reset all setups so there are no changes made by tests
         _mockUserRepository.Reset();
+        //setup methods and their return values for user repository
         _mockUserRepository.Setup(x => x.GetUserCredentials(1)).Returns(_userCredentials1);
         _mockUserRepository.Setup(x => x.GetUserCredentials(2)).Returns(_userCredentials2);
         _mockUserRepository.Setup(x => x.GetUserCredentials(It.IsAny<string>())).Returns(_userCredentials1);
@@ -146,12 +149,15 @@ public class AuthServiceTests {
         _mockUserRepository.Setup(x => x.GetUserById(2)).Returns(_user2);
         _mockUserRepository.Setup(x => x.UpdateUserPwd(It.IsAny<long>(), It.IsAny<string>())).Returns(true);
 
+        //setup methods and their return values for role repository
         _mockRoleRepository.Reset();
         _mockRoleRepository.Setup(x => x.GetUserRolesByUserId(1)).Returns(SecretariatRole);
         _mockRoleRepository.Setup(x => x.GetUserRolesByUserId(2)).Returns(SecretariatRole);
 
+        //clear session so there is no data left in next test
         _mockHttpSession.ClearStorage();
 
+        //setup identity of user passed by JWT
         _mockHttpContext.Setup(x => x.User).Returns(
             new ClaimsPrincipal(identity));
 
@@ -162,6 +168,7 @@ public class AuthServiceTests {
     [TestCase("", "")]
     [TestCase("user", "")]
     public void Login_EmptyCredentials_BadRequest(string username, string pwd) {
+        //test login method when no credentials are passed
         AuthRequest authPayload = new(username, pwd);
 
         var (authResponse, statusCode) = _instance.Login(authPayload);
@@ -177,6 +184,7 @@ public class AuthServiceTests {
 
     [Test]
     public void Login_WrongUsernamePassed_UnknownUser() {
+        //test login method when user with passed name does not exist
         _mockUserRepository.Setup(x => x.GetUserCredentials(It.IsAny<string>()))
             .Returns(((long id, string pwd, string salt)?)null);
         AuthRequest authPayload = new("pepa", "pwd");
@@ -192,6 +200,7 @@ public class AuthServiceTests {
 
     [Test]
     public void Login_WrongPwdPassed_WrongPassword() {
+        //test login method when passed password is incorrect
         AuthRequest authPayload = new("Username1", "pwd");
 
         var (authResponse, statusCode) = _instance.Login(authPayload);
@@ -205,6 +214,7 @@ public class AuthServiceTests {
 
     [Test]
     public void Login_ValidCredentials_OkLoggedIn() {
+        //test login method everything went ok
         AuthRequest authPayload = new(FullDbUser2Username, BasicUserPwd);
 
         var (authResponse, statusCode) = _instance.Login(authPayload);
@@ -218,6 +228,7 @@ public class AuthServiceTests {
     
     [Test]
     public void Logout_LoggedIn_Success() {
+        //test logout method and be successful
         var response = _instance.Logout();
 
         Assert.Multiple(() => {
@@ -229,6 +240,7 @@ public class AuthServiceTests {
 
     [Test]
     public void GetLoggedInUser_LoggedIn_Success() {
+        //test GetLoggedInUser and result is successfully filled
         var response = _instance.GetLoggedInUser();
 
         if (response == null) {
@@ -259,6 +271,7 @@ public class AuthServiceTests {
     [TestCase("BBAAaaBBcc")]
     [TestCase("Mocdlouheheslomocdlouheheslomocdlouheheslomocdlouheheslomocdlouheheslo1")]
     public void LoggedInUserChangePwd_InvalidPwd_UnprocessableEntity(string pwd) {
+        //test all possible invalid passwords
         var response = _instance.LoggedInUserChangePwd(pwd);
 
         Assert.That(response, Is.EqualTo(HttpStatusCode.UnprocessableEntity));
@@ -267,6 +280,7 @@ public class AuthServiceTests {
 
     [Test]
     public void LoggedInUserChangePwd_LoggedInValidPwd_OK() {
+        //test valid password
         var response = _instance.LoggedInUserChangePwd(BasicUserPwd);
 
         Assert.That(response, Is.EqualTo(HttpStatusCode.OK));

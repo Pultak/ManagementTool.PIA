@@ -189,32 +189,58 @@ else {
 
 
 @code {
-
+    /// <summary>
+    /// type of endpoint we should return to
+    /// </summary>
     [Parameter]
     public int ReturnEndpoint { get; set; }
 
+    /// <summary>
+    /// Assignment we are currently editing 
+    /// </summary>
     public AssignmentWrapperPayload SelectedAssignment { get; set; } = new();
+    /// <summary>
+    /// edit context of the selected assignment
+    /// </summary>
     private EditContext? EditContext { get; set; }
 
+    /// <summary>
+    /// All projects that could host this assignment and are part of our permission to manage
+    /// (Project managers have limited project scope)
+    /// </summary>
     public ProjectPL[] AllProjects { get; set; } = { };
+    /// <summary>
+    /// All users that can have this assignment assigned
+    /// </summary>
     public UserBasePL[] PossibleAssignees { get; set; } = { };
 
-
+    /// <summary>
+    /// Flag indicating that the input is in fte mode
+    /// </summary>
     private bool FteMode { get; set; }
 
+    /// <summary>
+    /// Selected id of project from the select dropdown list
+    /// </summary>
     [Required(ErrorMessage = "Projekt musí být přiřazen k úkolu!")]
     private string? SelectedProject { get; set; }
 
+    /// <summary>
+    /// Selected id of user from the select dropdown list
+    /// </summary>
     [Required(ErrorMessage = "Uživatel musí být přiřazen k úkolu!")]
     private string? SelectedUser { get; set; }
 
+    /// <summary>
+    /// Flag indicating that we are creating new assignment
+    /// </summary>
     private bool NewAssignmentCreation { get; set; }
 
     protected override void OnInitialized() {
         ReturnUri = $"/assignments/{(AssignmentPage)ReturnEndpoint}".ToLower();
         NeededRoles = new[] {
             RoleType.ProjectManager, RoleType.DepartmentManager
-        };
+    };
         base.OnInitialized();
     }
 
@@ -235,6 +261,7 @@ else {
     }
 
     private async Task GetData() {
+        //get all projects we can manage
         var req = await Http.SendApiGetRequestAsync<ProjectPL[]?>(Logger, "api/Projects");
 
 
@@ -244,12 +271,18 @@ else {
         }
         AllProjects = req.response ?? Array.Empty<ProjectPL>();
 
+        //no reason to get all users if the project is not selected
         if (!NewAssignmentCreation) {
+            //get all users that could be assigned to
             await GetPossibleAssigneesData(SelectedAssignment.Assignment.ProjectId);
         }
     }
 
-
+    /// <summary>
+    /// Event handler for change of project selection
+    /// on every select and API is called for new user group
+    /// </summary>
+    /// <param name="evt"></param>
     private void OnSelectedProjectChange(ChangeEventArgs evt) {
         if (evt.Value is not string selectedProjectId) {
             return;
@@ -258,22 +291,25 @@ else {
         SelectedUser = null;
         PossibleAssignees = Array.Empty<UserBasePL>();
 
-    //is id valid? not changed by user manually
+        //is id valid? not changed by user manually
         if (!long.TryParse(selectedProjectId, out var resultId)) return;
 
         SelectedAssignment.Assignment.ProjectId = resultId;
         SelectedAssignment.Assignment.UserId = 0;
-    //we dont need to wait
+        //we dont need to wait for receivable new users
         _ = GetPossibleAssigneesData(resultId);
     }
 
-
+    /// <summary>
+    /// Event handler for change of user selection
+    /// </summary>
+    /// <param name="evt"></param>
     private void OnSelectedUserChange(ChangeEventArgs evt) {
         if (evt.Value is not string selectedUserId) {
             return;
         }
         SelectedUser = selectedUserId;
-
+        //parse the string value to assignment
         if (long.TryParse(selectedUserId, out var resultId)) {
             SelectedAssignment.Assignment.UserId = resultId;
         }
@@ -299,6 +335,7 @@ else {
     private void HandleValidSubmit() {
         ExceptionMessage = null;
 
+        //get data and validate it 
         var project = AllProjects.FirstOrDefault(x => x.Id == SelectedAssignment.Assignment.ProjectId);
         var user = PossibleAssignees.FirstOrDefault(x => x.Id == SelectedAssignment.Assignment.UserId);
         var valResult = AssignmentUtils.ValidateNewAssignment(SelectedAssignment.Assignment, project, user);
@@ -308,14 +345,16 @@ else {
         else {
             WaitingForApiResponse = true;
             if (FteMode) {
-    //FTE is 40 hours 
+            //FTE is 40 hours 
                 SelectedAssignment.Assignment.AllocationScope *= 40;
             }
             FteMode = false;
             if (NewAssignmentCreation) {
-                Http.SendApiPostRequestAsync(Logger, "api/Assignments", SelectedAssignment.Assignment, ResolveResponse);
+                //create new assignment
+                _ = Http.SendApiPostRequestAsync(Logger, "api/Assignments", SelectedAssignment.Assignment, ResolveResponse);
             }
             else if (EditContext?.IsModified() ?? false) {
+                //edit assignment
                 Http.SendApiPatchRequestAsync(Logger, "api/Assignments", SelectedAssignment.Assignment, ResolveResponse);
             }
             else {
@@ -333,11 +372,13 @@ else {
 
 
     private async void DeleteAssignment() {
+        //show confirmation dialog for the user
         var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Doopravdy chcete odstranit tento úkol?");
         if (!confirmed) return;
 
         ExceptionMessage = null;
         WaitingForApiResponse = true;
+        //delete the assignment
         Http.SendApiDeleteRequestAsync(Logger, "api/Assignments/" + SelectedAssignment.Assignment.Id, ResolveResponse);
         StateHasChanged();
     }

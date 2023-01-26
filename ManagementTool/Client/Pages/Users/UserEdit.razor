@@ -13,6 +13,7 @@
 
 
 <button @onclick="Return">
+    <!--Return icon-->
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
     </svg>
@@ -163,19 +164,47 @@ else {
 
 
 @code {
+    /// <summary>
+    /// Class for the dialog (modal) needed to open and close it
+    /// </summary>
     private string ModalClass { get; set; } = "";
+    /// <summary>
+    /// css for the dialog (modal) needed to open and close it
+    /// </summary>
     private string ModalDisplay { get; set; } = "none;";
 
+    /// <summary>
+    /// Edit context of user
+    /// </summary>
     private EditContext? EditContext { get; set; }
+    /// <summary>
+    /// list of all selected ids
+    /// </summary>
     private string[] _selectedSuperiorsIds = { };
 
-
+    /// <summary>
+    /// Currently edited user
+    /// </summary>
     public UserBasePL SelectedUser { get; set; } = new();
+
+    /// <summary>
+    /// List of all possible superiors 
+    /// </summary>
     public UserBasePL[] AllSuperiors { get; set; } = Array.Empty<UserBasePL>();
+
+    /// <summary>
+    /// model for roles assigned to user
+    /// </summary>
     public List<DataModelAssignmentPL<RolePL>> RolesAssignments { get; set; } = new();
 
+    /// <summary>
+    /// Newly generated password 
+    /// </summary>
     public string? NewPwd { get; set; }
 
+    /// <summary>
+    /// flag indicating if this the new user creation or edit
+    /// </summary>
     private bool NewUserCreation { get; set; }
 
     protected override void OnInitialized() {
@@ -201,6 +230,7 @@ else {
 
 
     private async Task GetData() {
+        // get all superiors
         var userResult = await Http.SendApiGetRequestAsync<UserBasePL[]?>(Logger, "api/Users/superiors");
         if (userResult.status != ApiHttpResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
@@ -210,7 +240,7 @@ else {
                 AllSuperiors = userResult.response;
             }
         }
-
+        //get all assigned roles to the current user
         var roleResult = await Http.SendApiGetRequestAsync<List<DataModelAssignmentPL<RolePL>>?>(Logger, $@"api/Users/{SelectedUser.Id}/roles");
         if (roleResult.status != ApiHttpResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
@@ -221,8 +251,9 @@ else {
             }
         }
 
+
         if (!NewUserCreation) {
-        //get also all new user assigned superiors
+            //get also all new user assigned superiors
             var userSupsResult = await Http.SendApiGetRequestAsync<long[]>(Logger, $"api/Users/{SelectedUser.Id}/superiors");
 
             if (userSupsResult.status != ApiHttpResponse.Ok) {
@@ -237,7 +268,10 @@ else {
             }
         }
     }
-
+    /// <summary>
+    /// Event handler for change of superiors selection
+    /// </summary>
+    /// <param name="evt"></param>
     private void OnSelectedSuperiorsChange(ChangeEventArgs evt) {
         if (evt.Value is not string[]strings) {
             return;
@@ -255,6 +289,7 @@ else {
 
     private void HandleValidSubmit() {
         ExceptionMessage = null;
+        //user model validation that was edited
         var valResult = UserUtils.ValidateUser(SelectedUser);
         if (valResult != UserCreationResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveUserValidation(valResult);
@@ -265,9 +300,11 @@ else {
             if (NewUserCreation) {
                 NewPwd = UserUtils.CreateRandomString(10);
                 UserCreationRequest newUserRequest = new(SelectedUser, RolesAssignments, assigned.ToList(), NewPwd);
+                //create new user
                 _ = Http.SendApiPostRequestAsync(Logger, "api/Users", newUserRequest, ResolveResponse);
             }
             else {
+                //update user
                 UserUpdateRequest payload = new(SelectedUser, RolesAssignments, assigned.ToList());
                 Http.SendApiPatchRequestAsync(Logger, "api/Users", payload, ResolveResponse);
             }
@@ -282,7 +319,8 @@ else {
 
 
     private async void DeleteUser() {
-        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Doopravdy chcete odstranit tento úkol?");
+        //show dialog to user so he can confirm the deleteion of user
+        var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Doopravdy chcete odstranit tohoto uživatele?");
         if (confirmed) {
             ExceptionMessage = null;
             WaitingForApiResponse = true;

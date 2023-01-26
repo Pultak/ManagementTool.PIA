@@ -19,6 +19,7 @@ Full repository can be found on address https://github.com/Pultak/ManagementTool
 System was written in `C#` language with <b>Blazor</b> web framework and <b>ASP.NET</b> for development of Web API. 
 Namely the current system frontent is using <b>Blazor WebAssembly</b>.
 For the purpose of easy deployment all the system components are published into  <b>docker</b> containers. 
+Frontend is hosted with <b>nginx</b>.
 
 
 As was mentioned earlier this system is contained of <b>Single Paged Application</b> (SPA) thin client which 
@@ -179,13 +180,7 @@ I've decided to pull off the following features:
 
 ### Issues
 
-Although original intention was to access data from client running in different container my custom made authentication method is not compatible with that.
-Session is not kept when running outside of the container. 
-The possible solution is to include JWT token authentication with correctly configured CORS inside of `Program.cs`.
-Unfortunately there is not enough time for me to change that at the moment.
-
-
-Another issue is in database where init data in the `db-init.sql` fills the database with needed data,
+Known issue is in database where init data in the `db-init.sql` fills the database with needed data,
  but doesnt increment the serial counter for ids. So every time I insert a new entry an exception is thrown.
 I've tried to set the start index or set it in entity framework to ignore id variable for new object but it was not working.
 Temporary hotfix is to set the init data indexes high enough so it wont be triggered. Not a clean solution but i works.

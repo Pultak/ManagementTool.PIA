@@ -12,6 +12,7 @@
 
 
 <button @onclick="Return">
+    <!--Return icon-->
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
     </svg>
@@ -63,9 +64,9 @@ else {
                 <button type="submit" @onclick="@AssignUsersToProject" class="btn btn-primary">Přidat zvolené do projektu</button>
             </div>
 
-            @if (ValidationMessage != null) {
+            @if (ExceptionMessage != null) {
                 <div class="row">
-                    <p>@ValidationMessage</p>
+                    <p>@ExceptionMessage</p>
                 </div>
             }
         </div>
@@ -78,19 +79,33 @@ else {
 
 @code {
 
+    /// <summary>
+    /// type of endpoint we should return to
+    /// </summary>
     [Parameter]
     public int ReturnEndpoint { get; set; }
 
+    /// <summary>
+    /// Dictionary of all users possibly assigned to project
+    /// </summary>
     public Dictionary<long, DataModelAssignmentPL<UserBasePL>> UsersDictionary = new();
+
+    /// <summary>
+    /// Project that we are assigning users to
+    /// </summary>
     public ProjectInfoPayload SelectedProjectInfo = new() {
         Project = new ProjectPL{Id = 0, ProjectName = "" }
     };
-
+    /// <summary>
+    /// Selected users from multi select that will be unassigned from the project on button click
+    /// </summary>
     public string[] SelectedUsersFromAssigned { get; set; } = Array.Empty<string>();
+
+
+    /// <summary>
+    /// Selected users from multi select that will be assigned to the project on button click
+    /// </summary>
     public string[] SelectedUsersFromUnassigned { get; set; } = Array.Empty<string>();
-
-
-    private string? ValidationMessage { get; set; }
 
     private bool DataFetchFailed { get; set; }
 
@@ -103,13 +118,15 @@ else {
 
     protected override async Task OnInitializedAsync() {
         if (ProjectContainer.Value == null) {
-            ValidationMessage = "Nedošlo ke správnému předání instance projektu! " +
+            //project cant be null when trying to assign users to project
+            ExceptionMessage = "Nedošlo ke správnému předání instance projektu! " +
                                 "Zkuste znovu zvolit žádaný projekt, nebo restartovat stránku!";
         }
         else {
             SelectedProjectInfo = ProjectContainer.Value;
         }
         if (IsAuthorized && SelectedProjectInfo.Project.Id != 0) {
+            //get all project assignments and even those that are not assigned
             var result = await Http.SendApiGetRequestAsync<List<DataModelAssignmentPL<UserBasePL>>?>(
                 Logger, $"api/Projects/{SelectedProjectInfo.Project.Id}/users/assignations");
 
@@ -119,10 +136,10 @@ else {
             else {
                 DataFetchFailed = true;
                 if (result.status == ApiHttpResponse.Ok) {
-                    ValidationMessage = "API server poslal prázdné data!";
+                    ExceptionMessage = "API server poslal prázdné data!";
                 }
                 else {
-                    ValidationMessage = StringResolver.ResolveApiResponse(result.status);
+                    ExceptionMessage = StringResolver.ResolveApiResponse(result.status);
                 }
             }
         }
@@ -132,6 +149,11 @@ else {
     }
 
 
+
+    /// <summary>
+    /// Event handler for change of project assigned users selection
+    /// </summary>
+    /// <param name="e"></param>
     private void AssignedUsersSelectionChanged(ChangeEventArgs e) {
         var value = e.Value;
         if (value is string[]strings) {
@@ -139,22 +161,28 @@ else {
         }
     }
 
+
+    /// <summary>
+    /// Event handler for change of project unassigned users selection
+    /// </summary>
+    /// <param name="e"></param>
     private void UnassignedUsersSelectionChanged(ChangeEventArgs e) {
         var value = e.Value;
         if (value != null) {
             SelectedUsersFromUnassigned = (string[])value;
         }
     }
-
+    
     private void UnassignUsersFromProject() {
         WaitingForApiResponse = true;
-        ValidationMessage = null;
+        ExceptionMessage = null;
 
         foreach (var newlyUnassigned in SelectedUsersFromAssigned) {
             var id = long.Parse(newlyUnassigned);
 
             UsersDictionary[id].IsAssigned = false;
         }
+        //create and send request to unassign users from the project
         var payload = new ProjectAssignRequest {
             AssignedUsers = UsersDictionary.Where(x => x.Value.IsAssigned).
                 Select(x => x.Value.DataModel).ToList(),
@@ -166,14 +194,15 @@ else {
 
     private void AssignUsersToProject() {
         WaitingForApiResponse = true;
-        ValidationMessage = null;
+        ExceptionMessage = null;
 
         foreach (var newlyAssigned in SelectedUsersFromUnassigned) {
             var id = long.Parse(newlyAssigned);
 
             UsersDictionary[id].IsAssigned = true;
         }
-
+        
+        //create and send request to assign users to the project
         var payload = new ProjectAssignRequest {
             AssignedUsers = UsersDictionary.Where(x => x.Value.IsAssigned).
                 Select(x => x.Value.DataModel).ToList(),
@@ -191,7 +220,7 @@ else {
     /// <param name="changePage">indicator to change page if requested</param>
     protected override void ResolveResponse(ApiHttpResponse apiResponse, bool changePage) {
         WaitingForApiResponse = false;
-        ValidationMessage = StringResolver.ResolveApiResponse(apiResponse);
+        ExceptionMessage = StringResolver.ResolveApiResponse(apiResponse);
 
         StateHasChanged();
     }

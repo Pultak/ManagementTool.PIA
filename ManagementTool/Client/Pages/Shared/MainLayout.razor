@@ -39,8 +39,15 @@
 
 
 @code {
+    /// <summary>
+    /// Key for JWT session token
+    /// </summary>
     public const string JWTTokenKey = "JWT-token";
-    public const string PwdInitKey = "pwdInit";
+
+    /// <summary>
+    /// Key for flag indicating that the pwd should be changed
+    /// </summary>
+    //public const string PwdInitKey = "pwdInit";
     
     public string? LoggedUserName { get; set; }
     
@@ -53,6 +60,7 @@
     protected override async Task OnInitializedAsync() {
         Logger.LogDebug("OnInitializeAsync - HTTP GET logged in user");
 
+        //collect jwt token on reload
         var jwtToken = await SessionStorage.GetItemAsStringAsync(JWTTokenKey);
         if (jwtToken  != null) {
             Http.DefaultRequestHeaders.Add("Authorization", $"bearer {jwtToken}");
@@ -66,11 +74,12 @@
         }
 
         if (result.response == null) {
-        //no one is logged in, lets get back to root
+            //no one is logged in, lets get back to root
             UriHelper.NavigateTo("/");
         }
         else {
             if (result.response?.HasInitPwd ?? false) {
+                //navigate to password change page if user still has generated password
                 UriHelper.NavigateTo("/pwdChange/1");
             }
         }
@@ -82,14 +91,17 @@
     }
     
     public async void LogoutPressed() {
+        //send logout request
         var logoutTask =  Http.SendApiGetRequestAsync<AuthResponse>(Logger, "api/auth");
 
         LoggedUserName = null;
         UriHelper.NavigateTo("/");
         UserContainer.SetValue(null);
         
+        //remove jwt token
         await SessionStorage.RemoveItemAsync(JWTTokenKey);
         await logoutTask;
+        //remove jwt token http client header
         Http.DefaultRequestHeaders.Remove("Authorization");
         StateHasChanged();
     }

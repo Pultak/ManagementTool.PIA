@@ -13,7 +13,7 @@
         <span class="text-nowrap">
             Vypadá to, že nejste přihlášený/á! Napravte to vyplněním přihlašovacího formuláře!
         </span>
-        <EditForm id="@SubmitBtnId" EditContext="@EditContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+        <EditForm id="@InteractivePageBase<LoginPrompt>.SubmitBtnId" EditContext="@EditContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
 
             <table>
                 <tr>
@@ -36,7 +36,7 @@
                 <tr>
                     <td>&nbsp;</td>
                     <td>
-                        <button type="submit" form="@SubmitBtnId"
+                        <button type="submit" form="@InteractivePageBase<LoginPrompt>.SubmitBtnId"
                                 data-bs-toggle="modal" data-bs-target="#productModal" class="btn btn-primary">
                             Přihlásit se
                         </button>
@@ -91,21 +91,32 @@
 }
 
 @code {
-
+    /// <summary>
+    /// username of the logged in user
+    /// </summary>
     [CascadingParameter]
     public string? LoggedUserName { get; set; }
 
-    public const string SubmitBtnId = "submitButton";
-
+    /// <summary>
+    /// model containing all data for the request
+    /// </summary>
     public AuthRequest AuthRequest { get; set; } = new();
 
+    /// <summary>
+    /// edit context of the auth model
+    /// </summary>
     private EditContext? EditContext { get; set; }
 
-
+    /// <summary>
+    /// String content of the dialog body
+    /// </summary>
     public string? DialogSignature { get; set; } = null;
-
     public string ModalDisplay = "none;";
     public string ModalClass = "";
+
+    /// <summary>
+    /// Flag indicating successful user login
+    /// </summary>
     public bool LoggedIn { get; set; } = false;
 
 
@@ -119,6 +130,7 @@
         ChangeDialogSignature(null);
         DialogSignature = null;
 
+        //close the dialog
         ModalDisplay = "none";
         ModalClass = "";
         InvokeAsync(StateHasChanged);
@@ -128,6 +140,7 @@
     }
 
     private void HandleValidSubmit() {
+        //call login endpint
         _ = Http.CallLoginApiAsync(SessionStorage, Logger, ChangeDialogSignature, AuthRequest);
     }
 
@@ -148,7 +161,8 @@
         if (authResponse is AuthResponse.Success or AuthResponse.AlreadyLoggedIn) {
             LoggedIn = true;
         }
-
+        
+        //open the dialog
         ModalDisplay = "block;";
         ModalClass = "Show";
         StateHasChanged();

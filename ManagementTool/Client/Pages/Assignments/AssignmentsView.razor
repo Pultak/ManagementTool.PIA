@@ -90,6 +90,7 @@ else {
                     @if (NeededRole != null) {
                         <td>
                             <button @onclick="_ => NavigateToEditMode(wrapper)">
+                                <!--Edit icon-->
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                                     <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z"/>
                                 </svg>
@@ -105,9 +106,16 @@ else {
 
 
 @code {
-
+    /// <summary>
+    /// All assignments that should be visualized
+    /// </summary>
     private AssignmentWrapperPayload[] Assignments { get; set; } = Array.Empty<AssignmentWrapperPayload>();
+
+    /// <summary>
+    /// Time from which we calculate the date validity
+    /// </summary>
     private readonly DateTime _actualTime = DateTime.Now;
+
 
     private bool DataFetchFailed { get; set; }
 
@@ -137,21 +145,25 @@ else {
         RoleType? newRole;
         switch (pagePath) {
             case "/assignments/department":
+                //we are currently viewing the assignments as a department manager
                 requestUri = "api/Assignments/";
                 newRole = RoleType.DepartmentManager;
                 CurrentEndpoint = AssignmentPage.Department;
                 break;
             case "/assignments/my":
+                //we are currently viewing the assignments as a regular user
                 requestUri = "api/Assignments/my";
                 newRole = null;
                 CurrentEndpoint = AssignmentPage.My;
                 break;
             case "/assignments/superior":
+                //we are currently viewing the assignments as a superior
                 requestUri = "api/Assignments/superior";
                 newRole = RoleType.Superior;
                 CurrentEndpoint = AssignmentPage.Superior;
                 break;
             case "/assignments/project":
+                //we are currently viewing the assignments as a project manager
                 requestUri = "api/Assignments/project";
                 newRole = RoleType.ProjectManager;
                 CurrentEndpoint = AssignmentPage.Project;
@@ -163,9 +175,10 @@ else {
         NeededRole = newRole;
         NeededRoles = newRole == null ? null : new[] { newRole.Value };
 
-    //user is authorized and role changed => different page probably
+        //user is authorized and role changed => different page probably
         if (roleChange) {
             if (IsAuthorized) {
+                //get all assignments
                 var result = await Http.SendApiGetRequestAsync<AssignmentWrapperPayload[]>(Logger, requestUri);
                 if (result.status != ApiHttpResponse.Ok) {
                     DataFetchFailed = true;

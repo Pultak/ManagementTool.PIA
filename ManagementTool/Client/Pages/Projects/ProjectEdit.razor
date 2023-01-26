@@ -12,6 +12,7 @@
 @inject HttpClient Http
 
 <button @onclick="Return">
+    <!--Return icon-->
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
     </svg>
@@ -132,23 +133,43 @@ else {
 
 @code {
 
+    /// <summary>
+    /// type of endpoint we should return to
+    /// </summary>
     [Parameter]
     public int ReturnEndpoint { get; set; }
-
+    /// <summary>
+    /// Edit context of the selected project
+    /// </summary>
     private EditContext? EditContext { get; set; }
+
+
+    /// <summary>
+    /// Selected project we edit
+    /// </summary>
     public ProjectInfoPayload SelectedProject { get; set; } = new();
 
-    private UserBasePL[] AllUsers = Array.Empty<UserBasePL>();
+    /// <summary>
+    /// All users that could be assigned to project as project manager
+    /// </summary>
+    public UserBasePL[] AllUsers = Array.Empty<UserBasePL>();
 
+    /// <summary>
+    /// Id of the selected project manager
+    /// </summary>
     [Required(ErrorMessage = "Manažer musí být vyplněný!")]
     private string? SelectedManagerId { get; set; }
 
-
+    /// <summary>
+    /// Flag indicating that this page is creating new project
+    /// </summary>
     private bool NewProjectCreation { get; set; }
 
     protected override void OnInitialized() {
         ReturnUri = $"/projects/{(ProjectPage)ReturnEndpoint}".ToLower();
         NeededRoles = new[] { RoleType.DepartmentManager, RoleType.ProjectManager, RoleType.Secretariat };
+
+        //init new project when starting creation
         if (ProjectContainer.Value == null) {
             NewProjectCreation = true;
             SelectedProject = new ProjectInfoPayload {
@@ -158,6 +179,7 @@ else {
             };
         }
         else {
+            //collect passed project
             SelectedProject = ProjectContainer.Value;
             SelectedManagerId = SelectedProject.ProjectManagerId.ToString();
         }
@@ -166,6 +188,7 @@ else {
 
     protected override async Task OnInitializedAsync() {
         if (IsAuthorized) {
+            //get all users that could be assigned
             var result = await Http.SendApiGetRequestAsync<UserBasePL[]>(Logger, "api/Users");
             if (result.status != ApiHttpResponse.Ok) {
                 ExceptionMessage = StringResolver.ResolveApiResponse(result.status);
@@ -176,7 +199,12 @@ else {
         }
         await base.OnInitializedAsync();
     }
-    
+
+
+    /// <summary>
+    /// Event handler for change of project manager selection 
+    /// </summary>
+    /// <param name="evt"></param>
     private void OnSelectedProjectManagerChange(ChangeEventArgs evt) {
         if (evt.Value is not string idString) {
             return;
@@ -187,6 +215,7 @@ else {
     }
 
     private void HandleValidSubmit() {
+        //validate the project
         var valResult = ProjectUtils.ValidateNewProject(SelectedProject.Project);
         if (valResult != ProjectCreationResponse.Ok) {
             ExceptionMessage = StringResolver.ResolveProjectValidation(valResult);
@@ -198,9 +227,11 @@ else {
             WaitingForApiResponse = true;
             
             if (NewProjectCreation) {
+                //create new project
                 SendApiPostRequest("api/Projects");
             }
             else if (EditContext?.IsModified() ?? false) {
+                //update existing project
                 SendApiPatchRequest("api/Projects");
             }
             else {

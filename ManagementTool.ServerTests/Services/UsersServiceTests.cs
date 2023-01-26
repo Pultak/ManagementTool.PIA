@@ -56,7 +56,7 @@ public class UsersServiceTests {
 
     [OneTimeSetUp]
     public void OneTimeSetup() {
-        //init 
+        //init all accessible users
         for (var i = 0; i < DummyUserCount; i++) {
             var user = new UserBaseBLL {
                 Id = i + 1,
@@ -71,22 +71,19 @@ public class UsersServiceTests {
             _dummyUserAssignment.Add(new DataModelAssignmentBLL<UserBaseBLL>(i % 2 == 0, user));
         }
 
-
+        //init mapper and its configuration
         var configuration = new MapperConfiguration(cfg => {
             cfg.CreateMap<RoleBLL, RolePL>();
             cfg.CreateMap<RolePL, RoleBLL>();
             cfg.CreateMap<UserBaseBLL, UserBasePL>();
             cfg.CreateMap<UserBasePL, UserBaseBLL>();
         });
-
         configuration.AssertConfigurationIsValid();
-
         _mockMapper = new Mapper(configuration);
 
+        //setup context and session
         _mockHttpContext = new Mock<HttpContext>();
-
         _mockHttpSession = new MockHttpSession();
-
         _mockHttpContext.Setup(s => s.Session).Returns(_mockHttpSession);
 
         //setup userService
@@ -95,19 +92,21 @@ public class UsersServiceTests {
         _mockProjectRepository = new Mock<IProjectRepository>();
         _mockRoleService = new Mock<IRolesService>();
 
+        //setup tested instance
         _instance = new UsersService(_mockUserRepository.Object, _mockAuthService.Object, _mockRoleService.Object,
             _mockMapper);
     }
 
     [SetUp]
     public void Setup() {
+        //reset all setups so there are no changes made by tests
         _mockUserRepository.Reset();
+        //setup methods and their return values for user repository
         _mockUserRepository.Setup(x => x.GetAllUsers()).Returns(_dummyUsers);
         _mockUserRepository.Setup(x => x.GetAllUsersByRole(It.IsAny<long>())).Returns(_dummyUsers);
         _mockUserRepository.Setup(x => x.GetAllUsersAssignedToProjectWrappers(
             It.IsAny<long>())).Returns(_dummyUserAssignment);
         _mockUserRepository.Setup(x => x.GetUserByName(_dummyUser1.Username)).Returns(_dummyUser1);
-
         _mockUserRepository.Setup(x => x.AddUser(
             It.IsAny<UserBaseBLL>(), It.IsAny<string>(), It.IsAny<string>())).Returns(1);
         _mockUserRepository.Setup(x => x.UpdateUser(It.IsAny<UserBaseBLL>())).Returns(true);
@@ -122,24 +121,23 @@ public class UsersServiceTests {
 
 
         _mockRoleService.Reset();
+
+        //setup methods and their return values for role service
         _mockRoleService.Setup(x => x.GetRoleByType(It.IsAny<RoleType>())).Returns(_dummyRole);
-        /*_mockRoleService.Setup(x => x.GetUserRolesByUserId(1)).Returns(_dummyRoles);
-        _mockRoleService.Setup(x => x.AssignRolesToUser(
-            It.IsAny<List<Role>>(), 1)).Returns(true);
-        _mockRoleService.Setup(x => x.UnassignRolesFromUser(
-            It.IsAny<List<Role>>(), 1)).Returns(true);
-        */
         _mockAuthService.Reset();
         _mockAuthService.Setup(x => x.GenerateSalt())
             .Returns(Convert.FromBase64String(AuthServiceTests.GeneratedUserSalt));
         _mockAuthService.Setup(x => x.HashPwd(It.IsAny<string>(), It.IsAny<byte[]>()))
             .Returns(AuthServiceTests.GeneratedUserPwd);
 
+
         _mockProjectRepository.Reset();
+
+        //setup methods and their return values for project repository
         _mockProjectRepository.Setup(x => x.GetProjectById(10)).Returns((ProjectBLL?)null);
         _mockProjectRepository.Setup(x => x.GetProjectById(1)).Returns(_dummyProject1);
 
-
+        //setup identity of user passed by JWT
         _mockHttpContext.Setup(x => x.User).Returns(
             new ClaimsPrincipal(
                 new ClaimsIdentity(new[] {
@@ -156,6 +154,7 @@ public class UsersServiceTests {
 
     [Test]
     public void GetUsers_Empty_Users() {
+        //get all accessible users
         var users = _instance.GetAllUsersUnderProject(1);
 
         Assert.Multiple(() => { Assert.That(users, Is.Not.Null); });
@@ -170,7 +169,7 @@ public class UsersServiceTests {
     [TestCase("wwwr 89")]
     [TestCase("123456789012345678901234567890dlouhejmeno")]
     public void CreateUser_InvalidUsernameName_UnprocessableEntity(string username) {
-
+        //test create user method with invalid usernames 
         var dummyPayload = GenerateValidUserCreationRequest();
         dummyPayload.UpdatedUser.Username = username;
 
@@ -185,6 +184,7 @@ public class UsersServiceTests {
     [TestCase(
         "MocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmeno")]
     public void CreateUser_InvalidFullName_UnprocessableEntity(string fullname) {
+        //test create user method with invalid full names 
         var dummyPayload = GenerateValidUserCreationRequest();
         dummyPayload.UpdatedUser.FullName = fullname;
 
@@ -199,6 +199,7 @@ public class UsersServiceTests {
     [TestCase(
         "MocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmeno")]
     public void CreateUser_InvalidWorkplace_UnprocessableEntity(string workplace) {
+        //test create user method with invalid workplace
         var dummyPayload = GenerateValidUserCreationRequest();
         dummyPayload.UpdatedUser.PrimaryWorkplace = workplace;
 
@@ -214,6 +215,7 @@ public class UsersServiceTests {
     [TestCase("Vrazdicí.kralicek@wajfaoi.aaaaaa")]
     [TestCase("Vpohodě@mail.yo")]
     public void CreateUser_InvalidEmailAddress_UnprocessableEntity(string emailAddress) {
+        //test create user method with invalid email 
         var dummyPayload = GenerateValidUserCreationRequest();
         dummyPayload.UpdatedUser.EmailAddress = emailAddress;
 
@@ -224,6 +226,7 @@ public class UsersServiceTests {
 
     [Test]
     public void CreateUser_UsedUsername_UsernameTaken() {
+        //test create user method with already used name
         var dummyPayload = GenerateValidUserCreationRequest();
         dummyPayload.UpdatedUser.Username = _dummyUser1.Username;
 
@@ -239,6 +242,8 @@ public class UsersServiceTests {
     [TestCase("WHgaoh86231afwa2")]
     [TestCase("Hal6971awws33")]
     public void CreateUser_ValidData_Ok(string pwd) {
+
+        //test create user method and expect everything to be ok
         var dummyPayload = GenerateValidUserCreationRequest();
         dummyPayload.Pwd = pwd;
 
@@ -251,48 +256,22 @@ public class UsersServiceTests {
         _mockUserRepository.Verify(x => x.AddUser(It.IsAny<UserBaseBLL>(),
             AuthServiceTests.GeneratedUserPwd, AuthServiceTests.GeneratedUserSalt), Times.Once);
     }
-    /*todo remove
-    [Test]
-    public void CreateUser_4RolesAssignment_2RolesUpdated() {
-        AuthServiceTests.SetupAuthorizedUser(ERoleType.Secretariat, _mockHttpSession);
-
-        var dummyPayload = GenerateValidUserCreationRequest();
-
-        dummyPayload.AssignedRoles = new List<DataModelAssignmentPL<RolePL>>(new[] {
-            new DataModelAssignmentPL<RolePL>(true, new RolePL(1, "pman", ERoleType.ProjectManager, 1)),
-            new DataModelAssignmentPL<RolePL>(false, new RolePL(2, "pman2", ERoleType.ProjectManager, 2)),
-            new DataModelAssignmentPL<RolePL>(true, new RolePL(3, "secret", ERoleType.Secretariat, null)),
-            new DataModelAssignmentPL<RolePL>(false, new RolePL(4, "sup", ERoleType.Superior, null))
-        });
-        var creationResponse = _instance.CreateUser(dummyPayload);
-
-        Assert.That(userId, Is.EqualTo(1));
-
-        //called?
-        _mockRoleService.Verify(x => x.AssignRolesToUser(It.IsAny<List<Role>>(), 1), Times.Once());
-        //called with correct param?
-        _mockRoleService.Verify(x => x.AssignRolesToUser(It.Is<List<Role>>(x => 
-            x.Count == 1 && x[0].Name.Equals("secret")), 1), Times.Once());
-
-        //called?
-        _mockRoleService.Verify(x => x.UnassignRolesFromUser(It.IsAny<List<Role>>(), 1), Times.Once());
-        //called with correct param?
-        _mockRoleService.Verify(x => x.UnassignRolesFromUser(It.Is<List<Role>>(ux =>
-            ux.Count == 1 && ux[0].Name.Equals("pman2")), 1), Times.Once());
-    }
-    */
 
 
     [Test]
     public void UpdateUser_InvalidUserData_BadRequest() {
+
+        //test update user method with invalid user data
         var updateResponse = _instance.UpdateUser(_dummyUserUpdateRequest.UpdatedUser);
 
         Assert.That(updateResponse, Is.EqualTo(UserCreationResponse.InvalidUsername));
-        //other validation options already tested in creation
+        //other user validation options already tested in creation tests
     }
 
     [Test]
     public void UpdateUser_ValidData_Ok() {
+
+        //test update user method and expect everything to go ok
         var payload = GenerateValidUserUpdateRequest();
         var updateResponse = _instance.UpdateUser(payload.UpdatedUser);
 
@@ -344,6 +323,7 @@ public class UsersServiceTests {
 
     [Test]
     public void GetAllUsersWithRole_BadRole_Null() {
+        //get role but our role is invalid
         var users = _instance.GetAllUsersWithRole(RoleType.NoRole);
 
         Assert.That(users, Is.Empty);
@@ -353,6 +333,7 @@ public class UsersServiceTests {
 
     [Test]
     public void GetAllUsersWithRole_NonExistentRole_EmptyArray() {
+        //get users but no such role is existent
         _mockRoleService.Setup(x => x.GetRoleByType(RoleType.Secretariat)).Returns((RolePL?)null);
         var users = _instance.GetAllUsersWithRole(RoleType.Secretariat);
 
@@ -362,15 +343,19 @@ public class UsersServiceTests {
 
     [Test]
     public void GetAllUsersWithRole_ValidData_Ok() {
+        //get users 
         var users = _instance.GetAllUsersWithRole(RoleType.Secretariat);
 
         Assert.That(users, Is.Not.Empty);
+        //one call of getRoleByType
         _mockRoleService.Verify(x => x.GetRoleByType(RoleType.Secretariat), Times.Once);
+        //one call of GetAllUsersByRole
         _mockUserRepository.Verify(x => x.GetAllUsersByRole(1), Times.Once());
     }
 
     [Test]
     public void GetAllUserSuperiorsIds_NegativeId_Null() {
+        //get all superior ids but not valid id
         var users = _instance.GetAllUserSuperiorsIds(-1);
 
         Assert.That(users, Is.Null);
@@ -381,6 +366,7 @@ public class UsersServiceTests {
     [TestCase(1)]
     [TestCase(2)]
     public void GetAllUserSuperiorsIds_ValidData_Ok(long id) {
+        //get all superior ids and valid id was passed
         var users = _instance.GetAllUserSuperiorsIds(id);
 
         Assert.That(users, Is.Not.Empty);
@@ -389,6 +375,7 @@ public class UsersServiceTests {
 
     [Test]
     public void UpdateUserSuperiorAssignments_2Superiors_1NewlyAssigned1Unassigned() {
+        //updating of superiors test
         var supArray = new UserBasePL[] {
             new() { Id = 1 },
             new() { Id = 2 }

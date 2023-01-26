@@ -94,18 +94,37 @@ else {
 }
 
 @code {
+    /// <summary>
+    /// Array of all users that of which you can visualize workloads
+    /// </summary>
     public UserBasePL[] AllUsers = Array.Empty<UserBasePL>();
 
+    /// <summary>
+    /// All users that are selected for workload view
+    /// </summary>
     public string[] SelectedUsers { get; set; } = Array.Empty<string>();
 
+    /// <summary>
+    /// Start date of workload scope
+    /// </summary>
     [Required]
     public DateTime? FromDate { get; set; } = DateTime.Now;
 
+    /// <summary>
+    /// End dat of the workload scope
+    /// </summary>
     [Required]
     public DateTime? ToDate { get; set; } = DateTime.Now.AddDays(1);
 
 
+    /// <summary>
+    /// Array of all selected workloads by user (rows)
+    /// </summary>
     public UserWorkload[] Workloads { get; set; } = Array.Empty<UserWorkload>();
+
+    /// <summary>
+    /// Array of all days (columns)
+    /// </summary>
     public DateTime[] Days = Array.Empty<DateTime>();
 
     protected override void OnInitialized() {
@@ -115,6 +134,7 @@ else {
 
     protected override async Task OnInitializedAsync() {
         if (IsAuthorized) {
+            //get all users that could be checked
             var req = await Http.SendApiGetRequestAsync<UserBasePL[]>(Logger, "api/Users");
 
             if (req.status != ApiHttpResponse.Ok) {
@@ -130,6 +150,10 @@ else {
     }
 
 
+    /// <summary>
+    /// Event handler for change of list of selected users
+    /// </summary>
+    /// <param name="e"></param>
     private void UsersSelectionChanged(ChangeEventArgs e) {
         var value = e.Value;
         if (value is string[]strings) {
@@ -140,7 +164,7 @@ else {
 
     private async void HandleSubmit() {
         ExceptionMessage = null;
-
+        //valid if the user query is valid
         var valid = AssignmentUtils.ValidateWorkloadPayload(SelectedUsers, FromDate, ToDate);
         if (valid == WorkloadValidation.Ok) {
             WaitingForApiResponse = true;
@@ -149,6 +173,7 @@ else {
             var toDate = ToDate!.Value.ToString("dd-MM-yyyy");
 
             var uri = $"api/Assignments/workloads/{fromDate}/{toDate}?{selectedIds}";
+            //get all workloads
             var userResult = await Http.SendApiGetRequestAsync<UserWorkloadPayload>(Logger, uri);
             if (userResult.status != ApiHttpResponse.Ok) {
                 ExceptionMessage = StringResolver.ResolveApiResponse(userResult.status);
@@ -165,6 +190,11 @@ else {
         StateHasChanged();
     }
 
+    /// <summary>
+    /// Compute color for the table node
+    /// </summary>
+    /// <param name="load"></param>
+    /// <returns></returns>
     private static string GetColumnColorForLoad(double load) {
         return load switch {
             > 1 => "table-danger",

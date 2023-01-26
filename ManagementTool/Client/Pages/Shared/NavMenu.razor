@@ -131,12 +131,30 @@
 </div>
 
 @code {
+    /// <summary>
+    /// flag indicating user navigation is expanded
+    /// </summary>
     private bool _expandUserNav = false;
+    /// <summary>
+    /// flag indicating Superior navigation is expanded
+    /// </summary>
     private bool _expandSuperiorNav = false;
+    /// <summary>
+    /// flag indicating Project Management navigation is expanded
+    /// </summary>
     private bool _expandProjectManagementNav = false;
+    /// <summary>
+    /// flag indicating DepartmentManagement navigation is expanded
+    /// </summary>
     private bool _expandDepartmentManagementNav = false;
+    /// <summary>
+    /// flag indicating secretariat navigation is expanded
+    /// </summary>
     private bool _expandHrNav = false;
 
+    /// <summary>
+    /// bootstrap burger menu expansion flag
+    /// </summary>
     private bool _collapseNavMenu = true;
 
     private string? NavMenuCssClass => _collapseNavMenu ? "collapse" : null;
