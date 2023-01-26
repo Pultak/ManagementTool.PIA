@@ -99,7 +99,7 @@ public class StringResolver {
             AssignmentCreationResponse.InvalidName => "Bylo zvoleno nevalidní jméno úkolu!",
             AssignmentCreationResponse.InvalidNote => "Byla zvolen nevalidní poznámka k úkolu!",
             AssignmentCreationResponse.InvalidAllocationScope => "Přiřazený časový rozsah není validní!",
-            AssignmentCreationResponse.InvalidFromDate => "Zvolený datum od není možné použít!",
+            AssignmentCreationResponse.InvalidFromDate => "Zvolený datum od není možné použít (nesmí být dřív než počátek projektu)!",
             AssignmentCreationResponse.InvalidToDate => "Zvolený datum do není možné použít!",
             AssignmentCreationResponse.Ok => "Vše proběhlo v pořádku!",
             _ => throw new ArgumentOutOfRangeException(nameof(validation), validation, null)

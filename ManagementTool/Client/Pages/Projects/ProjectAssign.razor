@@ -111,7 +111,7 @@ else {
         }
         if (IsAuthorized && SelectedProjectInfo.Project.Id != 0) {
             var result = await Http.SendApiGetRequestAsync<List<DataModelAssignmentPL<UserBasePL>>?>(
-                Logger, $"api/Projects/{SelectedProjectInfo.Project.Id}/users");
+                Logger, $"api/Projects/{SelectedProjectInfo.Project.Id}/users/assignations");
 
             if (result is { status: ApiHttpResponse.Ok,response: { } }) {
                 UsersDictionary = result.response.ToDictionary(x => x.DataModel.Id, x => x);
@@ -179,7 +179,7 @@ else {
                 Select(x => x.Value.DataModel).ToList(),
             ProjectId = SelectedProjectInfo.Project.Id
         };
-        Http.SendApiPostRequestAsync(Logger, "api/Projects/users", payload, ResolveResponse);
+        Http.SendApiPatchRequestAsync(Logger, "api/Projects/users", payload, ResolveResponse);
         StateHasChanged();
     }
 

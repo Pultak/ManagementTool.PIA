@@ -1,7 +1,12 @@
 ﻿using System.Net;
 using System.Net.Http.Formatting;
 using System.Net.Http.Json;
+using ManagementTool.Client.Pages.Shared;
+using ManagementTool.Shared.Models.Login;
+using ManagementTool.Shared.Models.Presentation.Api.Payloads;
 using ManagementTool.Shared.Models.Utils;
+using Newtonsoft.Json;
+using static System.Net.WebRequestMethods;
 
 namespace ManagementTool.Client.Utils;
 
@@ -328,4 +333,45 @@ public static class HttpClientExtension {
                 return ApiHttpResponse.HttpRequestException;
         }
     }
+
+
+    /// <summary>
+    /// Api call on the login endpoint
+    /// </summary>
+    /// <param name="http">client to send requests from</param>
+    /// <param name="sessionStorage">session manager to store the jwt token on successful login</param>
+    /// <param name="logger">Logger to log possible errors</param>
+    /// <param name="changeDialogSignature">Return task to change values in UI</param>
+    /// <param name="request">Serializable login request </param>
+    public static async Task CallLoginApiAsync(this HttpClient http, Blazored.SessionStorage.ISessionStorageService sessionStorage, ILogger logger,
+        Action<AuthResponse?> changeDialogSignature, AuthRequest request ) {
+        try {
+            var response = await http.PostAsJsonAsync("api/auth", request); ;
+            response.EnsureSuccessStatusCode();
+            var responseBodyString = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrEmpty(responseBodyString)) {
+                changeDialogSignature(AuthResponse.UnknownResponse);
+            }
+            else {
+                var responsePayload = JsonConvert.DeserializeObject<AuthResponsePayload>(responseBodyString);
+                if (!string.IsNullOrEmpty(responsePayload.Token)) {
+                    //saving of JWT token
+                    await sessionStorage.SetItemAsStringAsync(MainLayout.JWTTokenKey, responsePayload.Token);
+                }
+                changeDialogSignature(responsePayload.Response);
+            }
+            return;
+        }
+        catch (HttpRequestException e) {
+            logger.LogError("LoginPressed -> Failure occurred during receiving data from the API! " + e.StatusCode);
+        }
+        catch (ArgumentException e) {
+            logger.LogError("LoginPressed -> Received invalid data from the API!" + e.Message);
+        }
+        catch (Exception e) {
+            logger.LogError("LoginPressed -> Unknown error occurred during authentication!" + e.Message);
+        }
+        changeDialogSignature(AuthResponse.UnknownResponse);
+    }
+
 }

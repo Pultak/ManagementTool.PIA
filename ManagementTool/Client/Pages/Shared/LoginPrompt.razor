@@ -91,15 +91,16 @@
 }
 
 @code {
-        
+
+    [CascadingParameter]
+    public string? LoggedUserName { get; set; }
+
     public const string SubmitBtnId = "submitButton";
 
     public AuthRequest AuthRequest { get; set; } = new();
 
     private EditContext? EditContext { get; set; }
 
-    [CascadingParameter]
-    public string? LoggedUserName { get; set; }
 
     public string? DialogSignature { get; set; } = null;
 
@@ -127,8 +128,7 @@
     }
 
     private void HandleValidSubmit() {
-        var task = Http.PostAsJsonAsync("api/auth", AuthRequest);
-        CallLoginApiAsync(task);
+        _ = Http.CallLoginApiAsync(SessionStorage, Logger, ChangeDialogSignature, AuthRequest);
     }
 
     protected void HandleInvalidSubmit() {
@@ -154,34 +154,5 @@
         StateHasChanged();
     }
 
-    private async void CallLoginApiAsync(Task<HttpResponseMessage> authResponseTask) {
-        try {
-            var response = await authResponseTask;
-            response.EnsureSuccessStatusCode();
-            var responseBodyString = await response.Content.ReadAsStringAsync();
-            if (string.IsNullOrEmpty(responseBodyString)) {
-                ChangeDialogSignature(AuthResponse.UnknownResponse);
-            }
-            else {
-                var responsePayload = JsonConvert.DeserializeObject<AuthResponsePayload>(responseBodyString);
-                if (!string.IsNullOrEmpty(responsePayload.Token)) {
-                    //saving of JWT token
-                    await SessionStorage.SetItemAsStringAsync(MainLayout.TokenKey, responsePayload.Token);
-                }
-                ChangeDialogSignature(responsePayload.Response);
-            }
-            return;
-        }
-        catch (HttpRequestException e) {
-            Logger.LogError("LoginPressed -> Failure occurred during receiving data from the API! " + e.StatusCode);
-        }
-        catch (ArgumentException e) {
-            Logger.LogError("LoginPressed -> Received invalid data from the API!" + e.Message);
-        }
-        catch (Exception e) {
-            Logger.LogError("LoginPressed -> Unknown error occurred during authentication!" + e.Message);
-        }
-        ChangeDialogSignature(AuthResponse.UnknownResponse);
-    }
 
 }

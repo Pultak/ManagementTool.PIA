@@ -77,32 +77,32 @@ else {
                         </p>
                     </div>
 
+                    @if ((ProjectPage)ReturnEndpoint == ProjectPage.Secretariat) {
+                        <div>
+                            <p>
+                                <label>
+                                    Přiřazený projektový manažer
+                                </label>
+                                <select @onchange="@OnSelectedProjectManagerChange">
+                                    <option value=0 disabled selected hidden>
+                                        @if (NewProjectCreation) {
+                                            <b>[uživatel zatím nezvolen]</b>
+                                        }
+                                        else {
+                                            @SelectedProject.ManagerName
+                                        }
 
-                    <div>
-                        <p>
-                            <label>
-                                Přiřazený projektový manažer
-                            </label>
-                            <select @onchange="@OnSelectedProjectManagerChange">
-                                <option value=0 disabled selected hidden>
-                                    @if (NewProjectCreation) {
-                                        <b>[uživatel zatím nezvolen]</b>
-                                    }
-                                    else {
-                                        @SelectedProject.ManagerName
-                                    }
-
-                                </option>
-                                @foreach (var assignee in AllUsers) {
-                                    <option value="@assignee.Id">
-                                        @assignee.FullName
                                     </option>
-                                }
-                            </select>
-                            <ValidationMessage For="@(() => SelectedManagerId)"/>
-                        </p>
-                    </div>
-                    
+                                    @foreach (var assignee in AllUsers) {
+                                        <option value="@assignee.Id">
+                                            @assignee.FullName
+                                        </option>
+                                    }
+                                </select>
+                                <ValidationMessage For="@(() => SelectedManagerId)"/>
+                            </p>
+                        </div>
+                    }
 
                 </EditForm>
 

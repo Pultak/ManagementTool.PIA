@@ -52,7 +52,7 @@ else {
 
                     <tr>
                         <td>
-                            Projekt: @SelectedAssignment.ProjectName
+                            Projekt: @if(NewAssignmentCreation){@SelectedAssignment.ProjectName}
                         </td>
                         <td>
                             <select @onchange="OnSelectedProjectChange">
@@ -141,8 +141,9 @@ else {
                             Popisek
                         </td>
                         <td>
-                            <InputText id="txtName" type="text" required @bind-Value="@SelectedAssignment.Assignment.Note"/>
-                            <ValidationMessage For="@(() => SelectedAssignment.Assignment.Note)"/>
+                            <textarea id="txtName" type="text" required @bind="@SelectedAssignment.Assignment.Note" @bind:event="oninput">
+                                </textarea>
+                            <ValidationMessage For="@(() => SelectedAssignment.Assignment.Note)" />
                         </td>
                     </tr>
 
@@ -152,8 +153,8 @@ else {
                         </td>
                         <td>
                             <InputSelect @bind-Value="SelectedAssignment.Assignment.State">
-                                @foreach (var state in Enum.GetValues(typeof(AssignmentState))) {
-                                    <option value="@state">@state</option>
+                                @foreach (var state in Enum.GetValues<AssignmentState>()) {
+                                    <option value="@state">@StringResolver.ResolveAssignmentState(@state)</option>
                                 }
                             </InputSelect>
                         </td>

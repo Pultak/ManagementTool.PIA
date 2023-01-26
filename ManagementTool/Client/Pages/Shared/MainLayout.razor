@@ -39,7 +39,8 @@
 
 
 @code {
-    public const string TokenKey = "JWT-token";
+    public const string JWTTokenKey = "JWT-token";
+    public const string PwdInitKey = "pwdInit";
     
     public string? LoggedUserName { get; set; }
     
@@ -52,10 +53,11 @@
     protected override async Task OnInitializedAsync() {
         Logger.LogDebug("OnInitializeAsync - HTTP GET logged in user");
 
-        /*var SavedToken = await SessionStorage.GetItemAsStringAsync(TokenKey);
-        if (SavedToken  != null) {
-            await Http.SendApiPostRequestAsync(Logger, "api/auth/token", SavedToken, ResolveResponse);
-        }*/
+        var jwtToken = await SessionStorage.GetItemAsStringAsync(JWTTokenKey);
+        if (jwtToken  != null) {
+            Http.DefaultRequestHeaders.Add("Authorization", $"bearer {jwtToken}");
+        }
+        
         //is there already someone logged in?
         var result = await Http.SendApiGetRequestAsync<LoggedUserPayload>(Logger, "api/auth/info");
         if (result.status != ApiHttpResponse.Ok) {
@@ -79,12 +81,16 @@
         StateHasChanged();
     }
     
-    public void LogoutPressed() {
-        _ = Http.SendApiGetRequestAsync<AuthResponse>(Logger, "api/auth");
+    public async void LogoutPressed() {
+        var logoutTask =  Http.SendApiGetRequestAsync<AuthResponse>(Logger, "api/auth");
 
         LoggedUserName = null;
         UriHelper.NavigateTo("/");
         UserContainer.SetValue(null);
+        
+        await SessionStorage.RemoveItemAsync(JWTTokenKey);
+        await logoutTask;
+        Http.DefaultRequestHeaders.Remove("Authorization");
         StateHasChanged();
     }
 

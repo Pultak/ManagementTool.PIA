@@ -5,9 +5,11 @@
 @using ManagementTool.Shared.Models.Utils
 @using ManagementTool.Shared.Utils
 @using System.ComponentModel.DataAnnotations
+@using ManagementTool.Shared.Models.Login
 @inherits InteractivePageBase<ChangePwdPage>
 
 @inject HttpClient Http
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 
 <h3>Změna hesla</h3>
 
@@ -141,10 +143,22 @@ else {
         if (apiResponse == ApiHttpResponse.Ok) {
             PwdSuccessfullyChanged = true;
             ModalMessage = "Změna hesla proběhla v pořádku!";
+            await SessionStorage.RemoveItemAsync(MainLayout.PwdInitKey);
         }
         else {
             ModalMessage = StringResolver.ResolveApiResponse(apiResponse);
         }
+
+        var logoutTask = Http.SendApiGetRequestAsync<AuthResponse>(Logger, "api/auth");
+        
+        //lets make user log in again
+        UriHelper.NavigateTo("/", true);
+        LoggedUserContainer.SetValue(null);
+
+        await SessionStorage.RemoveItemAsync(MainLayout.JWTTokenKey);
+        await logoutTask;
+        Http.DefaultRequestHeaders.Remove("Authorization");
+
         StateHasChanged();
     }
 

@@ -16,18 +16,12 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // Create the client and with the app base address
 var apiAddress = builder.Configuration.GetValue<string>("ApiBaseUrl");
 
-var timeString = builder.Configuration["KeepAliveTime"];
-//3600 is http max
-if (!int.TryParse(timeString, out var time) || time > 3600) {
-    time = 3600;
-}
 builder.Services.AddSingleton(sp => {
     var client = new HttpClient {
         BaseAddress = new Uri(apiAddress),
     };
-
-    client.DefaultRequestHeaders.Add("Connection", "keep-alive");
-    client.DefaultRequestHeaders.Add("Keep-Alive", $"timeout={time} max={time}");
+    /*client.DefaultRequestHeaders.Add("Connection", "keep-alive");
+    client.DefaultRequestHeaders.Add("Keep-Alive", $"timeout={time} max={time}");*/
     return client;
 });
 
