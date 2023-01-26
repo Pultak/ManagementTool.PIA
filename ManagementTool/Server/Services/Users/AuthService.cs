@@ -4,7 +4,6 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using AutoMapper;
-using ManagementTool.Server.Models;
 using ManagementTool.Server.Models.Business;
 using ManagementTool.Server.Repository.Users;
 using ManagementTool.Shared.Models.Login;
@@ -19,24 +18,27 @@ namespace ManagementTool.Server.Services.Users;
 
 public class AuthService : IAuthService {
     public AuthService(IHttpContextAccessor accessor, IUserRepository userRepository,
-        IUserRoleRepository roleRepository, IMapper mapper, IConfiguration config, TokenMap tokens) {
+        IUserRoleRepository roleRepository, IMapper mapper, IConfiguration config) {
         Accessor = accessor;
         UserRepository = userRepository;
         RoleRepository = roleRepository;
         Mapper = mapper;
 
-        var key = config["JWT-secret"] ?? UserUtils.CreateRandomString(12);
-        TokenKey = Encoding.ASCII.GetBytes(key);
-        Tokens = tokens;
+        var securitySection = config.GetSection("Security");
+        var key = securitySection["JWTTokenKey"];
+        TokenKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key!));
+        var ok = int.TryParse(securitySection["JWTTimeoutDays"], out var result);
+        JWTTokenTimeout = ok ? result : 1;
     }
 
     private IHttpContextAccessor Accessor { get; }
     private IUserRepository UserRepository { get; }
     private IUserRoleRepository RoleRepository { get; }
     private IMapper Mapper { get; }
-    private TokenMap Tokens { get; }
 
-    private byte[] TokenKey { get; }
+    private SymmetricSecurityKey TokenKey { get; }
+    private int JWTTokenTimeout { get; }
+
 
     /// <summary>
     /// Method for checking if the auth request has existing user,
@@ -75,33 +77,24 @@ public class AuthService : IAuthService {
 
         var rolesArray = roles as RoleBLL[] ?? roles.ToArray();
         var usrInfo = new SessionInfo { User = user, Roles = rolesArray };
-        var token = GenerateToken(usrInfo);
-        FillTheSession(usrInfo, token);
+        GenerateJwtToken(usrInfo);
+        //FillTheSession(usrInfo, token);
         return (AuthResponse.Success, HttpStatusCode.OK);
     }
 
-
-    private void FillTheSession(SessionInfo userInfo, string token) {
-        Accessor.HttpContext?.Session.SetInt32(IAuthService.UserIdKey, (int)userInfo.User.Id);
-        Accessor.HttpContext?.Session.SetString(IAuthService.UsernameKey, userInfo.User.Username);
-        Accessor.HttpContext?.Session.SetString(IAuthService.UserFullNameKey, userInfo.User.FullName);
-        Accessor.HttpContext?.Session.SetObject(IAuthService.UserRolesKey, userInfo.Roles);
-        Accessor.HttpContext?.Session.SetInt32(IAuthService.UserHasInitPwdKey, userInfo.User.PwdInit ? 1 : 0);
-        Accessor.HttpContext?.Session.SetString(IAuthService.UserToken, token);
-    }
-    
+    /*
     private string GenerateToken(SessionInfo userInfo) {
         var token = UserUtils.CreateRandomString(100);
         Tokens.UserMap.TryAdd(token, userInfo);
         return token;
-    }
+    }*/
 
 
-
+    /*
     /// <summary>
     /// Checks the passed token and restores the session if it is present 
     /// </summary>
-    /// <param name="authRequest">token received from the client</param>
+    /// <param name="token">token received from the client</param>
     /// <returns>auth validation enum and http status code for this state</returns>
     public (AuthResponse authResponse, HttpStatusCode statusCode) RenewSessionFromToken(string token) {
         if (IsUserAuthorized(null)) {
@@ -116,24 +109,33 @@ public class AuthService : IAuthService {
         
         return (AuthResponse.Success, HttpStatusCode.OK);
     }
+    */
 
-    private string GenerateJwtToken(SessionInfo userInfo) {
-        // generate token that is valid for 7 days
-        var tokenHandler = new JwtSecurityTokenHandler();
-        
-        var tokenDescriptor = new SecurityTokenDescriptor {
-            Subject = new ClaimsIdentity(new[] {
-                new Claim(IAuthService.UserIdKey, userInfo.User.Id.ToString()),
-                new Claim(IAuthService.UsernameKey, userInfo.User.Username),
-                new Claim(IAuthService.UserFullNameKey, userInfo.User.FullName),
-                new Claim(IAuthService.UserRolesKey, JsonConvert.SerializeObject(userInfo.Roles)),
-                new Claim(IAuthService.UserHasInitPwdKey, userInfo.User.PwdInit ? "1" : "0"),
-            }),
-            Expires = DateTime.UtcNow.AddDays(7),
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(TokenKey), SecurityAlgorithms.HmacSha256Signature)
+
+    private void GenerateJwtToken(SessionInfo userInfo) {
+        var claims = new[] {
+            new Claim(ClaimTypes.Name, userInfo.User.Username),
+            new Claim(ClaimTypes.Role, RoleType.NoRole.ToString()),
+            new Claim(IAuthService.UserIdKey, userInfo.User.Id.ToString()),
+            new Claim(IAuthService.UsernameKey, userInfo.User.Username),
+            new Claim(IAuthService.UserFullNameKey, userInfo.User.FullName),
+            new Claim(IAuthService.UserRolesKey, JsonConvert.SerializeObject(userInfo.Roles)),
+            new Claim(IAuthService.UserHasInitPwdKey, userInfo.User.PwdInit ? "1" : "0"),
         };
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        return tokenHandler.WriteToken(token);
+
+
+
+        var credentials = new SigningCredentials(TokenKey, SecurityAlgorithms.HmacSha512Signature);
+
+        var token = new JwtSecurityToken(
+            claims: claims,
+            expires: DateTime.Now.AddDays(JWTTokenTimeout),
+            signingCredentials: credentials
+        );
+
+        var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+
+        Accessor.HttpContext?.Session.SetString(IAuthService.UserJWTToken, jwt);
     }
 
 
@@ -143,10 +145,10 @@ public class AuthService : IAuthService {
     /// </summary>
     /// <returns>AuthResponse ok on success or Unknown user if no user is logged in</returns>
     public AuthResponse Logout() {
-        var name = Accessor.HttpContext?.Session.GetString(IAuthService.UsernameKey);
+        /*var name = Accessor.HttpContext?.Session.GetString(IAuthService.UsernameKey);
         if (name == null) {
             return AuthResponse.UnknownUser;
-        }
+        }*/
 
         Accessor.HttpContext?.Session.Clear();
 
@@ -158,16 +160,21 @@ public class AuthService : IAuthService {
     /// </summary>
     /// <returns>logged in user with all his crucial data</returns>
     public LoggedUserPayload GetLoggedInUser() {
-        var name = Accessor.HttpContext?.Session.GetString(IAuthService.UsernameKey);
+        var name = Accessor.HttpContext?.User.FindFirstValue(IAuthService.UsernameKey);
         if (name == null) {
             return new LoggedUserPayload();
         }
 
-        var blRoles = Accessor.HttpContext?.Session.GetObject<RoleBLL[]>(IAuthService.UserRolesKey);
+        var blRolesString = Accessor.HttpContext?.User.FindFirstValue(IAuthService.UserRolesKey);
+        if (blRolesString == null) {
+            return new LoggedUserPayload();
+        }
+        var blRoles = JsonConvert.DeserializeObject<RoleBLL[]>(blRolesString);
+        
         var result = new LoggedUserPayload(name,
-            Accessor.HttpContext?.Session.GetString(IAuthService.UserFullNameKey),
+            Accessor.HttpContext?.User.FindFirstValue(IAuthService.UserFullNameKey),
             Mapper.Map<RolePL[]>(blRoles),
-            Accessor.HttpContext?.Session.GetInt32(IAuthService.UserHasInitPwdKey) != 0);
+            Accessor.HttpContext?.User.FindFirstValue(IAuthService.UserHasInitPwdKey).Equals("1") ?? false);
 
         return result;
     }
@@ -178,7 +185,7 @@ public class AuthService : IAuthService {
     /// <param name="newPwd">new password for the user</param>
     /// <returns></returns>
     public HttpStatusCode LoggedInUserChangePwd(string newPwd) {
-        var userId = Accessor.HttpContext?.Session.GetInt32(IAuthService.UserIdKey);
+        var userId = GetLoggedUserId();
         if (userId == null) {
             return HttpStatusCode.Unauthorized;
         }
@@ -196,19 +203,15 @@ public class AuthService : IAuthService {
 
 
         var hashedPwd = HashPwd(newPwd, Convert.FromBase64String(user.Value.salt));
-        Accessor.HttpContext?.Session.SetInt32(IAuthService.UserHasInitPwdKey, 0); // false
+        //Accessor.HttpContext?.Session.SetInt32(IAuthService.UserHasInitPwdKey, 0); // false
         UserRepository.UpdateUserPwd(user.Value.id, hashedPwd);
         return HttpStatusCode.OK;
     }
 
-
-    /// <summary>
-    /// Hashes the password with a derive of 256-bit subkey (use HMACSHA256 with 100,000 iterations)
-    /// </summary>
-    /// <param name="password">password you want to hash</param>
-    /// <param name="salt">generated salt to keep the passwords unique</param>
+    
     public bool IsUserAuthorized(RoleType? neededRole) {
-        if (Accessor.HttpContext?.Session == null) {
+        var userName = Accessor.HttpContext?.User.Identity?.Name;
+        if (userName == null) {
             return false;
         }
 
@@ -229,25 +232,21 @@ public class AuthService : IAuthService {
         return hashed;
     }
 
-    
-    private string Hash(string token) {
-        // derive a 256-bit subkey (use HMACSHA256 with 100,000 iterations)
-        var hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-            token,
-            TokenKey,
-            KeyDerivationPrf.HMACSHA256,
-            100000,
-            256 / 8));
-        return hashed;
-    }
-
 
     /// <summary>
     /// Gets all roles of the current logged in user 
     /// </summary>
     /// <returns>all roles current logged in user posses with</returns>
-    public RoleBLL[]? GetLoggedUserRoles() =>
-        Accessor.HttpContext?.Session.GetObject<RoleBLL[]>(IAuthService.UserRolesKey);
+    public RoleBLL[]? GetLoggedUserRoles() {
+        var rolesString = Accessor.HttpContext?.User.FindFirstValue(IAuthService.UserRolesKey);
+        if (rolesString == null) {
+            return null;
+        }
+
+        var roles = JsonConvert.DeserializeObject<RoleBLL[]>(rolesString);
+
+        return roles;
+    }
 
     /// <summary>
     /// Gets all manager roles of the current logged in user 
@@ -295,7 +294,15 @@ public class AuthService : IAuthService {
     /// Get the id of the logged in user stored in session
     /// </summary>
     /// <returns>id of the logged in user, null if not user is logged in</returns>
-    public long? GetLoggedUserId() => Accessor.HttpContext?.Session.GetInt32(IAuthService.UserIdKey);
+    //public long? GetLoggedUserId() => Accessor.HttpContext?.Session.GetInt32(IAuthService.UserIdKey);
+    public long? GetLoggedUserId() {
+        var userId = Accessor.HttpContext?.User.FindFirstValue(IAuthService.UserIdKey);
+        if (userId == null) {
+            return null;
+        }
+        var ok = long.TryParse(userId, out var output);
+        return ok? output : null;
+    }
 
 
     public bool IsAuthorizedToManageAssignments(long relevantProjectId) {
@@ -371,4 +378,16 @@ public class AuthService : IAuthService {
                                                roles.Any(role => role.Type.Equals(neededRole)));
         return userAuthorized;
     }
+
+
+
+    /*private void FillTheSession(SessionInfo userInfo, string token) {
+        Accessor.HttpContext?.Session.SetInt32(IAuthService.UserIdKey, (int)userInfo.User.Id);
+        Accessor.HttpContext?.Session.SetString(IAuthService.UsernameKey, userInfo.User.Username);
+        Accessor.HttpContext?.Session.SetString(IAuthService.UserFullNameKey, userInfo.User.FullName);
+        Accessor.HttpContext?.Session.SetObject(IAuthService.UserRolesKey, userInfo.Roles);
+        Accessor.HttpContext?.Session.SetInt32(IAuthService.UserHasInitPwdKey, userInfo.User.PwdInit ? 1 : 0);
+        Accessor.HttpContext?.Session.SetString(IAuthService.UserJWTToken, token);
+    }*/
+
 }

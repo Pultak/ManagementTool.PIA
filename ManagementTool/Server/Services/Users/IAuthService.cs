@@ -14,7 +14,7 @@ public interface IAuthService {
     public const string UserFullNameKey = "_FullName";
     public const string UserRolesKey = "_Roles";
     public const string UserHasInitPwdKey = "_InitPwd";
-    public const string UserToken = "_UserToken";
+    public const string UserJWTToken = "_UserToken";
 
     /// <summary>
     /// Method for checking if the auth request has existing user,
@@ -24,14 +24,14 @@ public interface IAuthService {
     /// <returns>auth validation enum and http status code for this state</returns>
     public (AuthResponse authResponse, HttpStatusCode statusCode) Login(AuthRequest authRequest);
 
-
+    /*todo remove
     /// <summary>
     /// Checks the passed token and restores the session if it is present 
     /// </summary>
     /// <param name="authRequest">token received from the client</param>
     /// <returns>auth validation enum and http status code for this state</returns>
     public (AuthResponse authResponse, HttpStatusCode statusCode) RenewSessionFromToken(string token);
-
+    */
     /// <summary>
     /// Logs out the user by clearing session info 
     /// </summary>

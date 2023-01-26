@@ -5,12 +5,13 @@ using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Presentation.Api.Payloads;
 using ManagementTool.Shared.Models.Presentation.Api.Requests;
 using ManagementTool.Shared.Models.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ManagementTool.Server.Controllers;
 
 [Route("api/[controller]")]
-[ApiController]
+[ApiController, Authorize]
 public class ProjectsController : ControllerBase {
     public ProjectsController(IAuthService authService, IProjectsService projectsService,
         IUsersService usersService) {

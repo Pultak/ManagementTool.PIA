@@ -4,12 +4,14 @@ using ManagementTool.Server.Services.Users;
 using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Presentation.Api.Payloads;
 using ManagementTool.Shared.Models.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ManagementTool.Server.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class AssignmentsController : ControllerBase {
     public AssignmentsController(IAuthService authService, IAssignmentService assignmentService,
         IWorkloadService workloadService) {
@@ -21,6 +23,42 @@ public class AssignmentsController : ControllerBase {
     private IAuthService AuthService { get; }
     private IAssignmentService AssignmentService { get; }
     private IWorkloadService WorkloadService { get; }
+
+    
+    /// <summary>
+    /// Endpoint for getting all assignments.
+    /// Only Department managers can access this resource. 
+    /// </summary>
+    /// <returns>null on unauthorized, otherwise list of all known assignments</returns>
+    [HttpGet]
+    public IEnumerable<AssignmentWrapperPayload>? GetAllAssignments() {
+        if (!AuthService.IsUserAuthorized(RoleType.DepartmentManager)) {
+            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            return null;
+        }
+
+        Response.StatusCode = (int)HttpStatusCode.OK;
+        return AssignmentService.GetAllAssignments();
+    }
+
+    
+    /// <summary>
+    /// Endpoint for getting all assignments assigned to the currently logged user.
+    /// </summary>
+    /// <returns>null on unauthorized, otherwise list of all known assignments</returns>
+    [HttpGet("my")]
+    public IEnumerable<AssignmentWrapperPayload>? GetMyAssignments() {
+        var userId = AuthService.GetLoggedUserId();
+        if (userId == null) {
+            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            return null;
+        }
+
+        var result = AssignmentService.GetAssignmentsByUserId((long)userId).ToArray();
+        
+        Response.StatusCode = (int)HttpStatusCode.OK;
+        return result;
+    }
 
 
     /// <summary>
@@ -80,40 +118,6 @@ public class AssignmentsController : ControllerBase {
     }
 
     
-    /// <summary>
-    /// Endpoint for getting all assignments.
-    /// Only Department managers can access this resource. 
-    /// </summary>
-    /// <returns>null on unauthorized, otherwise list of all known assignments</returns>
-    [HttpGet]
-    public IEnumerable<AssignmentWrapperPayload>? GetAllAssignments() {
-        if (!AuthService.IsUserAuthorized(RoleType.DepartmentManager)) {
-            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            return null;
-        }
-
-        Response.StatusCode = (int)HttpStatusCode.OK;
-        return AssignmentService.GetAllAssignments();
-    }
-
-    /// <summary>
-    /// Endpoint for getting all assignments assigned to the currently logged user.
-    /// </summary>
-    /// <returns>null on unauthorized, otherwise list of all known assignments</returns>
-    [HttpGet("my")]
-    public IEnumerable<AssignmentWrapperPayload>? GetMyAssignments() {
-        var userId = AuthService.GetLoggedUserId();
-        if (userId == null) {
-            Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-            return null;
-        }
-
-        var result = AssignmentService.GetAssignmentsByUserId((long)userId).ToArray();
-        
-        Response.StatusCode = (int)HttpStatusCode.OK;
-        return result;
-    }
-
 
     /// <summary>
     /// Endpoint for getting workloads 

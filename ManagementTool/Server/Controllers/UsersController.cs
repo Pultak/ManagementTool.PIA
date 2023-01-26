@@ -4,6 +4,7 @@ using ManagementTool.Server.Services.Users;
 using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Presentation.Api.Requests;
 using ManagementTool.Shared.Models.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -12,6 +13,7 @@ namespace ManagementTool.Server.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class UsersController : ControllerBase {
     public UsersController(IAuthService authService, IUsersService usersService, IRolesService rolesService) {
         AuthService = authService;

@@ -2,6 +2,7 @@
 using ManagementTool.Server.Services.Users;
 using ManagementTool.Shared.Models.Login;
 using ManagementTool.Shared.Models.Presentation.Api.Payloads;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ManagementTool.Server.Controllers;
@@ -22,14 +23,14 @@ public class LoginController : ControllerBase {
     public AuthResponsePayload Login([FromBody] AuthRequest authRequest) {
         var result = AuthService.Login(authRequest);
         Response.StatusCode = (int)result.statusCode;
-        var token = HttpContext.Session.GetString(IAuthService.UserToken);
+        var token = HttpContext.Session.GetString(IAuthService.UserJWTToken);
         var finalResponse = new AuthResponsePayload() {
             Token = token ?? string.Empty,
             Response = result.authResponse
         };
         return finalResponse;
     }
-
+    /*
     /// <summary>
     /// todo
     /// </summary>
@@ -41,12 +42,14 @@ public class LoginController : ControllerBase {
         Response.StatusCode = (int)result.statusCode;
         return result.authResponse;
     }
+    */
 
     /// <summary>
     /// Endpoint to logout the user from the server 
     /// </summary>
     /// <returns>authResponse enum </returns>
     [HttpGet]
+    [Authorize]
     public AuthResponse Logout() {
         Response.StatusCode = (int)HttpStatusCode.OK;
         return AuthService.Logout();
@@ -57,6 +60,7 @@ public class LoginController : ControllerBase {
     /// </summary>
     /// <returns></returns>
     [HttpGet("info")]
+    [Authorize]
     public LoggedUserPayload GetLoggedInUser() => AuthService.GetLoggedInUser();
 
 
@@ -66,6 +70,7 @@ public class LoginController : ControllerBase {
     /// </summary>
     /// <param name="newPwd">valid new password for user</param>
     [HttpPatch]
+    [Authorize]
     public void LoggedInUserChangePwd([FromBody] string newPwd) {
         Response.StatusCode = (int)AuthService.LoggedInUserChangePwd(newPwd);
     }
