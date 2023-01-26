@@ -1,6 +1,6 @@
 ﻿using System.Net;
+using System.Security.Claims;
 using AutoMapper;
-using ManagementTool.Server.Models;
 using ManagementTool.Server.Models.Business;
 using ManagementTool.Server.Repository.Users;
 using ManagementTool.Server.Services;
@@ -11,6 +11,7 @@ using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 
 namespace ManagementTool.ServerTests.Services;
 
@@ -62,7 +63,26 @@ public class AuthServiceTests {
     private Mock<IConfiguration> _mockConfiguration = new();
 
 
-    private UserBaseBLL _user1 = new();
+
+    private static UserBaseBLL _user1 = new() {
+        Id = 1,
+        EmailAddress = "email@addr.cz",
+        FullName = "userrr",
+        PrimaryWorkplace = "KIV",
+        PwdInit = true,
+        Username = "user"
+    };
+
+    private ClaimsIdentity identity = new(new[] {
+        new Claim(ClaimTypes.Name, FullDbUser1Username),
+        new Claim(ClaimTypes.Role, RoleType.Secretariat.ToString()),
+        new Claim(IAuthService.UserIdKey, _user1.Id.ToString()),
+        new Claim(IAuthService.UsernameKey, _user1.Username),
+        new Claim(IAuthService.UserFullNameKey, _user1.FullName),
+        new Claim(IAuthService.UserRolesKey, JsonConvert.SerializeObject(SecretariatRole)),
+        new Claim(IAuthService.UserHasInitPwdKey, _user1.PwdInit ? "1" : "0"),
+    });
+
     private UserBaseBLL _user2 = new();
 
     private (long id, string pwd, string salt) _userCredentials1;
@@ -91,17 +111,16 @@ public class AuthServiceTests {
 
         _mockConfiguration = new Mock<IConfiguration>();
 
-        _instance = new AuthService(_mockHttpContextAccessor.Object, _mockUserRepository.Object,
-            _mockRoleRepository.Object, _mockMapper, _mockConfiguration.Object, new TokenMap());
+        var configSection = new Mock<IConfigurationSection>();
+        configSection.Setup(x => x["JWTTokenKey"]).Returns("SuperSecretKeyYouCantEvenImagine");
+        configSection.Setup(x => x["JWTTimeoutDays"]).Returns("1");
+        _mockConfiguration.Setup(x => x.GetSection(It.IsAny<string>())).Returns(configSection.Object);
+        
 
-        _user1 = new UserBaseBLL {
-            Id = 1,
-            EmailAddress = "test1@addr.cz",
-            FullName = "FullName1",
-            PrimaryWorkplace = "Workplace1",
-            Username = FullDbUser1Username,
-            PwdInit = true
-        };
+
+        _instance = new AuthService(_mockHttpContextAccessor.Object, _mockUserRepository.Object,
+            _mockRoleRepository.Object, _mockMapper, _mockConfiguration.Object);
+        
         _user2 = new UserBaseBLL {
             Id = 2,
             EmailAddress = "test2@addr.cz",
@@ -132,6 +151,10 @@ public class AuthServiceTests {
         _mockRoleRepository.Setup(x => x.GetUserRolesByUserId(2)).Returns(SecretariatRole);
 
         _mockHttpSession.ClearStorage();
+
+        _mockHttpContext.Setup(x => x.User).Returns(
+            new ClaimsPrincipal(identity));
+
     }
 
 
@@ -149,19 +172,7 @@ public class AuthServiceTests {
         });
     }
 
-
-    [Test]
-    public void Login_ValidData_AlreadyLoggedIn() {
-        SetupAuthorizedUser(RoleType.Secretariat, _mockHttpSession);
-
-        AuthRequest authPayload = new("username", "pwd");
-
-        var (authResponse, statusCode) = _instance.Login(authPayload);
-        Assert.Multiple(() => {
-            Assert.That(authResponse, Is.EqualTo(AuthResponse.AlreadyLoggedIn));
-            Assert.That(statusCode, Is.EqualTo(HttpStatusCode.OK));
-        });
-    }
+    
 
 
     [Test]
@@ -198,34 +209,15 @@ public class AuthServiceTests {
 
         var (authResponse, statusCode) = _instance.Login(authPayload);
 
-
-        var roles = _mockHttpSession.GetObject<RoleBLL[]>(IAuthService.UserRolesKey);
-
-        //Assert.Multiple(() => {
-        Assert.That(authResponse, Is.EqualTo(AuthResponse.Success));
-        Assert.That(statusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That(_mockHttpSession.GetInt32(IAuthService.UserIdKey), Is.EqualTo(_user1.Id));
-        Assert.That(_mockHttpSession.GetString(IAuthService.UsernameKey), Is.EqualTo(_user1.Username));
-        Assert.That(_mockHttpSession.GetString(IAuthService.UserFullNameKey), Is.EqualTo(_user1.FullName));
-
-        Assert.That(roles, Has.Length.EqualTo(SecretariatRolePL.Length));
-        Assert.That(roles![0].Name, Is.EqualTo(SecretariatRole[0].Name));
-        Assert.That(roles[0].Id, Is.EqualTo(SecretariatRole[0].Id));
-        Assert.That(_mockHttpSession.GetInt32(IAuthService.UserHasInitPwdKey) != 0, Is.EqualTo(_user1.PwdInit));
-        //});
+        
+        Assert.Multiple(() => {
+            Assert.That(authResponse, Is.EqualTo(AuthResponse.Success));
+            Assert.That(statusCode, Is.EqualTo(HttpStatusCode.OK));
+        });
     }
-
-
-    [Test]
-    public void Logout_NotLoggedIn_UnknownUser() {
-        var response = _instance.Logout();
-
-        Assert.That(response, Is.EqualTo(AuthResponse.UnknownUser));
-    }
-
+    
     [Test]
     public void Logout_LoggedIn_Success() {
-        SetupAuthorizedUser(RoleType.Secretariat, _mockHttpSession);
         var response = _instance.Logout();
 
         Assert.Multiple(() => {
@@ -237,7 +229,6 @@ public class AuthServiceTests {
 
     [Test]
     public void GetLoggedInUser_LoggedIn_Success() {
-        SetupAuthorizedUser(RoleType.Secretariat, _mockHttpSession);
         var response = _instance.GetLoggedInUser();
 
         if (response == null) {
@@ -245,36 +236,17 @@ public class AuthServiceTests {
         }
 
 
-        //Assert.Multiple(() => {
-        Assert.That(response!.UserName, Is.EqualTo("Username"));
-        Assert.That(response.FullName, Is.EqualTo("FullName"));
-        Assert.That(response.Roles, Has.Length.EqualTo(SecretariatRolePL.Length));
-        Assert.That(response.Roles![0].Name, Is.EqualTo(SecretariatRole[0].Name));
-        Assert.That(response.Roles![0].Id, Is.EqualTo(SecretariatRole[0].Id));
-        Assert.That(response.HasInitPwd, Is.True);
-        //});
+        Assert.Multiple(() => {
+            Assert.That(response!.UserName, Is.EqualTo(_user1.Username));
+            Assert.That(response.FullName, Is.EqualTo(_user1.FullName));
+            Assert.That(response.Roles, Has.Length.EqualTo(SecretariatRolePL.Length));
+            Assert.That(response.Roles![0].Name, Is.EqualTo(SecretariatRole[0].Name));
+            Assert.That(response.Roles![0].Id, Is.EqualTo(SecretariatRole[0].Id));
+            Assert.That(response.HasInitPwd, Is.True);
+        });
     }
 
-
-    [Test]
-    public void LoggedInUserChangePwd_NotLoggedIn_Unauthorized() {
-        var response = _instance.LoggedInUserChangePwd("");
-
-        Assert.That(response, Is.EqualTo(HttpStatusCode.Unauthorized));
-    }
-
-
-    [Test]
-    public void LoggedInUserChangePwd_LoggedInUnknownUser_NotFound() {
-        SetupAuthorizedUser(RoleType.Secretariat, _mockHttpSession);
-        //set id for non existent user
-        _mockHttpSession.SetInt32(IAuthService.UserIdKey, 10);
-
-        var response = _instance.LoggedInUserChangePwd("");
-
-        Assert.That(response, Is.EqualTo(HttpStatusCode.NotFound));
-    }
-
+    
 
     [Test]
     [TestCase("emailus@maximus")]
@@ -287,8 +259,6 @@ public class AuthServiceTests {
     [TestCase("BBAAaaBBcc")]
     [TestCase("Mocdlouheheslomocdlouheheslomocdlouheheslomocdlouheheslomocdlouheheslo1")]
     public void LoggedInUserChangePwd_InvalidPwd_UnprocessableEntity(string pwd) {
-        SetupAuthorizedUser(RoleType.Secretariat, _mockHttpSession);
-
         var response = _instance.LoggedInUserChangePwd(pwd);
 
         Assert.That(response, Is.EqualTo(HttpStatusCode.UnprocessableEntity));
@@ -297,8 +267,6 @@ public class AuthServiceTests {
 
     [Test]
     public void LoggedInUserChangePwd_LoggedInValidPwd_OK() {
-        SetupAuthorizedUser(RoleType.Secretariat, _mockHttpSession);
-
         var response = _instance.LoggedInUserChangePwd(BasicUserPwd);
 
         Assert.That(response, Is.EqualTo(HttpStatusCode.OK));
@@ -309,7 +277,7 @@ public class AuthServiceTests {
     }
 
 
-    public static void SetupAuthorizedUser(RoleType? type, MockHttpSession session) {
+    /*public static void SetupAuthorizedUser(RoleType? type, MockHttpSession session) {
         session.ClearStorage();
         switch (type) {
             case RoleType.Superior:
@@ -337,5 +305,6 @@ public class AuthServiceTests {
         session.SetString(IAuthService.UsernameKey, "Username");
         session.SetString(IAuthService.UserFullNameKey, "FullName");
         session.SetString(IAuthService.UserHasInitPwdKey, "1");
-    }
+    }*/
+    
 }

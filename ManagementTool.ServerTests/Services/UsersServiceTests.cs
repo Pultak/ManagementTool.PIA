@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Security.Claims;
+using AutoMapper;
 using ManagementTool.Server.Models.Business;
 using ManagementTool.Server.Repository.Projects;
 using ManagementTool.Server.Repository.Users;
@@ -9,6 +10,7 @@ using ManagementTool.Shared.Models.Presentation;
 using ManagementTool.Shared.Models.Presentation.Api.Requests;
 using ManagementTool.Shared.Models.Utils;
 using Microsoft.AspNetCore.Http;
+using Newtonsoft.Json;
 
 namespace ManagementTool.ServerTests.Services;
 
@@ -102,7 +104,7 @@ public class UsersServiceTests {
         _mockUserRepository.Reset();
         _mockUserRepository.Setup(x => x.GetAllUsers()).Returns(_dummyUsers);
         _mockUserRepository.Setup(x => x.GetAllUsersByRole(It.IsAny<long>())).Returns(_dummyUsers);
-        _mockUserRepository.Setup(x => x.GetAllUsersAssignedToProject(
+        _mockUserRepository.Setup(x => x.GetAllUsersAssignedToProjectWrappers(
             It.IsAny<long>())).Returns(_dummyUserAssignment);
         _mockUserRepository.Setup(x => x.GetUserByName(_dummyUser1.Username)).Returns(_dummyUser1);
 
@@ -136,11 +138,24 @@ public class UsersServiceTests {
         _mockProjectRepository.Reset();
         _mockProjectRepository.Setup(x => x.GetProjectById(10)).Returns((ProjectBLL?)null);
         _mockProjectRepository.Setup(x => x.GetProjectById(1)).Returns(_dummyProject1);
+
+
+        _mockHttpContext.Setup(x => x.User).Returns(
+            new ClaimsPrincipal(
+                new ClaimsIdentity(new[] {
+                    new Claim(ClaimTypes.Name, _dummyUser1.Username),
+                    new Claim(ClaimTypes.Role, RoleType.Secretariat.ToString()),
+                    new Claim(IAuthService.UserIdKey, _dummyUser1.Id.ToString()),
+                    new Claim(IAuthService.UsernameKey, _dummyUser1.Username),
+                    new Claim(IAuthService.UserFullNameKey, _dummyUser1.FullName),
+                    new Claim(IAuthService.UserRolesKey, JsonConvert.SerializeObject(_dummyRole)),
+                    new Claim(IAuthService.UserHasInitPwdKey, _dummyUser1.PwdInit ? "1" : "0"),
+                })));
+
     }
 
     [Test]
     public void GetUsers_Empty_Users() {
-        AuthServiceTests.SetupAuthorizedUser(RoleType.Secretariat, _mockHttpSession);
         var users = _instance.GetAllUsersUnderProject(1);
 
         Assert.Multiple(() => { Assert.That(users, Is.Not.Null); });
@@ -155,7 +170,6 @@ public class UsersServiceTests {
     [TestCase("wwwr 89")]
     [TestCase("123456789012345678901234567890dlouhejmeno")]
     public void CreateUser_InvalidUsernameName_UnprocessableEntity(string username) {
-        AuthServiceTests.SetupAuthorizedUser(RoleType.Secretariat, _mockHttpSession);
 
         var dummyPayload = GenerateValidUserCreationRequest();
         dummyPayload.UpdatedUser.Username = username;
@@ -171,8 +185,6 @@ public class UsersServiceTests {
     [TestCase(
         "MocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmeno")]
     public void CreateUser_InvalidFullName_UnprocessableEntity(string fullname) {
-        AuthServiceTests.SetupAuthorizedUser(RoleType.Secretariat, _mockHttpSession);
-
         var dummyPayload = GenerateValidUserCreationRequest();
         dummyPayload.UpdatedUser.FullName = fullname;
 
@@ -187,8 +199,6 @@ public class UsersServiceTests {
     [TestCase(
         "MocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmenoMocdlouhejmeno")]
     public void CreateUser_InvalidWorkplace_UnprocessableEntity(string workplace) {
-        AuthServiceTests.SetupAuthorizedUser(RoleType.Secretariat, _mockHttpSession);
-
         var dummyPayload = GenerateValidUserCreationRequest();
         dummyPayload.UpdatedUser.PrimaryWorkplace = workplace;
 
